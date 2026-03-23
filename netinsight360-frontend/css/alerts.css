@@ -1,0 +1,269 @@
+/**
+ * NetInsight 360 - Centre d'Alertes
+ * Supervisez. Analysez. Optimisez.
+ * Styles spécifiques pour la gestion des alertes réseau
+ */
+
+/* Page header */
+.page-header {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    padding: 20px 25px;
+    border-radius: 20px;
+    margin-bottom: 25px;
+}
+
+.page-header h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 8px;
+}
+
+.page-header h2 i {
+    color: #00a3c4;
+    margin-right: 10px;
+}
+
+/* Cartes statistiques alertes */
+.alert-stat-card {
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+}
+
+.alert-stat-card:hover {
+    transform: translateY(-3px);
+}
+
+/* Conteneur des alertes */
+.alerts-container {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+/* Carte d'alerte individuelle */
+.alert-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border-radius: 16px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.alert-card:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.alert-card.critical {
+    border-left: 4px solid #ef4444;
+    background: linear-gradient(135deg, #fff 0%, #fef2f2 100%);
+}
+
+.alert-card.warning {
+    border-left: 4px solid #f59e0b;
+    background: linear-gradient(135deg, #fff 0%, #fffbeb 100%);
+}
+
+/* Icône d'alerte */
+.alert-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.alert-card.critical .alert-icon {
+    background: #fee2e2;
+    color: #ef4444;
+}
+
+.alert-card.warning .alert-icon {
+    background: #fef9c3;
+    color: #f59e0b;
+}
+
+/* Contenu de l'alerte */
+.alert-content {
+    flex: 1;
+}
+
+.alert-title {
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 4px;
+    color: #1e293b;
+}
+
+.alert-details {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-bottom: 8px;
+}
+
+.alert-meta {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    font-size: 0.7rem;
+    color: #94a3b8;
+}
+
+.alert-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Badges */
+.alert-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.badge-critical {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-warning {
+    background: #fef9c3;
+    color: #854d0e;
+}
+
+/* Bouton de résolution */
+.resolve-btn {
+    background: none;
+    border: none;
+    color: #10b981;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 40px;
+    transition: all 0.2s;
+}
+
+.resolve-btn:hover {
+    background: #dcfce7;
+    transform: scale(1.05);
+}
+
+.resolve-btn i {
+    font-size: 1.2rem;
+}
+
+/* Animation pour nouvelle alerte */
+@keyframes alertPulse {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.alert-card.new-alert {
+    animation: alertPulse 0.5s ease-out;
+}
+
+/* Top sites list */
+.top-sites-list {
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.top-site-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.top-site-name {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.top-site-count {
+    background: #f1f5f9;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #ef4444;
+}
+
+/* Pagination */
+.pagination {
+    justify-content: center;
+    gap: 5px;
+}
+
+.pagination .page-item .page-link {
+    border-radius: 8px;
+    color: #0f172a;
+    cursor: pointer;
+}
+
+.pagination .page-item.active .page-link {
+    background: #00a3c4;
+    border-color: #00a3c4;
+    color: white;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.stat-card, .alert-card {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .page-header h2 {
+        font-size: 1.2rem;
+    }
+    
+    .alert-card {
+        flex-direction: column;
+    }
+    
+    .alert-icon {
+        align-self: flex-start;
+    }
+    
+    .alert-meta {
+        flex-direction: column;
+        gap: 5px;
+    }
+}
+
+/* Scrollbar personnalisée */
+.alerts-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.alerts-container::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 10px;
+}
+
+.alerts-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+.alerts-container::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}

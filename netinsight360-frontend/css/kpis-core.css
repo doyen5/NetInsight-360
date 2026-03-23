@@ -1,0 +1,248 @@
+/**
+ * NetInsight 360 - KPIs CORE
+ * Supervisez. Analysez. Optimisez.
+ * Styles spécifiques pour la page de supervision du cœur de réseau
+ */
+
+/* Page header */
+.page-header {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    padding: 20px 25px;
+    border-radius: 20px;
+    margin-bottom: 25px;
+}
+
+.page-header h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 8px;
+}
+
+.page-header h2 i {
+    color: #00a3c4;
+    margin-right: 10px;
+}
+
+/* Table des pires sites CORE */
+#worstSitesTable {
+    font-size: 0.85rem;
+}
+
+#worstSitesTable th {
+    background: #f8fafc;
+    font-weight: 600;
+    color: #1e293b;
+    border-bottom: 2px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+#worstSitesTable td {
+    vertical-align: middle;
+    padding: 10px 8px;
+}
+
+/* Lignes de statut */
+.site-row-critical {
+    background-color: rgba(239, 68, 68, 0.05);
+    border-left: 3px solid #ef4444;
+}
+
+.site-row-warning {
+    background-color: rgba(245, 158, 11, 0.05);
+    border-left: 3px solid #f59e0b;
+}
+
+.site-row-good {
+    background-color: rgba(16, 185, 129, 0.05);
+    border-left: 3px solid #10b981;
+}
+
+/* Badges de statut CORE */
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.status-critical {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-warning {
+    background: #fef9c3;
+    color: #854d0e;
+}
+
+.status-good {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+/* Badge pour Packet Loss */
+.packetloss-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.packetloss-high {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.packetloss-medium {
+    background: #fef9c3;
+    color: #d97706;
+}
+
+.packetloss-low {
+    background: #dcfce7;
+    color: #059669;
+}
+
+/* Bouton de détails */
+.btn-details {
+    background: none;
+    border: none;
+    color: #00a3c4;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: transform 0.2s;
+    padding: 5px;
+}
+
+.btn-details:hover {
+    transform: scale(1.1);
+    color: #006994;
+}
+
+/* Pagination */
+.pagination {
+    justify-content: center;
+    gap: 5px;
+}
+
+.pagination .page-item .page-link {
+    border-radius: 8px;
+    color: #0f172a;
+    cursor: pointer;
+}
+
+.pagination .page-item.active .page-link {
+    background: #00a3c4;
+    border-color: #00a3c4;
+    color: white;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.stat-card {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Progress bars personnalisées */
+.progress {
+    height: 8px;
+    border-radius: 10px;
+    background-color: #e2e8f0;
+}
+
+.progress-bar {
+    border-radius: 10px;
+    transition: width 0.5s ease;
+}
+
+/* Tooltips */
+[data-tooltip] {
+    position: relative;
+    cursor: help;
+}
+
+[data-tooltip]:before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #0f172a;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    display: none;
+    z-index: 1000;
+}
+
+[data-tooltip]:hover:before {
+    display: block;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .page-header h2 {
+        font-size: 1.2rem;
+    }
+    
+    #worstSitesTable {
+        font-size: 0.7rem;
+    }
+    
+    #worstSitesTable td, 
+    #worstSitesTable th {
+        padding: 6px 4px;
+    }
+    
+    .kpi-value {
+        font-size: 1.5rem;
+    }
+}
+
+/* Style pour le bouton de déconnexion */
+.logout-btn-header {
+    background: #ef4444;
+    border: none;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 40px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.logout-btn-header:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+}
+
+/* Indicateurs de santé */
+.health-score {
+    font-size: 2rem;
+    font-weight: 800;
+    text-align: center;
+}
+
+.health-score-excellent {
+    color: #10b981;
+}
+
+.health-score-good {
+    color: #f59e0b;
+}
+
+.health-score-poor {
+    color: #ef4444;
+}

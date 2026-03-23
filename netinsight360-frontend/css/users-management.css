@@ -1,0 +1,234 @@
+/**
+ * NetInsight 360 - Gestion Utilisateurs
+ * Supervisez. Analysez. Optimisez.
+ * Styles spécifiques pour la gestion des utilisateurs
+ */
+
+/* Page header */
+.page-header {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    padding: 20px 25px;
+    border-radius: 20px;
+    margin-bottom: 25px;
+}
+
+.page-header h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 8px;
+}
+
+.page-header h2 i {
+    color: #00a3c4;
+    margin-right: 10px;
+}
+
+/* Table utilisateurs */
+.users-table {
+    font-size: 0.9rem;
+}
+
+.users-table th {
+    background: #f8fafc;
+    font-weight: 600;
+    color: #1e293b;
+    border-bottom: 2px solid #e2e8f0;
+    padding: 12px;
+}
+
+.users-table td {
+    vertical-align: middle;
+    padding: 12px;
+}
+
+/* Badges de rôle */
+.role-badge {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.role-admin {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.role-npm {
+    background: #fef9c3;
+    color: #854d0e;
+}
+
+.role-core {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.role-customer {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+/* Badge statut */
+.status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.status-active {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.status-inactive {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* Boutons d'action */
+.action-btn {
+    background: none;
+    border: none;
+    padding: 5px 8px;
+    margin: 0 2px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1rem;
+}
+
+.action-btn.edit-btn {
+    color: #00a3c4;
+}
+
+.action-btn.edit-btn:hover {
+    background: #e0f2fe;
+    transform: scale(1.05);
+}
+
+.action-btn.delete-btn {
+    color: #ef4444;
+}
+
+.action-btn.delete-btn:hover {
+    background: #fee2e2;
+    transform: scale(1.05);
+}
+
+/* Liste d'activité */
+.activity-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.activity-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px;
+    border-bottom: 1px solid #e2e8f0;
+    transition: background 0.2s;
+}
+
+.activity-item:hover {
+    background: #f8fafc;
+}
+
+.activity-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.activity-icon.create {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.activity-icon.edit {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.activity-icon.delete {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.activity-icon.login {
+    background: #fef9c3;
+    color: #854d0e;
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-title {
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 2px;
+}
+
+.activity-time {
+    font-size: 0.7rem;
+    color: #64748b;
+}
+
+/* Pagination */
+.pagination {
+    justify-content: center;
+    gap: 5px;
+}
+
+.pagination .page-item .page-link {
+    border-radius: 8px;
+    color: #0f172a;
+    cursor: pointer;
+}
+
+.pagination .page-item.active .page-link {
+    background: #00a3c4;
+    border-color: #00a3c4;
+    color: white;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.stat-card {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .page-header h2 {
+        font-size: 1.2rem;
+    }
+    
+    .users-table {
+        font-size: 0.75rem;
+    }
+    
+    .users-table td,
+    .users-table th {
+        padding: 8px 4px;
+    }
+    
+    .action-btn {
+        padding: 3px 5px;
+        font-size: 0.9rem;
+    }
+}
