@@ -143,8 +143,3 @@
   - ESLint
   - Prettier
   - Live Server
-
-### Accès réseau
-
-- **Base distante** : Accès à `10.171.16.120` (NetPulseAI_NetworkInsight)
-- **Ports** : 80/443 (HTTP/HTTPS), 3306 (MySQL local), éventuellement SSH pour tunnel
