@@ -10,6 +10,17 @@ let dashboardMap = null;
 let dashboardMarkers = [];
 let dashboardCharts = {};
 
+// Initialiser la gestion de déconnexion au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    // Vérifier que l'utilisateur est connecté
+    checkAuthentication().then(() => {
+        // Initialiser la déconnexion
+        initLogoutHandler();
+        // Mettre à jour l'interface
+        updateUserInterface();
+    });
+});
+
 /**
  * Initialise le dashboard
  */

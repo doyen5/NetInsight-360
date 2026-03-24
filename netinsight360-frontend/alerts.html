@@ -140,7 +140,10 @@
             <a href="map-view.html" class="nav-link" data-section="map-view">
                 <i class="bi bi-map"></i> Cartographie
             </a>
-            <a href="users-management.html" class="nav-link" data-section="users-management" id="navUsersManagement">
+            <!--<a href="users-management.html" class="nav-link" data-section="users-management" id="navUsersManagement">
+                <i class="bi bi-people"></i> Gestion Users
+            </a>-->
+            <a href="users-management.html" class="nav-link admin-only" data-section="users-management">
                 <i class="bi bi-people"></i> Gestion Users
             </a>
             <a href="alerts.html" class="nav-link active" data-section="alerts">
@@ -383,5 +386,16 @@
     <script src="js/chart.js"></script>
     <script src="js/alerts.js"></script>
     <script src="js/app.js"></script>
+
+    <script>
+        // Initialisation supplémentaire si nécessaire
+        document.addEventListener('DOMContentLoaded', function() {
+            // initLogoutHandler est déjà appelé dans dashboard.js
+            // mais on peut ajouter un appel de sécurité
+            if (typeof initLogoutHandler === 'function') {
+                initLogoutHandler();
+            }
+        });
+    </script>
 </body>
 </html>

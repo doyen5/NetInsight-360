@@ -6,8 +6,8 @@
  * Gère les requêtes HTTP, les erreurs et les tokens d'authentification
  */
 
-// Configuration de l'API
-const API_BASE_URL = '/NetInsight%20360/api';
+// Configuration de l'API - CORRIGÉ
+const API_BASE_URL = '/NetInsight%20360/netinsight360-backend/api';
 
 class API {
     /**
@@ -19,9 +19,11 @@ class API {
     static async request(endpoint, options = {}) {
         const url = `${API_BASE_URL}${endpoint}`;
         
+        console.log('[API] Requête vers:', url);  // Ajout pour debug
+        
         // Configuration par défaut
         const config = {
-            credentials: 'include', // Inclut les cookies de session
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
@@ -30,7 +32,6 @@ class API {
             ...options
         };
         
-        // Si body est un objet, le convertir en JSON
         if (config.body && typeof config.body === 'object') {
             config.body = JSON.stringify(config.body);
         }
@@ -54,12 +55,6 @@ class API {
     // AUTHENTIFICATION
     // ============================================
     
-    /**
-     * Connexion utilisateur
-     * @param {string} email - Email de l'utilisateur
-     * @param {string} password - Mot de passe
-     * @param {boolean} remember - Rester connecté
-     */
     static async login(email, password, remember = false) {
         return this.request('/auth/login.php', {
             method: 'POST',
@@ -67,18 +62,12 @@ class API {
         });
     }
     
-    /**
-     * Déconnexion
-     */
     static async logout() {
         return this.request('/auth/logout.php', {
             method: 'POST'
         });
     }
     
-    /**
-     * Vérification de session
-     */
     static async verify() {
         return this.request('/auth/verify.php');
     }
@@ -87,36 +76,20 @@ class API {
     // SITES
     // ============================================
     
-    /**
-     * Récupère la liste des sites
-     * @param {object} filters - Filtres (country, vendor, tech, domain)
-     */
     static async getSites(filters = {}) {
         const params = new URLSearchParams(filters).toString();
         const suffix = params ? `?${params}` : '';
         return this.request(`/sites/get-sites.php${suffix}`);
     }
     
-    /**
-     * Récupère les détails d'un site
-     * @param {string} siteId - Identifiant du site
-     */
     static async getSiteDetails(siteId) {
         return this.request(`/sites/get-site-details.php?id=${encodeURIComponent(siteId)}`);
     }
     
-    /**
-     * Recherche un site par nom ou ID
-     * @param {string} query - Terme de recherche
-     */
     static async searchSite(query) {
         return this.request(`/sites/search-site.php?q=${encodeURIComponent(query)}`);
     }
     
-    /**
-     * Récupère les top/pires sites
-     * @param {object} filters - Filtres (country, vendor, tech, domain)
-     */
     static async getTopWorstSites(filters = {}) {
         const params = new URLSearchParams(filters).toString();
         const suffix = params ? `?${params}` : '';
@@ -127,49 +100,26 @@ class API {
     // KPIs
     // ============================================
     
-    /**
-     * Récupère les KPIs RAN
-     * @param {object} filters - Filtres (country, technology, vendor)
-     */
     static async getRanKpis(filters = {}) {
         const params = new URLSearchParams(filters).toString();
         const suffix = params ? `?${params}` : '';
         return this.request(`/kpis/get-ran-kpis.php${suffix}`);
     }
     
-    /**
-     * Récupère les KPIs CORE
-     * @param {object} filters - Filtres (country, vendor)
-     */
     static async getCoreKpis(filters = {}) {
         const params = new URLSearchParams(filters).toString();
         const suffix = params ? `?${params}` : '';
         return this.request(`/kpis/get-core-kpis.php${suffix}`);
     }
     
-    /**
-     * Récupère les tendances d'un KPI sur N jours
-     * @param {string} siteId - Identifiant du site
-     * @param {string} kpiName - Nom du KPI
-     * @param {number} days - Nombre de jours
-     */
     static async getKpiTrends(siteId, kpiName, days = 5) {
         return this.request(`/kpis/get-kpi-trends.php?site_id=${encodeURIComponent(siteId)}&kpi_name=${encodeURIComponent(kpiName)}&days=${days}`);
     }
     
-    /**
-     * Récupère les prédictions pour un site
-     * @param {string} siteId - Identifiant du site
-     * @param {string} kpiName - Nom du KPI
-     */
     static async getKpiPredictions(siteId, kpiName) {
         return this.request(`/kpis/get-kpi-predictions.php?site_id=${encodeURIComponent(siteId)}&kpi_name=${encodeURIComponent(kpiName)}`);
     }
     
-    /**
-     * Récupère la comparaison entre sites
-     * @param {string} siteId - Identifiant du site
-     */
     static async getKpiComparison(siteId) {
         return this.request(`/kpis/get-kpi-comparison.php?site_id=${encodeURIComponent(siteId)}`);
     }
@@ -178,20 +128,12 @@ class API {
     // ALERTES
     // ============================================
     
-    /**
-     * Récupère les alertes actives
-     * @param {object} filters - Filtres (type, country, domain)
-     */
     static async getAlerts(filters = {}) {
         const params = new URLSearchParams(filters).toString();
         const suffix = params ? `?${params}` : '';
         return this.request(`/alerts/get-alerts.php${suffix}`);
     }
     
-    /**
-     * Résout une alerte
-     * @param {number} alertId - Identifiant de l'alerte
-     */
     static async resolveAlert(alertId) {
         return this.request('/alerts/resolve-alert.php', {
             method: 'POST',
@@ -199,18 +141,12 @@ class API {
         });
     }
     
-    /**
-     * Résout toutes les alertes
-     */
     static async resolveAllAlerts() {
         return this.request('/alerts/resolve-all-alerts.php', {
             method: 'POST'
         });
     }
     
-    /**
-     * Récupère les statistiques des alertes
-     */
     static async getAlertsStats() {
         return this.request('/alerts/get-alerts-stats.php');
     }
@@ -219,20 +155,12 @@ class API {
     // UTILISATEURS
     // ============================================
     
-    /**
-     * Récupère la liste des utilisateurs
-     * @param {object} filters - Filtres (role, search)
-     */
     static async getUsers(filters = {}) {
         const params = new URLSearchParams(filters).toString();
         const suffix = params ? `?${params}` : '';
         return this.request(`/users/get-users.php${suffix}`);
     }
     
-    /**
-     * Crée un nouvel utilisateur
-     * @param {object} userData - Données utilisateur (name, email, role, password)
-     */
     static async createUser(userData) {
         return this.request('/users/create-user.php', {
             method: 'POST',
@@ -240,11 +168,6 @@ class API {
         });
     }
     
-    /**
-     * Modifie un utilisateur
-     * @param {number} userId - Identifiant de l'utilisateur
-     * @param {object} userData - Données à modifier
-     */
     static async updateUser(userId, userData) {
         return this.request(`/users/update-user.php?id=${userId}`, {
             method: 'PUT',
@@ -252,21 +175,12 @@ class API {
         });
     }
     
-    /**
-     * Supprime un utilisateur
-     * @param {number} userId - Identifiant de l'utilisateur
-     */
     static async deleteUser(userId) {
         return this.request(`/users/delete-user.php?id=${userId}`, {
             method: 'DELETE'
         });
     }
     
-    /**
-     * Change le mot de passe
-     * @param {string} oldPassword - Ancien mot de passe
-     * @param {string} newPassword - Nouveau mot de passe
-     */
     static async changePassword(oldPassword, newPassword) {
         return this.request('/users/change-password.php', {
             method: 'POST',
@@ -274,10 +188,6 @@ class API {
         });
     }
     
-    /**
-     * Demande de réinitialisation de mot de passe
-     * @param {string} email - Email de l'utilisateur
-     */
     static async forgotPassword(email) {
         return this.request('/users/forgot-password.php', {
             method: 'POST',
@@ -285,12 +195,6 @@ class API {
         });
     }
     
-    /**
-     * Réinitialise le mot de passe
-     * @param {string} token - Token de réinitialisation
-     * @param {string} email - Email de l'utilisateur
-     * @param {string} password - Nouveau mot de passe
-     */
     static async resetPassword(token, email, password) {
         return this.request('/users/reset-password.php', {
             method: 'POST',
@@ -298,9 +202,6 @@ class API {
         });
     }
     
-    /**
-     * Récupère les statistiques des utilisateurs
-     */
     static async getUserStats() {
         return this.request('/users/get-user-stats.php');
     }
@@ -309,10 +210,6 @@ class API {
     // RAPPORTS
     // ============================================
     
-    /**
-     * Génère un rapport WhatsApp
-     * @param {object} filters - Filtres à appliquer
-     */
     static async generateWhatsAppReport(filters = {}) {
         return this.request('/reports/generate-whatsapp.php', {
             method: 'POST',
@@ -320,10 +217,6 @@ class API {
         });
     }
     
-    /**
-     * Génère un rapport PowerPoint
-     * @param {object} filters - Filtres à appliquer
-     */
     static async generatePowerpointReport(filters = {}) {
         return this.request('/reports/generate-powerpoint.php', {
             method: 'POST',
@@ -331,18 +224,10 @@ class API {
         });
     }
     
-    /**
-     * Récupère la comparaison hebdomadaire
-     */
     static async getWeeklyComparison() {
         return this.request('/reports/get-weekly-comparison.php');
     }
     
-    /**
-     * Exporte les données en Excel
-     * @param {string} type - Type de données à exporter
-     * @param {object} filters - Filtres à appliquer
-     */
     static async exportExcel(type, filters = {}) {
         const params = new URLSearchParams({ type, ...filters }).toString();
         return this.request(`/reports/export-excel.php?${params}`);
@@ -352,20 +237,12 @@ class API {
     // CARTE
     // ============================================
     
-    /**
-     * Récupère les marqueurs pour la carte
-     * @param {object} filters - Filtres (country, vendor, tech, domain)
-     */
     static async getMapMarkers(filters = {}) {
         const params = new URLSearchParams(filters).toString();
         const suffix = params ? `?${params}` : '';
         return this.request(`/map/get-map-markers.php${suffix}`);
     }
     
-    /**
-     * Récupère les limites d'un pays
-     * @param {string} countryCode - Code pays
-     */
     static async getCountryBounds(countryCode) {
         return this.request(`/map/get-country-bounds.php?country=${countryCode}`);
     }
@@ -374,9 +251,6 @@ class API {
     // FILTRES
     // ============================================
     
-    /**
-     * Récupère les options de filtres disponibles
-     */
     static async getFilterOptions() {
         return this.request('/filters/get-filter-options.php');
     }
@@ -385,17 +259,10 @@ class API {
     // DASHBOARD
     // ============================================
     
-    /**
-     * Récupère les statistiques du dashboard
-     */
     static async getDashboardStats() {
         return this.request('/dashboard/get-stats.php');
     }
     
-    /**
-     * Récupère les tendances globales
-     * @param {string} kpi - KPI à analyser
-     */
     static async getGlobalTrends(kpi = 'RNA') {
         return this.request(`/dashboard/get-trends.php?kpi=${kpi}`);
     }

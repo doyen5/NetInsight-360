@@ -214,6 +214,7 @@ function getCurrentUser() {
 
 /**
  * Met à jour l'interface utilisateur (nom, avatar, rôle)
+ * @returns {Promise<void>}
  */
 async function updateUserInterface() {
     const user = getCurrentUser();
@@ -246,16 +247,22 @@ async function updateUserInterface() {
 
 /**
  * Applique les restrictions d'affichage selon le rôle de l'utilisateur
- * @param {string} role - Rôle de l'utilisateur
+ * @param {string} role - Rôle de l'utilisateur (ADMIN, FO_NPM, FO_CORE_RAN, CUSTOMER)
  */
 function applyRoleRestrictions(role) {
-    // Éléments à masquer selon le rôle
+    // Éléments réservés aux administrateurs
     const adminOnlyElements = document.querySelectorAll('.admin-only');
+    
+    // Éléments réservés aux agents superviseurs (FO_NPM)
     const npmOnlyElements = document.querySelectorAll('.npm-only');
+    
+    // Éléments réservés aux agents partageurs (FO_CORE_RAN)
     const coreOnlyElements = document.querySelectorAll('.core-only');
+    
+    // Éléments restreints pour les visualiseurs (CUSTOMER)
     const viewerRestrictedElements = document.querySelectorAll('.viewer-restricted');
     
-    // Masquer tout d'abord
+    // Masquer tous les éléments réservés d'abord
     adminOnlyElements.forEach(el => el.style.display = 'none');
     npmOnlyElements.forEach(el => el.style.display = 'none');
     coreOnlyElements.forEach(el => el.style.display = 'none');
@@ -271,7 +278,7 @@ function applyRoleRestrictions(role) {
         coreOnlyElements.forEach(el => el.style.display = '');
     }
     
-    // Les éléments restreints pour les visualiseurs
+    // CUSTOMER : masquer les éléments restreints
     if (role === 'CUSTOMER') {
         viewerRestrictedElements.forEach(el => el.style.display = 'none');
     }
