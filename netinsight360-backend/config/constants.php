@@ -12,7 +12,7 @@ define('APP_NAME', 'NetInsight 360');
 define('APP_VERSION', '1.0.0');
 define('APP_TAGLINE', 'Supervisez. Analysez. Optimisez.');
 define('APP_ENV', getenv('APP_ENV') ?: 'development');
-define('APP_URL', getenv('APP_URL') ?: 'http://localhost/netinsight360');
+define('APP_URL', getenv('APP_URL') ?: 'http://localhost:8080/netinsight360');
 define('APP_TIMEZONE', getenv('APP_TIMEZONE') ?: 'Africa/Abidjan');
 
 // ============================================
@@ -29,7 +29,7 @@ define('LOGIN_ATTEMPT_TIMEOUT', 15); // minutes
 // ============================================
 
 // Seuils de performance
-define('KPI_THRESHOLD_GOOD', 95);
+define('KPI_THRESHOLD_GOOD', 97);
 define('KPI_THRESHOLD_WARNING', 90);
 define('KPI_THRESHOLD_CRITICAL', 85);
 
@@ -60,8 +60,8 @@ define('TECHNOLOGIES', [
 // ============================================
 
 define('VENDORS', [
-    'Huawei' => ['name' => 'Huawei', 'color' => '#ef4444'],
-    'Ericsson' => ['name' => 'Ericsson', 'color' => '#3b82f6']
+    'Huawei' => ['name' => 'Huawei', 'color' => '#f92929'],
+    'Ericsson' => ['name' => 'Ericsson', 'color' => '#033789']
 ]);
 
 // ============================================
