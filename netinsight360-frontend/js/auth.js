@@ -1,136 +1,186 @@
 /**
- * NetInsight 360 - Authentification
+ * NetInsight 360 - Gestion de la déconnexion
  * Supervisez. Analysez. Optimisez.
  * 
- * Gère la connexion utilisateur avec session persistante
+ * Gère la déconnexion utilisateur via l'API backend
+ * Modal de confirmation, nettoyage des données locales
  */
 
-// Credentials de test
-const validCredentials = {
-    admin: { email: 'admin@netinsight360.com', password: 'admin123', role: 'ADMIN', name: 'Prince Désiré' },
-    npm: { email: 'npm@netinsight360.com', password: 'npm123', role: 'FO_NPM', name: 'FO_NPM' },
-    core: { email: 'core@netinsight360.com', password: 'core123', role: 'FO_CORE_RAN', name: 'FO_CORE_RAN' },
-    customer: { email: 'customer@netinsight360.com', password: 'customer123', role: 'CUSTOMER', name: 'CUSTOMER' }
-};
+let logoutModal = null;
+let logoutBtn = null;
 
-document.addEventListener('DOMContentLoaded', function() {
-    const loginForm = document.getElementById('loginForm');
-    const loginBtn = document.getElementById('loginBtn');
-    const errorMessage = document.getElementById('errorMessage');
-    const errorText = document.getElementById('errorText');
-    const forgotLink = document.getElementById('forgotPassword');
-
-    // Vérifier si déjà connecté
-    const storedUser = sessionStorage.getItem('currentUser');
-    if (storedUser && window.location.pathname.includes('index.html')) {
-        window.location.href = 'dashboard.html';
-        return;
-    }
-
+/**
+ * Initialise la gestion de la déconnexion
+ */
+function initLogoutHandler() {
+    logoutBtn = document.getElementById('logoutBtn');
+    logoutModal = document.getElementById('logoutConfirmModal');
+    const confirmBtn = document.getElementById('confirmLogoutBtn');
+    const cancelBtn = document.getElementById('cancelLogoutBtn');
+    
+    if (!logoutBtn) return;
+    
     /**
-     * Affiche un message d'erreur
+     * Affiche le modal de confirmation
      */
-    function showError(message) {
-        errorText.textContent = message;
-        errorMessage.classList.add('show');
-        setTimeout(() => {
-            errorMessage.classList.remove('show');
-        }, 3000);
-    }
-
-    /**
-     * Gère la connexion
-     */
-    function handleLogin(email, password, remember) {
-        // Vérification des identifiants
-        let user = null;
-        for (let key in validCredentials) {
-            if (validCredentials[key].email === email && validCredentials[key].password === password) {
-                user = validCredentials[key];
-                break;
-            }
+    function showLogoutConfirmation() {
+        if (logoutModal) {
+            logoutModal.classList.add('show');
+        } else if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
+            executeLogout();
         }
+    }
+    
+    /**
+     * Cache le modal de confirmation
+     */
+    function hideLogoutConfirmation() {
+        if (logoutModal) {
+            logoutModal.classList.remove('show');
+        }
+    }
+    
+    /**
+     * Exécute la déconnexion
+     */
+    async function executeLogout() {
+        const originalContent = logoutBtn.innerHTML;
         
-        if (user) {
-            // Créer la session
-            const sessionData = {
-                email: user.email,
-                role: user.role,
-                name: user.name,
-                loggedInAt: new Date().toISOString()
-            };
+        // Afficher l'état de chargement
+        logoutBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Déconnexion...';
+        logoutBtn.disabled = true;
+        
+        try {
+            // Appel API de déconnexion
+            await API.logout();
             
-            // Sauvegarder la session
-            sessionStorage.setItem('currentUser', JSON.stringify(sessionData));
+            // Nettoyer le stockage local
+            sessionStorage.clear();
+            localStorage.removeItem('rememberedUser');
+            localStorage.removeItem('userFilters');
             
-            // Sauvegarder "Rester connecté" si coché
-            if (remember) {
-                localStorage.setItem('rememberedUser', JSON.stringify({
-                    email: user.email,
-                    name: user.name,
-                    role: user.role
-                }));
-            }
-            
-            // Animation de succès
-            loginBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i> Connexion réussie...';
-            loginBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
-            loginBtn.disabled = true;
+            // Journaliser la déconnexion
+            console.log('[NetInsight 360] Utilisateur déconnecté le ' + new Date().toLocaleString());
             
             // Redirection
-            setTimeout(() => {
-                window.location.href = 'dashboard.html';
-            }, 800);
-        } else {
-            showError('Email ou mot de passe incorrect');
-            
-            // Animation d'erreur
-            loginBtn.style.transform = 'shake 0.5s ease-in-out';
-            setTimeout(() => {
-                loginBtn.style.transform = '';
-            }, 500);
+            window.location.href = 'index.html';
+        } catch (error) {
+            console.error('[Logout] Erreur lors de la déconnexion:', error);
+            // En cas d'erreur, nettoyer quand même les données locales
+            sessionStorage.clear();
+            localStorage.removeItem('rememberedUser');
+            window.location.href = 'index.html';
         }
     }
-
-    /**
-     * Gère la soumission du formulaire
-     */
-    loginForm.addEventListener('submit', (e) => {
+    
+    // Événement du bouton de déconnexion
+    logoutBtn.addEventListener('click', (e) => {
         e.preventDefault();
-        
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const remember = document.getElementById('rememberMe').checked;
-        
-        if (!email || !password) {
-            showError('Veuillez remplir tous les champs');
-            return;
-        }
-        
-        // Animation de chargement
-        loginBtn.classList.add('loading');
-        loginBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Connexion en cours...';
-        
-        // Simuler un délai réseau
-        setTimeout(() => {
-            loginBtn.classList.remove('loading');
-            handleLogin(email, password, remember);
-        }, 1000);
+        showLogoutConfirmation();
     });
     
-    // Gestion "Mot de passe oublié"
-    if (forgotLink) {
-        forgotLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            showError('Fonctionnalité à venir : contactez votre administrateur');
+    // Événements du modal
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', () => {
+            hideLogoutConfirmation();
+            executeLogout();
         });
     }
     
-    // Pré-remplir si "Rester connecté" était activé
-    const remembered = localStorage.getItem('rememberedUser');
-    if (remembered) {
-        const user = JSON.parse(remembered);
-        document.getElementById('email').value = user.email;
-        document.getElementById('rememberMe').checked = true;
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+            hideLogoutConfirmation();
+        });
     }
-});
+    
+    // Fermer le modal en cliquant à l'extérieur
+    if (logoutModal) {
+        logoutModal.addEventListener('click', (e) => {
+            if (e.target === logoutModal) {
+                hideLogoutConfirmation();
+            }
+        });
+    }
+    
+    // Fermer avec la touche Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && logoutModal?.classList.contains('show')) {
+            hideLogoutConfirmation();
+        }
+    });
+}
+
+/**
+ * Vérifie l'authentification de l'utilisateur
+ * @returns {Promise<boolean>} true si authentifié
+ */
+async function checkAuthentication() {
+    try {
+        const result = await API.verify();
+        
+        if (!result.authenticated) {
+            window.location.href = 'index.html';
+            return false;
+        }
+        
+        // Mettre à jour les infos utilisateur
+        if (result.user) {
+            sessionStorage.setItem('currentUser', JSON.stringify(result.user));
+        }
+        return true;
+    } catch (error) {
+        console.error('[Auth] Erreur de vérification:', error);
+        window.location.href = 'index.html';
+        return false;
+    }
+}
+
+/**
+ * Récupère l'utilisateur courant depuis sessionStorage
+ * @returns {object|null} Utilisateur ou null
+ */
+function getCurrentUser() {
+    const userStr = sessionStorage.getItem('currentUser');
+    if (!userStr) return null;
+    try {
+        return JSON.parse(userStr);
+    } catch (e) {
+        console.error('[Auth] Erreur parsing user:', e);
+        return null;
+    }
+}
+
+/**
+ * Met à jour l'interface utilisateur (nom, avatar, rôle)
+ */
+async function updateUserInterface() {
+    const user = getCurrentUser();
+    if (!user) return;
+    
+    // Mettre à jour le nom
+    const userNameEl = document.getElementById('userName');
+    const headerUserNameEl = document.getElementById('headerUserName');
+    if (userNameEl) userNameEl.innerText = user.name;
+    if (headerUserNameEl) headerUserNameEl.innerText = user.name;
+    
+    // Mettre à jour l'avatar
+    const initials = user.name.split(' ').map(n => n[0]).join('').toUpperCase();
+    const userAvatarEl = document.getElementById('userAvatar');
+    if (userAvatarEl) userAvatarEl.innerText = initials;
+    
+    // Mettre à jour le rôle
+    const roleMap = {
+        'ADMIN': 'Administrateur',
+        'FO_NPM': 'Agent Superviseur',
+        'FO_CORE_RAN': 'Agent Partageur',
+        'CUSTOMER': 'Agent Visualiseur'
+    };
+    const headerUserRoleEl = document.getElementById('headerUserRole');
+    if (headerUserRoleEl) headerUserRoleEl.innerText = roleMap[user.role] || 'Utilisateur';
+}
+
+// Exporter les fonctions globales
+window.initLogoutHandler = initLogoutHandler;
+window.checkAuthentication = checkAuthentication;
+window.getCurrentUser = getCurrentUser;
+window.updateUserInterface = updateUserInterface;

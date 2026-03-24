@@ -7,14 +7,12 @@
  * - distante (NetPulseAI_NetworkInsight)
  * 
  * Utilisation:
- *   $localDb = DatabaseConfig::getLocalConnection();
- *   $remoteDb = DatabaseConfig::getRemoteConnection();
+ *   $pdo = Database::getInstance();           // Connexion locale par défaut
+ *   $pdo = Database::getLocalConnection();    // Connexion locale explicite
+ *   $pdo = Database::getRemoteConnection();   // Connexion distante
  */
 
-// Chargement des variables d'environnement
-require_once __DIR__ . '/../app/helpers/EnvHelper.php';
-
-class DatabaseConfig
+class Database
 {
     /** @var PDO Instance de connexion locale */
     private static $localConnection = null;
@@ -24,6 +22,63 @@ class DatabaseConfig
     
     /** @var array Log des erreurs */
     private static $errorLog = [];
+    
+    /** @var bool Indique si les variables d'environnement sont chargées */
+    private static $envLoaded = false;
+    
+    /**
+     * Charge les variables d'environnement depuis .env
+     */
+    private static function loadEnv(): void
+    {
+        if (self::$envLoaded) {
+            return;
+        }
+        
+        $envFile = __DIR__ . '/../.env';
+        if (file_exists($envFile)) {
+            $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (strpos($line, '#') === 0 || empty($line)) {
+                    continue;
+                }
+                
+                $parts = explode('=', $line, 2);
+                if (count($parts) === 2) {
+                    $key = trim($parts[0]);
+                    $value = trim($parts[1]);
+                    
+                    // Enlever les guillemets si présents
+                    if (preg_match('/^"(.*)"$/', $value, $matches)) {
+                        $value = $matches[1];
+                    } elseif (preg_match("/^'(.*)'$/", $value, $matches)) {
+                        $value = $matches[1];
+                    }
+                    
+                    putenv("{$key}={$value}");
+                    $_ENV[$key] = $value;
+                }
+            }
+        }
+        
+        self::$envLoaded = true;
+    }
+    
+    /**
+     * Récupère une variable d'environnement
+     */
+    private static function getEnv(string $key, $default = null)
+    {
+        self::loadEnv();
+        
+        $value = getenv($key);
+        if ($value !== false) {
+            return $value;
+        }
+        
+        return $_ENV[$key] ?? $default;
+    }
     
     /**
      * Récupère la connexion à la base de données locale
@@ -35,12 +90,12 @@ class DatabaseConfig
     {
         if (self::$localConnection === null) {
             try {
-                $host = EnvHelper::get('DB_HOST', 'localhost');
-                $port = EnvHelper::get('DB_PORT', '3306');
-                $dbname = EnvHelper::get('DB_NAME', 'netinsight360');
-                $username = EnvHelper::get('DB_USER', 'root');
-                $password = EnvHelper::get('DB_PASS', '');
-                $charset = EnvHelper::get('DB_CHARSET', 'utf8mb4');
+                $host = self::getEnv('DB_HOST', 'localhost');
+                $port = self::getEnv('DB_PORT', '3306');
+                $dbname = self::getEnv('DB_NAME', 'netinsight360');
+                $username = self::getEnv('DB_USER', 'root');
+                $password = self::getEnv('DB_PASS', '');
+                $charset = self::getEnv('DB_CHARSET', 'utf8mb4');
                 
                 $dsn = "mysql:host={$host};port={$port};dbname={$dbname};charset={$charset}";
                 
@@ -49,12 +104,10 @@ class DatabaseConfig
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                     PDO::ATTR_EMULATE_PREPARES => false,
                     PDO::ATTR_PERSISTENT => false,
-                    PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES {$charset}, time_zone = '+00:00'"
+                    PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES {$charset}"
                 ];
                 
                 self::$localConnection = new PDO($dsn, $username, $password, $options);
-                
-                // Journaliser la connexion réussie
                 self::log('Connexion locale établie avec succès', 'info');
                 
             } catch (PDOException $e) {
@@ -76,25 +129,23 @@ class DatabaseConfig
     {
         if (self::$remoteConnection === null) {
             try {
-                $host = EnvHelper::get('REMOTE_DB_HOST', '10.171.16.120');
-                $port = EnvHelper::get('REMOTE_DB_PORT', '3306');
-                $dbname = EnvHelper::get('REMOTE_DB_NAME', 'NetPulseAI_NetworkInsight');
-                $username = EnvHelper::get('REMOTE_DB_USER', 'fo_npm');
-                $password = EnvHelper::get('REMOTE_DB_PASS', 'fo_npm');
-                $charset = EnvHelper::get('REMOTE_DB_CHARSET', 'utf8mb4');
+                $host = self::getEnv('REMOTE_DB_HOST', '10.171.16.120');
+                $port = self::getEnv('REMOTE_DB_PORT', '3306');
+                $dbname = self::getEnv('REMOTE_DB_NAME', 'NetPulseAI_NetworkInsight');
+                $username = self::getEnv('REMOTE_DB_USER', 'fo_npm');
+                $password = self::getEnv('REMOTE_DB_PASS', 'fo_npm');
+                $charset = self::getEnv('REMOTE_DB_CHARSET', 'utf8mb4');
                 
                 $dsn = "mysql:host={$host};port={$port};dbname={$dbname};charset={$charset}";
                 
                 $options = [
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                    PDO::ATTR_TIMEOUT => 30, // Timeout de 30 secondes
+                    PDO::ATTR_TIMEOUT => 30,
                     PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES {$charset}"
                 ];
                 
                 self::$remoteConnection = new PDO($dsn, $username, $password, $options);
-                
-                // Journaliser la connexion réussie
                 self::log('Connexion distante établie avec succès', 'info');
                 
             } catch (PDOException $e) {
@@ -104,6 +155,16 @@ class DatabaseConfig
         }
         
         return self::$remoteConnection;
+    }
+    
+    /**
+     * Récupère la connexion locale (alias pour getLocalConnection)
+     * 
+     * @return PDO
+     */
+    public static function getInstance(): PDO
+    {
+        return self::getLocalConnection();
     }
     
     /**
@@ -118,6 +179,7 @@ class DatabaseConfig
             $pdo->query('SELECT 1');
             return true;
         } catch (PDOException $e) {
+            self::log('Test connexion distante échoué: ' . $e->getMessage(), 'warning');
             return false;
         }
     }
@@ -134,6 +196,7 @@ class DatabaseConfig
             $pdo->query('SELECT 1');
             return true;
         } catch (PDOException $e) {
+            self::log('Test connexion locale échoué: ' . $e->getMessage(), 'warning');
             return false;
         }
     }
@@ -158,21 +221,25 @@ class DatabaseConfig
     {
         $logDir = __DIR__ . '/../logs/';
         if (!is_dir($logDir)) {
-            mkdir($logDir, 0777, true);
+            @mkdir($logDir, 0777, true);
         }
         
         $logFile = $logDir . 'db_connections.log';
         $timestamp = date('Y-m-d H:i:s');
         $logEntry = "[{$timestamp}] [{$level}] {$message}" . PHP_EOL;
         
-        file_put_contents($logFile, $logEntry, FILE_APPEND);
+        @file_put_contents($logFile, $logEntry, FILE_APPEND);
         
-        // Stocker également en mémoire pour débogage
+        // Stocker également en mémoire pour débogage (limité à 100 entrées)
         self::$errorLog[] = [
             'timestamp' => $timestamp,
             'level' => $level,
             'message' => $message
         ];
+        
+        if (count(self::$errorLog) > 100) {
+            array_shift(self::$errorLog);
+        }
     }
     
     /**
@@ -184,4 +251,28 @@ class DatabaseConfig
     {
         return self::$errorLog;
     }
+}
+
+// ============================================
+// FONCTIONS D'ACCÈS RAPIDES (pour les scripts)
+// ============================================
+
+/**
+ * Récupère la connexion PDO locale
+ * 
+ * @return PDO
+ */
+function db(): PDO
+{
+    return Database::getLocalConnection();
+}
+
+/**
+ * Récupère la connexion PDO distante
+ * 
+ * @return PDO
+ */
+function remote_db(): PDO
+{
+    return Database::getRemoteConnection();
 }

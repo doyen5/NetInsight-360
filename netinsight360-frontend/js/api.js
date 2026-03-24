@@ -1,93 +1,405 @@
 /**
- * NetInsight 360 - Module API
+ * NetInsight 360 - API Client
  * Supervisez. Analysez. Optimisez.
  * 
- * Ce module simule les appels API vers le backend.
- * Plus tard, il sera remplacé par de vrais appels fetch().
+ * Centralise tous les appels vers le backend PHP
+ * Gère les requêtes HTTP, les erreurs et les tokens d'authentification
  */
 
-const API = (function() {
-    // Données simulées
-    let sitesData = [];
-    let usersData = [];
-    let kpisRanData = [];
-    let kpisCoreData = [];
+// Configuration de l'API
+const API_BASE_URL = '/NetInsight%20360/api';
 
-    // Initialisation avec des données factices (sera chargé depuis le serveur plus tard)
-    function initMockData() {
-        // Données des pays
-        const countries = {
-            CI: { name: "Côte d'Ivoire", center: [6.9, -5.5], zoom: 7 },
-            NE: { name: "Niger", center: [14.5, 6.0], zoom: 6 },
-            TG: { name: "Togo", center: [7.0, 1.2], zoom: 7 },
-            BJ: { name: "Bénin", center: [7.5, 2.5], zoom: 7 },
-            CF: { name: "Centrafrique", center: [5.5, 18.5], zoom: 7 }
+class API {
+    /**
+     * Requête générique vers l'API
+     * @param {string} endpoint - Point d'entrée API (ex: /auth/login.php)
+     * @param {object} options - Options fetch (method, body, etc.)
+     * @returns {Promise<object>} - Réponse JSON
+     */
+    static async request(endpoint, options = {}) {
+        const url = `${API_BASE_URL}${endpoint}`;
+        
+        // Configuration par défaut
+        const config = {
+            credentials: 'include', // Inclut les cookies de session
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                ...options.headers
+            },
+            ...options
         };
-
-        // Sites (exemple)
-        sitesData = [
-            { id: "ET763", name: "TOUMODI", lat: 6.56322, lng: -5.03261, vendor: "Huawei", tech: "4G", kpi: 97.2, packetLoss: 0.5, domain: "RAN", country: "CI", status: "good" },
-            { id: "ET300", name: "KOTOULA", lat: 10.1405, lng: -7.39811, vendor: "Huawei", tech: "2G", kpi: 89.5, packetLoss: 1.5, domain: "RAN", country: "CI", status: "critical" },
-            // ... ajouter d'autres sites selon les données précédentes
-        ];
-
-        // Utilisateurs
-        usersData = [
-            { id: 1, name: "Prince Désiré", email: "admin@netinsight360.com", role: "ADMIN", createdAt: "2024-01-15" },
-            { id: 2, name: "FO_NPM", email: "npm@netinsight360.com", role: "FO_NPM", createdAt: "2024-02-10" }
-        ];
-
-        // KPIs RAN (exemple)
-        kpisRanData = [
-            { name: "RNA", value: 99.3, target: 99.5, unit: "%", status: "warning" },
-            { name: "TCH Availability", value: 99.1, target: 99, unit: "%", status: "good" }
-        ];
-    }
-
-    // Appel API générique
-    async function call(endpoint, method = 'GET', data = null) {
-        // Simulation de délai réseau
-        await new Promise(resolve => setTimeout(resolve, 300));
-
-        // Ici, on pourrait faire un vrai fetch vers le backend
-        // Pour l'instant, on retourne des données mockées selon l'endpoint
-        switch(endpoint) {
-            case '/api/auth/login':
-                // Simuler login
-                if (data.email === 'admin@netinsight360.com' && data.password === 'admin123') {
-                    return { success: true, user: { name: 'Prince Désiré', role: 'ADMIN' } };
-                }
-                return { success: false, error: 'Invalid credentials' };
-            case '/api/sites':
-                return { success: true, data: sitesData };
-            case '/api/sites/top-worst':
-                return { success: true, data: { top: sitesData.slice(0,5), worst: sitesData.slice(-5) } };
-            case '/api/kpis/ran':
-                return { success: true, data: kpisRanData };
-            case '/api/kpis/core':
-                return { success: true, data: kpisCoreData };
-            case '/api/users':
-                return { success: true, data: usersData };
-            default:
-                return { success: false, error: 'Endpoint not found' };
+        
+        // Si body est un objet, le convertir en JSON
+        if (config.body && typeof config.body === 'object') {
+            config.body = JSON.stringify(config.body);
+        }
+        
+        try {
+            const response = await fetch(url, config);
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || `Erreur HTTP ${response.status}`);
+            }
+            
+            return data;
+        } catch (error) {
+            console.error(`[API Error] ${endpoint}:`, error);
+            throw error;
         }
     }
+    
+    // ============================================
+    // AUTHENTIFICATION
+    // ============================================
+    
+    /**
+     * Connexion utilisateur
+     * @param {string} email - Email de l'utilisateur
+     * @param {string} password - Mot de passe
+     * @param {boolean} remember - Rester connecté
+     */
+    static async login(email, password, remember = false) {
+        return this.request('/auth/login.php', {
+            method: 'POST',
+            body: { email, password, remember }
+        });
+    }
+    
+    /**
+     * Déconnexion
+     */
+    static async logout() {
+        return this.request('/auth/logout.php', {
+            method: 'POST'
+        });
+    }
+    
+    /**
+     * Vérification de session
+     */
+    static async verify() {
+        return this.request('/auth/verify.php');
+    }
+    
+    // ============================================
+    // SITES
+    // ============================================
+    
+    /**
+     * Récupère la liste des sites
+     * @param {object} filters - Filtres (country, vendor, tech, domain)
+     */
+    static async getSites(filters = {}) {
+        const params = new URLSearchParams(filters).toString();
+        const suffix = params ? `?${params}` : '';
+        return this.request(`/sites/get-sites.php${suffix}`);
+    }
+    
+    /**
+     * Récupère les détails d'un site
+     * @param {string} siteId - Identifiant du site
+     */
+    static async getSiteDetails(siteId) {
+        return this.request(`/sites/get-site-details.php?id=${encodeURIComponent(siteId)}`);
+    }
+    
+    /**
+     * Recherche un site par nom ou ID
+     * @param {string} query - Terme de recherche
+     */
+    static async searchSite(query) {
+        return this.request(`/sites/search-site.php?q=${encodeURIComponent(query)}`);
+    }
+    
+    /**
+     * Récupère les top/pires sites
+     * @param {object} filters - Filtres (country, vendor, tech, domain)
+     */
+    static async getTopWorstSites(filters = {}) {
+        const params = new URLSearchParams(filters).toString();
+        const suffix = params ? `?${params}` : '';
+        return this.request(`/sites/get-top-worst-sites.php${suffix}`);
+    }
+    
+    // ============================================
+    // KPIs
+    // ============================================
+    
+    /**
+     * Récupère les KPIs RAN
+     * @param {object} filters - Filtres (country, technology, vendor)
+     */
+    static async getRanKpis(filters = {}) {
+        const params = new URLSearchParams(filters).toString();
+        const suffix = params ? `?${params}` : '';
+        return this.request(`/kpis/get-ran-kpis.php${suffix}`);
+    }
+    
+    /**
+     * Récupère les KPIs CORE
+     * @param {object} filters - Filtres (country, vendor)
+     */
+    static async getCoreKpis(filters = {}) {
+        const params = new URLSearchParams(filters).toString();
+        const suffix = params ? `?${params}` : '';
+        return this.request(`/kpis/get-core-kpis.php${suffix}`);
+    }
+    
+    /**
+     * Récupère les tendances d'un KPI sur N jours
+     * @param {string} siteId - Identifiant du site
+     * @param {string} kpiName - Nom du KPI
+     * @param {number} days - Nombre de jours
+     */
+    static async getKpiTrends(siteId, kpiName, days = 5) {
+        return this.request(`/kpis/get-kpi-trends.php?site_id=${encodeURIComponent(siteId)}&kpi_name=${encodeURIComponent(kpiName)}&days=${days}`);
+    }
+    
+    /**
+     * Récupère les prédictions pour un site
+     * @param {string} siteId - Identifiant du site
+     * @param {string} kpiName - Nom du KPI
+     */
+    static async getKpiPredictions(siteId, kpiName) {
+        return this.request(`/kpis/get-kpi-predictions.php?site_id=${encodeURIComponent(siteId)}&kpi_name=${encodeURIComponent(kpiName)}`);
+    }
+    
+    /**
+     * Récupère la comparaison entre sites
+     * @param {string} siteId - Identifiant du site
+     */
+    static async getKpiComparison(siteId) {
+        return this.request(`/kpis/get-kpi-comparison.php?site_id=${encodeURIComponent(siteId)}`);
+    }
+    
+    // ============================================
+    // ALERTES
+    // ============================================
+    
+    /**
+     * Récupère les alertes actives
+     * @param {object} filters - Filtres (type, country, domain)
+     */
+    static async getAlerts(filters = {}) {
+        const params = new URLSearchParams(filters).toString();
+        const suffix = params ? `?${params}` : '';
+        return this.request(`/alerts/get-alerts.php${suffix}`);
+    }
+    
+    /**
+     * Résout une alerte
+     * @param {number} alertId - Identifiant de l'alerte
+     */
+    static async resolveAlert(alertId) {
+        return this.request('/alerts/resolve-alert.php', {
+            method: 'POST',
+            body: { alert_id: alertId }
+        });
+    }
+    
+    /**
+     * Résout toutes les alertes
+     */
+    static async resolveAllAlerts() {
+        return this.request('/alerts/resolve-all-alerts.php', {
+            method: 'POST'
+        });
+    }
+    
+    /**
+     * Récupère les statistiques des alertes
+     */
+    static async getAlertsStats() {
+        return this.request('/alerts/get-alerts-stats.php');
+    }
+    
+    // ============================================
+    // UTILISATEURS
+    // ============================================
+    
+    /**
+     * Récupère la liste des utilisateurs
+     * @param {object} filters - Filtres (role, search)
+     */
+    static async getUsers(filters = {}) {
+        const params = new URLSearchParams(filters).toString();
+        const suffix = params ? `?${params}` : '';
+        return this.request(`/users/get-users.php${suffix}`);
+    }
+    
+    /**
+     * Crée un nouvel utilisateur
+     * @param {object} userData - Données utilisateur (name, email, role, password)
+     */
+    static async createUser(userData) {
+        return this.request('/users/create-user.php', {
+            method: 'POST',
+            body: userData
+        });
+    }
+    
+    /**
+     * Modifie un utilisateur
+     * @param {number} userId - Identifiant de l'utilisateur
+     * @param {object} userData - Données à modifier
+     */
+    static async updateUser(userId, userData) {
+        return this.request(`/users/update-user.php?id=${userId}`, {
+            method: 'PUT',
+            body: userData
+        });
+    }
+    
+    /**
+     * Supprime un utilisateur
+     * @param {number} userId - Identifiant de l'utilisateur
+     */
+    static async deleteUser(userId) {
+        return this.request(`/users/delete-user.php?id=${userId}`, {
+            method: 'DELETE'
+        });
+    }
+    
+    /**
+     * Change le mot de passe
+     * @param {string} oldPassword - Ancien mot de passe
+     * @param {string} newPassword - Nouveau mot de passe
+     */
+    static async changePassword(oldPassword, newPassword) {
+        return this.request('/users/change-password.php', {
+            method: 'POST',
+            body: { old_password: oldPassword, new_password: newPassword }
+        });
+    }
+    
+    /**
+     * Demande de réinitialisation de mot de passe
+     * @param {string} email - Email de l'utilisateur
+     */
+    static async forgotPassword(email) {
+        return this.request('/users/forgot-password.php', {
+            method: 'POST',
+            body: { email }
+        });
+    }
+    
+    /**
+     * Réinitialise le mot de passe
+     * @param {string} token - Token de réinitialisation
+     * @param {string} email - Email de l'utilisateur
+     * @param {string} password - Nouveau mot de passe
+     */
+    static async resetPassword(token, email, password) {
+        return this.request('/users/reset-password.php', {
+            method: 'POST',
+            body: { token, email, password }
+        });
+    }
+    
+    /**
+     * Récupère les statistiques des utilisateurs
+     */
+    static async getUserStats() {
+        return this.request('/users/get-user-stats.php');
+    }
+    
+    // ============================================
+    // RAPPORTS
+    // ============================================
+    
+    /**
+     * Génère un rapport WhatsApp
+     * @param {object} filters - Filtres à appliquer
+     */
+    static async generateWhatsAppReport(filters = {}) {
+        return this.request('/reports/generate-whatsapp.php', {
+            method: 'POST',
+            body: filters
+        });
+    }
+    
+    /**
+     * Génère un rapport PowerPoint
+     * @param {object} filters - Filtres à appliquer
+     */
+    static async generatePowerpointReport(filters = {}) {
+        return this.request('/reports/generate-powerpoint.php', {
+            method: 'POST',
+            body: filters
+        });
+    }
+    
+    /**
+     * Récupère la comparaison hebdomadaire
+     */
+    static async getWeeklyComparison() {
+        return this.request('/reports/get-weekly-comparison.php');
+    }
+    
+    /**
+     * Exporte les données en Excel
+     * @param {string} type - Type de données à exporter
+     * @param {object} filters - Filtres à appliquer
+     */
+    static async exportExcel(type, filters = {}) {
+        const params = new URLSearchParams({ type, ...filters }).toString();
+        return this.request(`/reports/export-excel.php?${params}`);
+    }
+    
+    // ============================================
+    // CARTE
+    // ============================================
+    
+    /**
+     * Récupère les marqueurs pour la carte
+     * @param {object} filters - Filtres (country, vendor, tech, domain)
+     */
+    static async getMapMarkers(filters = {}) {
+        const params = new URLSearchParams(filters).toString();
+        const suffix = params ? `?${params}` : '';
+        return this.request(`/map/get-map-markers.php${suffix}`);
+    }
+    
+    /**
+     * Récupère les limites d'un pays
+     * @param {string} countryCode - Code pays
+     */
+    static async getCountryBounds(countryCode) {
+        return this.request(`/map/get-country-bounds.php?country=${countryCode}`);
+    }
+    
+    // ============================================
+    // FILTRES
+    // ============================================
+    
+    /**
+     * Récupère les options de filtres disponibles
+     */
+    static async getFilterOptions() {
+        return this.request('/filters/get-filter-options.php');
+    }
+    
+    // ============================================
+    // DASHBOARD
+    // ============================================
+    
+    /**
+     * Récupère les statistiques du dashboard
+     */
+    static async getDashboardStats() {
+        return this.request('/dashboard/get-stats.php');
+    }
+    
+    /**
+     * Récupère les tendances globales
+     * @param {string} kpi - KPI à analyser
+     */
+    static async getGlobalTrends(kpi = 'RNA') {
+        return this.request(`/dashboard/get-trends.php?kpi=${kpi}`);
+    }
+}
 
-    // Exposer les méthodes publiques
-    return {
-        initMockData,
-        call,
-        // Méthodes spécifiques pour faciliter l'utilisation
-        login: (email, password) => call('/api/auth/login', 'POST', { email, password }),
-        getSites: () => call('/api/sites'),
-        getTopWorstSites: () => call('/api/sites/top-worst'),
-        getRanKpis: () => call('/api/kpis/ran'),
-        getCoreKpis: () => call('/api/kpis/core'),
-        getUsers: () => call('/api/users'),
-        createUser: (user) => call('/api/users', 'POST', user),
-        deleteUser: (id) => call(`/api/users/${id}`, 'DELETE')
-    };
-})();
-
-// Initialiser les données mockées au chargement
-API.initMockData();
+// Exporter pour utilisation globale
+window.API = API;
