@@ -63,10 +63,11 @@ async function loadRanMapMarkers() {
     ranMarkers = [];
     
     try {
-        const result = await API.getSites({ ...ranFilters, domain: 'RAN' });
+        const result = await API.getMapMarkers({ ...ranFilters, domain: 'RAN' });
         if (!result.success || !result.data) return;
         
         result.data.forEach(site => {
+            if (!site.latitude || !site.longitude || site.latitude == 0) return;
             const color = site.status === 'good' ? '#10b981' : (site.status === 'warning' ? '#f59e0b' : '#ef4444');
             const icon = L.divIcon({
                 html: `<div style="background:${color}; width:12px; height:12px; border-radius:50%; border:2px solid white;"></div>`,
@@ -74,12 +75,15 @@ async function loadRanMapMarkers() {
             });
             
             const marker = L.marker([site.latitude, site.longitude], { icon }).addTo(ranMap);
+            const worstLine = site.worst_kpi_name
+                ? `<br><b>KPI dégradant:</b> ${site.worst_kpi_name} (${site.worst_kpi_value}%)`
+                : '';
             marker.bindPopup(`
                 <b>${site.name}</b><br>
                 <b>ID:</b> ${site.id}<br>
-                <b>Pays:</b> ${site.country_name}<br>
-                <b>Vendor:</b> ${site.vendor} | ${site.technology}<br>
-                <b>KPI:</b> ${site.kpi_global}%<br>
+                <b>Pays:</b> ${site.country_name || site.country_code}<br>
+                <b>Vendor:</b> ${site.vendor} | <span class="badge-tech">${site.technology}</span><br>
+                <b>KPI global:</b> ${site.kpi_global}%${worstLine}<br>
                 <button class="btn btn-sm btn-primary mt-2" onclick="showRanSiteDetails('${site.id}')">Voir détails</button>
             `);
             ranMarkers.push(marker);
@@ -268,29 +272,63 @@ function initRanFilters() {
  * Initialise les rapports
  */
 function initRanReports() {
-    const exportBtn = document.getElementById('exportWorstSites');
-    if (exportBtn) {
-        exportBtn.addEventListener('click', async () => {
+    // Boutons tableau "Pires sites - Analyse détaillée"
+    const exportWorstBtn = document.getElementById('exportWorstSites');
+    if (exportWorstBtn) {
+        exportWorstBtn.addEventListener('click', async () => {
             try {
                 const result = await API.exportExcel('worst_sites', { domain: 'RAN', ...ranFilters });
                 if (result.success && result.url) window.open(result.url, '_blank');
-            } catch (error) {
-                console.error('[KPIs RAN] Erreur export:', error);
-            }
+            } catch (error) { console.error('[KPIs RAN] Erreur export:', error); }
         });
     }
-    
-    const shareBtn = document.getElementById('shareWorstSites');
-    if (shareBtn) {
-        shareBtn.addEventListener('click', async () => {
+
+    const shareWorstBtn = document.getElementById('shareWorstSites');
+    if (shareWorstBtn) {
+        shareWorstBtn.addEventListener('click', async () => {
             try {
                 const result = await API.generateWhatsAppReport({ domain: 'RAN', ...ranFilters });
-                if (result.success && result.report) {
+                if (result.success && result.report)
                     window.open(`https://wa.me/?text=${encodeURIComponent(result.report)}`, '_blank');
+            } catch (error) { console.error('[KPIs RAN] Erreur partage:', error); }
+        });
+    }
+
+    // Boutons section "Rapports et Analyses KPIs RAN"
+    const shareAllBtn = document.getElementById('shareWhatsApp');
+    if (shareAllBtn) {
+        shareAllBtn.addEventListener('click', async () => {
+            try {
+                const result = await API.generateWhatsAppReport({ domain: 'RAN', ...ranFilters });
+                if (result.success && result.report)
+                    window.open(`https://wa.me/?text=${encodeURIComponent(result.report)}`, '_blank');
+            } catch (error) { console.error('[KPIs RAN] Erreur partage WhatsApp:', error); }
+        });
+    }
+
+    const exportPptBtn = document.getElementById('exportPowerPoint');
+    if (exportPptBtn) {
+        exportPptBtn.addEventListener('click', async () => {
+            try {
+                const result = await API.generatePowerpointReport({ domain: 'RAN', ...ranFilters });
+                if (result.success && result.url) window.open(result.url, '_blank');
+            } catch (error) { console.error('[KPIs RAN] Erreur export PPT:', error); }
+        });
+    }
+
+    const weeklyBtn = document.getElementById('weeklyComparison');
+    if (weeklyBtn) {
+        weeklyBtn.addEventListener('click', async () => {
+            try {
+                const result = await API.getWeeklyComparison();
+                if (result.success) {
+                    const ctx = document.getElementById('comparisonChart')?.getContext('2d');
+                    if (ctx) { const old = Chart.getChart('comparisonChart'); if (old) old.destroy(); new Chart(ctx, { type: 'bar', data: result.data }); }
+                    const lessons = document.getElementById('comparisonLessons');
+                    if (lessons) lessons.innerHTML = result.lessons || '';
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('comparisonModal')).show();
                 }
-            } catch (error) {
-                console.error('[KPIs RAN] Erreur partage:', error);
-            }
+            } catch (error) { console.error('[KPIs RAN] Erreur comparaison:', error); }
         });
     }
 }
@@ -315,8 +353,28 @@ async function showRanSiteDetails(siteId) {
                 <tr><td><strong>Pays</strong></td><td>${escapeHtml(site.country_name)}</td></tr>
                 <tr><td><strong>Vendor</strong></td><td>${escapeHtml(site.vendor)}</td></tr>
                 <tr><td><strong>Technologie</strong></td><td>${escapeHtml(site.technology)}</td></tr>
+                <tr><td><strong>KPI Global</strong></td><td>${site.kpi_global}%</td></tr>
             </table>
         `;
+
+        // Pires KPIs par technologie
+        const worstDiv = document.getElementById('modalWorstKpis');
+        if (worstDiv) {
+            const techs = site.kpis_by_tech || [];
+            if (techs.length === 0) {
+                worstDiv.innerHTML = '<p class="text-muted">Aucune donnée disponible</p>';
+            } else {
+                worstDiv.innerHTML = techs.map(t => {
+                    const kpiLine = t.worst_kpi_name
+                        ? `<span class="text-danger">↓ ${escapeHtml(t.worst_kpi_name)}: ${t.worst_kpi_value}%</span>`
+                        : '<span class="text-muted">N/A</span>';
+                    return `<div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                        <span><span class="badge bg-secondary me-2">${escapeHtml(t.technology)}</span> KPI: <strong>${t.kpi_global}%</strong></span>
+                        ${kpiLine}
+                    </div>`;
+                }).join('');
+            }
+        }
         
         // Charger les tendances
         const trends = await API.getKpiTrends(siteId, 'RNA', 5);
@@ -332,8 +390,23 @@ async function showRanSiteDetails(siteId) {
             });
         }
         
-        const modal = new bootstrap.Modal(document.getElementById('siteDetailsModal'));
-        modal.show();
+        // Détruire l'instance précédente du chart pour éviter les conflits
+        const existingChart = Chart.getChart('trend5DaysChart');
+        if (existingChart) existingChart.destroy();
+
+        const modalEl = document.getElementById('siteDetailsModal');
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+
+        // Bouton partage WhatsApp dans le modal
+        const shareBtn = document.getElementById('shareSiteWhatsApp');
+        if (shareBtn) {
+            shareBtn.onclick = () => {
+                const s = window.currentSiteForModal;
+                if (!s) return;
+                const msg = `📡 *Site: ${s.name} (${s.country_name})*\nID: ${s.id}\nKPI Global: ${s.kpi_global}%\nVendor: ${s.vendor}\nTechno: ${s.technology}\nStatut: ${s.status}`;
+                window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+            };
+        }
     } catch (error) {
         console.error('[KPIs RAN] Erreur chargement détails:', error);
     }

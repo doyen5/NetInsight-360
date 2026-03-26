@@ -10,16 +10,7 @@ let dashboardMap = null;
 let dashboardMarkers = [];
 let dashboardCharts = {};
 
-// Initialiser la gestion de déconnexion au chargement de la page
-document.addEventListener('DOMContentLoaded', function() {
-    // Vérifier que l'utilisateur est connecté
-    checkAuthentication().then(() => {
-        // Initialiser la déconnexion
-        initLogoutHandler();
-        // Mettre à jour l'interface
-        updateUserInterface();
-    });
-});
+// Un seul point d'entrée : initDashboard() gère l'auth, le logout et l'UI
 
 /**
  * Initialise le dashboard
@@ -80,19 +71,28 @@ async function loadMapMarkers(filters = {}) {
         if (!result.success || !result.data) return;
         
         result.data.forEach(site => {
+            // Ignorer les sites sans coordonnées valides
+            const lat = Number(site.latitude);
+            const lng = Number(site.longitude);
+            if (lat === 0 && lng === 0) return;
+
             const color = site.status === 'good' ? '#10b981' : (site.status === 'warning' ? '#f59e0b' : '#ef4444');
             const icon = L.divIcon({
                 html: `<div style="background:${color}; width:12px; height:12px; border-radius:50%; border:2px solid white;"></div>`,
                 iconSize: [12, 12]
             });
             
-            const marker = L.marker([site.latitude, site.longitude], { icon }).addTo(dashboardMap);
+            const marker = L.marker([lat, lng], { icon }).addTo(dashboardMap);
+            // Afficher technologie + KPI dégradant dans le popup
+            const worstLine = site.worst_kpi_name
+                ? `<b>KPI dégradant (${site.technology}):</b> ${site.worst_kpi_name} = ${site.worst_kpi_value}%<br>`
+                : '';
             marker.bindPopup(`
-                <b>${site.name}</b><br>
-                <b>ID:</b> ${site.id}<br>
+                <b>${site.name}</b> <span style="font-size:0.8em;background:#e0e7ff;padding:1px 5px;border-radius:4px">${site.technology}</span><br>
                 <b>Pays:</b> ${site.country_name}<br>
                 <b>Vendor:</b> ${site.vendor}<br>
-                <b>KPI:</b> ${site.kpi_global}%<br>
+                <b>KPI Global:</b> ${site.kpi_global}%<br>
+                ${worstLine}
                 <button class="btn btn-sm btn-primary mt-2" onclick="showSiteDetails('${site.id}')">Voir détails</button>
             `);
             dashboardMarkers.push(marker);
@@ -136,26 +136,34 @@ async function loadTopWorstSites(filters = {}) {
             topContainer.innerHTML = top.map(site => `
                 <div class="site-item" onclick="showSiteDetails('${site.id}')">
                     <div>
-                        <span class="site-name">${escapeHtml(site.name)}</span><br>
-                        <small>${site.country_name} | ${site.vendor} | ${site.technology}</small>
+                        <span class="site-name">${escapeHtml(site.name)}</span>
+                        <span style="font-size:0.75em;background:#e0e7ff;padding:1px 5px;border-radius:10px;margin-left:4px">${escapeHtml(site.technology)}</span><br>
+                        <small>${site.country_name} | ${site.vendor}</small>
                     </div>
                     <div><span class="badge-good">${site.kpi_global}%</span></div>
                 </div>
             `).join('');
         }
-        
-        // Afficher Pires 5
+
+        // Afficher Pires 5 (1 par techno si possible, sinon les 5 premiers)
+        const worst5 = worst.slice(0, 5);
         const worstContainer = document.getElementById('worstSitesList');
         if (worstContainer) {
-            worstContainer.innerHTML = worst.map(site => `
+            worstContainer.innerHTML = worst5.map(site => {
+                const worstLine = site.worst_kpi_name
+                    ? `<br><small style="color:#ef4444">⬇ ${escapeHtml(site.worst_kpi_name)}: ${site.worst_kpi_value}%</small>`
+                    : '';
+                return `
                 <div class="site-item" onclick="showSiteDetails('${site.id}')">
                     <div>
-                        <span class="site-name">${escapeHtml(site.name)}</span><br>
-                        <small>${site.country_name} | ${site.vendor} | ${site.technology}</small>
+                        <span class="site-name">${escapeHtml(site.name)}</span>
+                        <span style="font-size:0.75em;background:#fee2e2;padding:1px 5px;border-radius:10px;margin-left:4px">${escapeHtml(site.technology)}</span><br>
+                        <small>${site.country_name} | ${site.vendor}</small>
+                        ${worstLine}
                     </div>
                     <div><span class="${site.status === 'critical' ? 'badge-critical' : 'badge-warning'}">${site.kpi_global}%</span></div>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
         }
     } catch (error) {
         console.error('[Dashboard] Erreur chargement top/worst sites:', error);
@@ -253,19 +261,19 @@ function initDashboardSearch() {
             const result = await API.searchSite(query);
             if (result.success && result.data) {
                 const site = result.data;
-                showSiteDetails(site.id);
+                // Centrer la carte puis ouvrir le modal
                 if (dashboardMap && site.latitude && site.longitude) {
                     dashboardMap.flyTo([site.latitude, site.longitude], 12);
                 }
-                const statusMsg = site.status === 'good' ? '✅ Site en bonne santé' : 
-                                 (site.status === 'warning' ? '⚠️ Site à surveiller' : '🔴 Site dégradé');
-                alert(`Site trouvé: ${site.name}\n${statusMsg}\nKPI: ${site.kpi_global}%`);
+                showSiteDetails(site.id);
             } else {
-                alert(`Aucun site trouvé avec: ${query}`);
+                // Afficher un toast discret au lieu d'un alert bloquant
+                const notice = document.getElementById('searchNotice');
+                if (notice) { notice.textContent = `Aucun site trouvé pour : ${query}`; notice.style.display = 'block'; setTimeout(() => { notice.style.display = 'none'; }, 4000); }
+                else alert(`Aucun site trouvé avec: ${query}`);
             }
         } catch (error) {
             console.error('[Dashboard] Erreur recherche:', error);
-            alert('Erreur lors de la recherche');
         }
     };
     
@@ -331,11 +339,25 @@ function initDashboardReports() {
     }
     
     const shareSiteBtn = document.getElementById('shareSiteBtn');
-    if (shareSiteBtn && window.currentSiteForModal) {
+    if (shareSiteBtn) {
         shareSiteBtn.addEventListener('click', () => {
             const s = window.currentSiteForModal;
+            if (!s) return;
             const msg = `📡 *Site: ${s.name} (${s.country_name})*\nID: ${s.id}\nKPI: ${s.kpi_global}%\nVendor: ${s.vendor}\nTechno: ${s.technology}`;
             window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+        });
+    }
+
+    const exportExcelBtn = document.getElementById('exportExcel');
+    if (exportExcelBtn) {
+        exportExcelBtn.addEventListener('click', async () => {
+            try {
+                const result = await API.exportExcel('dashboard');
+                if (result.success && result.url) window.open(result.url, '_blank');
+                else alert('Rapport Excel généré dans le dossier exports.');
+            } catch (error) {
+                console.error('[Dashboard] Erreur export Excel:', error);
+            }
         });
     }
 }
@@ -366,8 +388,23 @@ async function showSiteDetails(siteId) {
         
         document.getElementById('modalSitePerformance').innerHTML = `
             <table class="table table-sm">
-                <tr><td><strong>KPI Global</strong></td><td class="text-${site.status === 'good' ? 'success' : (site.status === 'warning' ? 'warning' : 'danger')}">${site.kpi_global}%</td></tr>
-                <tr><td><strong>Statut</strong></td><td><span class="status-badge status-${site.status}">${site.status === 'good' ? 'Bon' : (site.status === 'warning' ? 'Alerte' : 'Critique')}</span></td></tr>
+                <tr><td><strong>KPI Global</strong></td>
+                    <td class="text-${site.status === 'good' ? 'success' : (site.status === 'warning' ? 'warning' : 'danger')}">${site.kpi_global}%</td></tr>
+                <tr><td><strong>Statut</strong></td>
+                    <td><span class="status-badge status-${site.status}">${site.status === 'good' ? 'Bon' : (site.status === 'warning' ? 'Alerte' : 'Critique')}</span></td></tr>
+                ${site.worst_kpi
+                    ? `<tr><td><strong>KPI dégradant</strong></td>
+                       <td style="color:#ef4444">⬇ ${escapeHtml(site.worst_kpi.worst_kpi_name)} = ${site.worst_kpi.worst_kpi_value}% <small>(${escapeHtml(site.worst_kpi.technology)})</small></td></tr>`
+                    : ''}
+                ${(site.kpis_by_tech && site.kpis_by_tech.length > 0)
+                    ? site.kpis_by_tech.map(k => `
+                        <tr>
+                            <td><strong>KPI ${escapeHtml(k.technology)}</strong></td>
+                            <td class="text-${k.status === 'good' ? 'success' : (k.status === 'warning' ? 'warning' : 'danger')}">${k.kpi_global}%
+                                ${k.worst_kpi_name ? `<br><small style="color:#ef4444">⬇ ${escapeHtml(k.worst_kpi_name)}: ${k.worst_kpi_value}%</small>` : ''}
+                            </td>
+                        </tr>`).join('')
+                    : ''}
             </table>
         `;
         

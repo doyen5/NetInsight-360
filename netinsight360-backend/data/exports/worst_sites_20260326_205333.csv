@@ -1,0 +1,101 @@
+﻿"Site ID";Nom;Pays;Vendor;Technologie;"KPI Global (%)";Statut;"KPI Dégradant";"Valeur KPI Dégradant (%)";Date
+ET127;DJIGBAGUI;CI;Huawei;2G;44.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET124;KANZRA;CI;Huawei;2G;51.80;critical;"Disponibilité TCH";19.35;2026-03-26
+IM071;UNIVERSITE_FHB_ENTREE-SUD;CI;Ericsson;2G;55.33;critical;"Taux de chute appel";-33.33;2026-03-26
+AC890;WALEBO;CI;Huawei;2G;56.01;critical;"Disponibilité TCH";0.00;2026-03-26
+AC063;FAYA;CI;Ericsson;2G;64.26;critical;"Disponibilité TCH";45.24;2026-03-26
+ET480;SEPENEDJOKAHA;CI;Huawei;3G;65.26;critical;"RRC PS SR";13.83;2026-03-26
+ET925;SOKOURALA;CI;Huawei;4G;65.50;critical;"HO Inter-freq";0.00;2026-03-26
+AC127;AC127;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+AC241;BKE_DARESALAM;CI;Huawei;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+AC288;BOUNA;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+AC308;DOROPO;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+AC430;BKE_DAR_ES_SALAM_II;CI;Huawei;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+AC433;BKE_KOUTCHAKRO;CI;Huawei;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+AC663;BRIDGE_BANK;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+AC805;BAC_SEMIEN;CI;Huawei;2G;66.67;critical;"Succès Handover";0.00;2026-03-26
+AC968;BOBIA;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+AC988;BELLE_EPINE;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+AC989;GONZAG_MARCHE;CI;Huawei;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+AC999;AC999;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET010;TEHINI;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET036;MICRO_TOUR_C;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET038;MICRO_TOUR_D;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET040;MICRO_PLTX_PRESIDENCE_2;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET051;ET051;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET058;BLANCHON_EXTENSION;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET089;ET089;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET173;KOTOUBA;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET270;ADDAH;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET358;ZAKAREKO;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET383;PHARMACIE_WARF;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET440;PANZAGANI;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET441;LATROUGO;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET443;BANIA;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET447;NIOLONGO;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET450;SAYE;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET486;KATCHEKAN;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET604;IPOUAGUI;CI;Huawei;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET641;DIANGOBO;CI;Huawei;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET671;NDOTRE_CASSE;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET750;MPOUTO_UACA;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET856;KARIE;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET860;SERIHIO;CI;Huawei;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET869;LABODOUGOU;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET998;BOUNA_GBORONKIRRA;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+IM072;RURAL_FOUMBOLO;CI;Huawei;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+IM196;RURAL_IPOUAGUI;CI;Huawei;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+IM297;BAIE_COCODY_GOLF;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+IM356;IM356;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+IM362;IM362;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+IM364;IM364;CI;Ericsson;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+IM426;DIABOUO_R;CI;Huawei;2G;66.67;critical;"Disponibilité TCH";0.00;2026-03-26
+ET402;ADJAME_UTB;CI;Ericsson;2G;67.40;critical;"Disponibilité TCH";31.03;2026-03-26
+ET371;SASSANDRA_PHARE;CI;Ericsson;2G;67.95;critical;"Disponibilité TCH";3.80;2026-03-26
+ET178;PARA;CI;Huawei;2G;71.00;critical;"Disponibilité TCH";18.07;2026-03-26
+AC781;GBAPET;CI;Ericsson;3G;72.04;critical;"RRC CS SR";77.01;2026-03-26
+ET178;PARA;CI;Huawei;3G;73.19;critical;"Chute CS";75.00;2026-03-26
+ET164;FENGOLO;CI;Huawei;4G;74.23;critical;"ERAB SR";29.31;2026-03-26
+AC931;DABOU_CARR_NGATTY;CI;Ericsson;2G;74.55;critical;"Disponibilité TCH";23.40;2026-03-26
+ET846;BOUNTA;CI;Huawei;4G;74.57;critical;"ERAB SR";44.67;2026-03-26
+AC890;WALEBO;CI;Huawei;3G;75.05;critical;"RRC CS SR";75.00;2026-03-26
+AC537;GRABO;CI;Ericsson;3G;75.13;critical;"RRC PS SR";82.61;2026-03-26
+AC787;DJOUROUTOU;CI;Ericsson;3G;75.14;critical;"RRC PS SR";83.72;2026-03-26
+ET131;GBOGUHE;CI;Huawei;2G;75.17;critical;"Succès Handover";25.00;2026-03-26
+IM423;BIELOU-CARREFOUR_R;CI;Huawei;4G;75.20;critical;"HO Inter-freq";0.00;2026-03-26
+ET212;PTT_OUAGA;CI;Huawei;3G;75.31;critical;"RAB CS SR";0.00;2026-03-26
+AC819;IBOKE;CI;Ericsson;2G;75.50;critical;"Disponibilité TCH";27.27;2026-03-26
+AC843;BLODY;CI;Huawei;4G;75.66;critical;"ERAB SR";33.39;2026-03-26
+AC794;DEBLABLAI;CI;Ericsson;3G;75.82;critical;"Chute CS";82.22;2026-03-26
+AC793;NEKA;CI;Ericsson;3G;76.46;critical;"Chute CS";77.78;2026-03-26
+ET262;GUEHIEBLY;CI;Huawei;4G;76.50;critical;"ERAB SR";32.51;2026-03-26
+ET842;NIPLOU;CI;Ericsson;3G;77.20;critical;"Chute CS";90.91;2026-03-26
+AC564;ANDE;CI;Ericsson;2G;77.55;critical;"Disponibilité TCH";35.71;2026-03-26
+AC220;TOUBA;CI;Huawei;4G;78.17;critical;"ERAB SR";41.94;2026-03-26
+ET402;ADJAME_UTB;CI;Ericsson;3G;78.26;critical;"Chute CS";88.47;2026-03-26
+ET163;THANRY_SND;CI;Huawei;4G;78.30;critical;"ERAB SR";32.72;2026-03-26
+AC829;BAHE_SEBON;CI;Huawei;4G;78.85;critical;"ERAB SR";37.85;2026-03-26
+AC767;DAKPADOU;CI;Ericsson;3G;78.88;critical;"RRC CS SR";93.68;2026-03-26
+AC985;GNATO;CI;Ericsson;3G;78.94;critical;"Chute CS";90.97;2026-03-26
+ET127;DJIGBAGUI;CI;Huawei;3G;78.95;critical;"Chute CS";75.00;2026-03-26
+ET207;BOLO_V1;CI;Ericsson;3G;79.04;critical;"Chute CS";92.98;2026-03-26
+ET655;SAFA-MANOIS;CI;Ericsson;3G;79.18;critical;"Chute CS";93.08;2026-03-26
+ET841;ZEGREBOUE;CI;Ericsson;3G;79.18;critical;"Chute CS";94.84;2026-03-26
+ET131;GBOGUHE;CI;Huawei;4G;79.78;critical;"ERAB SR";40.30;2026-03-26
+AC063;FAYA;CI;Ericsson;3G;80.00;critical;"Chute CS";93.92;2026-03-26
+ET124;KANZRA;CI;Huawei;3G;80.00;critical;"Chute CS";92.05;2026-03-26
+ET698;DOUASSO;CI;Huawei;4G;80.42;critical;"ERAB SR";43.25;2026-03-26
+AC987;DOKOUIE_CIE;CI;Ericsson;2G;80.49;critical;"Disponibilité TCH";41.32;2026-03-26
+IM298;ATTIEKOI;CI;Ericsson;2G;80.57;critical;"Disponibilité TCH";41.30;2026-03-26
+AC162;FRESCO;CI;Ericsson;2G;80.70;critical;"Disponibilité TCH";41.67;2026-03-26
+AC553;BROFODOUME;CI;Ericsson;2G;81.05;critical;"Disponibilité TCH";42.71;2026-03-26
+AC655;AHOUE;CI;Ericsson;2G;81.05;critical;"Disponibilité TCH";42.71;2026-03-26
+ET777;DAFRAHINOU;CI;Huawei;4G;81.17;critical;"ERAB SR";41.63;2026-03-26
+ET817;ABOBO_4_CROIX;CI;Ericsson;3G;81.35;critical;"Chute CS";95.34;2026-03-26
+ET076;ZOO;CI;Ericsson;2G;81.55;critical;"Disponibilité TCH";53.90;2026-03-26
+AC552;OGHLWAPO;CI;Ericsson;3G;81.59;critical;"Chute CS";95.40;2026-03-26
+ET889;ZAHEBRE;CI;Ericsson;3G;81.62;critical;"Chute CS";95.40;2026-03-26
+ET639;FOUEDOUGOU;CI;Huawei;4G;81.89;critical;"ERAB SR";45.45;2026-03-26
+IM409;RURAL_KEITADOUGOU;CI;Huawei;4G;81.92;critical;"ERAB SR";39.55;2026-03-26
+ET770;GREGUIBRE;CI;Ericsson;3G;82.00;critical;"Chute CS";95.61;2026-03-26
+ET101;TOUMODI_RESIDENTIEL;CI;Ericsson;2G;82.06;critical;"Disponibilité TCH";45.71;2026-03-26

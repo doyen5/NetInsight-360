@@ -4,9 +4,17 @@
  * 
  * Page de visualisation cartographique des sites réseau
  */
+/**
+ * Modifications apportées:
+ * - Le code frontend ignore désormais les sites sans coordonnées valides
+ *   (latitude/longitude nulles ou égales à 0) pour éviter d'afficher
+ *   des marqueurs génériques à (0,0).
+ * - Les markers utilisent des valeurs numériques explicites (Number(site.latitude)).
+ */
 
 let fullMap = null;
 let fullMarkers = [];
+let fullSitesData = []; // cache des sites chargés pour les graphiques
 let fullFilters = { country: 'all', vendor: 'all', tech: 'all', domain: 'all', status: 'all' };
 let fullCurrentPage = 1;
 let fullItemsPerPage = 10;
@@ -54,16 +62,25 @@ async function loadFullMapMarkers() {
         if (!result.success || !result.data) return;
         
         const sites = result.data;
+        fullSitesData = sites; // mise en cache pour les graphiques
         
         // Centrer la carte si un seul pays
         if (fullFilters.country !== 'all') {
-            const countryBounds = await API.getCountryBounds(fullFilters.country);
-            if (countryBounds.success && countryBounds.data) {
-                fullMap.flyTo(countryBounds.data.center, countryBounds.data.zoom);
-            }
+            try {
+                const countryBounds = await API.getCountryBounds(fullFilters.country);
+                if (countryBounds.success && countryBounds.data) {
+                    fullMap.flyTo(countryBounds.data.center, countryBounds.data.zoom);
+                }
+            } catch (e) { /* silencieux si non disponible */ }
         }
         
         sites.forEach(site => {
+            // Skip sites without valid coordinates
+            const lat = Number(site.latitude);
+            const lng = Number(site.longitude);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) {
+                return;
+            }
             let color;
             if (site.domain === 'CORE') {
                 color = '#00a3c4';
@@ -80,14 +97,17 @@ async function loadFullMapMarkers() {
                 iconSize: [12, 12]
             });
             
-            const marker = L.marker([site.latitude, site.longitude], { icon }).addTo(fullMap);
+            const marker = L.marker([lat, lng], { icon }).addTo(fullMap);
+            // Afficher technologie + KPI dégradant dans le popup
+            const worstLine = site.worst_kpi_name
+                ? `<b>KPI dégradant:</b> ${site.worst_kpi_name} = ${site.worst_kpi_value}%<br>`
+                : '';
             marker.bindPopup(`
-                <b>${site.name}</b><br>
-                <b>ID:</b> ${site.id}<br>
+                <b>${site.name}</b> <span style="font-size:0.8em;background:#e0e7ff;padding:1px 5px;border-radius:4px">${site.technology}</span><br>
                 <b>Pays:</b> ${site.country_name}<br>
-                <b>Vendor:</b> ${site.vendor} | ${site.technology}<br>
-                <b>Domaine:</b> ${site.domain}<br>
-                <b>KPI:</b> ${site.kpi_global}%<br>
+                <b>Vendor:</b> ${site.vendor}<br>
+                <b>KPI Global:</b> ${site.kpi_global}%<br>
+                ${worstLine}
                 <button class="btn btn-sm btn-primary mt-2" onclick="showFullSiteDetails('${site.id}')">Voir détails</button>
             `);
             fullMarkers.push(marker);
@@ -114,10 +134,13 @@ function updateLegendStats(sites) {
  */
 async function loadFullSitesTable() {
     try {
-        const result = await API.getSites(fullFilters);
-        if (!result.success || !result.data) return;
-        
-        const sites = result.data;
+        // Utiliser les données de la carte si disponibles, sinon appel API avec limite élevée
+        let sites = fullSitesData;
+        if (!sites || sites.length === 0) {
+            const result = await API.getSites({ ...fullFilters, limit: 9999 });
+            if (!result.success || !result.data) return;
+            sites = result.data;
+        }
         const totalPages = Math.ceil(sites.length / fullItemsPerPage);
         const start = (fullCurrentPage - 1) * fullItemsPerPage;
         const paginated = sites.slice(start, start + fullItemsPerPage);
@@ -163,14 +186,17 @@ async function loadFullSitesTable() {
 }
 
 /**
- * Charge les graphiques
+ * Charge les graphiques (utilise les données déjà en cache)
  */
 async function loadFullCharts() {
     try {
-        const sites = await API.getSites(fullFilters);
-        if (!sites.success || !sites.data) return;
-        
-        const data = sites.data;
+        // Utiliser les données déjà chargées (évite un double appel API)
+        let data = fullSitesData;
+        if (!data || data.length === 0) {
+            const result = await API.getSites({ ...fullFilters, limit: 9999 });
+            if (!result.success || !result.data) return;
+            data = result.data;
+        }
         
         // Répartition par statut
         const good = data.filter(s => s.status === 'good').length;
@@ -355,7 +381,7 @@ async function showFullSiteDetails(siteId) {
                  </table>
         `;
         
-        const modal = new bootstrap.Modal(document.getElementById('siteDetailsModal'));
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('siteDetailsModal'));
         modal.show();
     } catch (error) {
         console.error('[MapView] Erreur chargement détails:', error);

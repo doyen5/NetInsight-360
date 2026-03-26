@@ -21,7 +21,7 @@ async function initUsersManagement() {
     const user = getCurrentUser();
     if (user?.role !== 'ADMIN') {
         alert('Accès refusé. Seuls les administrateurs peuvent accéder à cette page.');
-        window.location.href = 'dashboard.html';
+        window.location.href = 'dashboard.php';
         return;
     }
     

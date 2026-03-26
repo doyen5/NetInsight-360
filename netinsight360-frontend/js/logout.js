@@ -76,7 +76,7 @@ function initLogoutHandler(options = {}) {
                 console.log('[NetInsight 360] Utilisateur déconnecté le ' + new Date().toLocaleString());
                 
                 // Redirection vers la page de connexion
-                window.location.href = 'index.html';
+                window.location.href = 'index.php';
             } else {
                 throw new Error(result.error || 'Erreur lors de la déconnexion');
             }
@@ -94,7 +94,7 @@ function initLogoutHandler(options = {}) {
             
             // Redirection après un court délai
             setTimeout(() => {
-                window.location.href = 'index.html';
+                window.location.href = 'index.php';
             }, 1500);
         } finally {
             // Restaurer le bouton (ne sera pas atteint si redirection)
@@ -157,7 +157,7 @@ async function checkAuthentication() {
             localStorage.removeItem('rememberedUser');
             
             // Redirection
-            window.location.href = 'index.html';
+            window.location.href = 'index.php';
             return false;
         }
         
@@ -171,7 +171,7 @@ async function checkAuthentication() {
         console.error('[Auth] Erreur de vérification:', error);
         
         // En cas d'erreur réseau, rediriger quand même vers login
-        window.location.href = 'index.html';
+        window.location.href = 'index.php';
         return false;
     }
 }
@@ -191,7 +191,7 @@ async function checkAuthenticationWithTimeout(timeoutMs = 5000) {
         return true;
     } catch (error) {
         console.error('[Auth] Timeout de vérification');
-        window.location.href = 'index.html';
+        window.location.href = 'index.php';
         return false;
     }
 }
@@ -379,7 +379,7 @@ function initSessionTimer(timeoutMinutes = 30) {
             showToast('Votre session a expiré. Veuillez vous reconnecter.', 'warning');
             sessionStorage.clear();
             localStorage.removeItem('rememberedUser');
-            window.location.href = 'index.html';
+            window.location.href = 'index.php';
         }, timeoutMinutes * 60 * 1000);
     }
     

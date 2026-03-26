@@ -1,3 +1,15 @@
+<?php
+// Inclure le helper d'authentification
+require_once __DIR__ . '/../netinsight360-backend/app/helpers/AuthHelper.php';
+
+// Vérifier que l'utilisateur est connecté
+AuthHelper::requireLogin();
+
+// Récupérer les infos utilisateur
+$user = AuthHelper::getUser();
+$userRole = AuthHelper::getUserRole();
+?>
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -66,17 +78,17 @@
             <p>Supervisez. Analysez. Optimisez.</p>
         </div>
         <nav class="nav flex-column">
-            <a href="dashboard.html" class="nav-link"><i class="bi bi-speedometer2"></i> Dashboard</a>
-            <a href="kpis-ran.html" class="nav-link"><i class="bi bi-wifi"></i> KPIs RAN</a>
-            <a href="kpis-core.html" class="nav-link"><i class="bi bi-hdd-stack"></i> KPIs CORE</a>
-            <a href="map-view.html" class="nav-link active"><i class="bi bi-map"></i> Cartographie</a>
-            <!--<a href="users-management.html" class="nav-link" data-section="users-management" id="navUsersManagement">
+            <a href="dashboard.php" class="nav-link"><i class="bi bi-speedometer2"></i> Dashboard</a>
+            <a href="kpis-ran.php" class="nav-link"><i class="bi bi-wifi"></i> KPIs RAN</a>
+            <a href="kpis-core.php" class="nav-link"><i class="bi bi-hdd-stack"></i> KPIs CORE</a>
+            <a href="map-view.php" class="nav-link active"><i class="bi bi-map"></i> Cartographie</a>
+            <!--<a href="users-management.php" class="nav-link" data-section="users-management" id="navUsersManagement">
                 <i class="bi bi-people"></i> Gestion Users
             </a>-->
-            <a href="users-management.html" class="nav-link admin-only" data-section="users-management">
+            <a href="users-management.php" class="nav-link admin-only" data-section="users-management">
                 <i class="bi bi-people"></i> Gestion Users
             </a>
-            <a href="alerts.html" class="nav-link"><i class="bi bi-bell"></i> Alertes</a>
+            <a href="alerts.php" class="nav-link"><i class="bi bi-bell"></i> Alertes</a>
         </nav>
     </div>
 
@@ -146,19 +158,8 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <script src="js/api.js"></script>
-    <script src="js/logout.js"></script>
-    <script src="js/map-view.js"></script>
+    <script src="js/logout.js?v=2"></script>
     <script src="js/app.js"></script>
-
-    <script>
-        // Initialisation supplémentaire si nécessaire
-        document.addEventListener('DOMContentLoaded', function() {
-            // initLogoutHandler est déjà appelé dans dashboard.js
-            // mais on peut ajouter un appel de sécurité
-            if (typeof initLogoutHandler === 'function') {
-                initLogoutHandler();
-            }
-        });
-    </script>
+    <script src="js/map-view.js"></script>
 </body>
 </html>

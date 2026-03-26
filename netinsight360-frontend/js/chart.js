@@ -2,7 +2,7 @@
  * NetInsight 360 - Gestion des graphiques
  * Supervisez. Analysez. Optimisez.
  * 
- * Classe utilitaire pour la création et la gestion des graphiques Chart.js
+ * Classe utilitaire pour la création et la gestion des graphiques Chart.js (app.js)
  * Centralise la création, la mise à jour et la destruction des graphiques
  */
 

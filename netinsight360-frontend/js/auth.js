@@ -23,8 +23,8 @@ document.addEventListener('DOMContentLoaded', function() {
     async function checkExistingSession() {
         try {
             const result = await API.verify();
-            if (result.authenticated && (window.location.pathname.includes('index.html') || window.location.pathname === '/')) {
-                window.location.href = 'dashboard.html';
+            if (result.authenticated && (window.location.pathname.includes('index.php') || window.location.pathname === '/')) {
+                window.location.href = 'dashboard.php';
             }
         } catch (error) {
             console.log('[Auth] Aucune session active');
@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Redirection
                 setTimeout(() => {
-                    window.location.href = 'dashboard.html';
+                    window.location.href = 'dashboard.php';
                 }, 800);
             } else {
                 showError(result.error || 'Identifiants incorrects');

@@ -1,3 +1,15 @@
+<?php
+// Inclure le helper d'authentification
+require_once __DIR__ . '/../netinsight360-backend/app/helpers/AuthHelper.php';
+
+// Vérifier que l'utilisateur est connecté
+AuthHelper::requireLogin();
+
+// Récupérer les infos utilisateur
+$user = AuthHelper::getUser();
+$userRole = AuthHelper::getUserRole();
+?>
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -128,25 +140,25 @@
             <p>Supervisez. Analysez. Optimisez.</p>
         </div>
         <nav class="nav flex-column">
-            <a href="dashboard.html" class="nav-link" data-section="dashboard">
+            <a href="dashboard.php" class="nav-link" data-section="dashboard">
                 <i class="bi bi-speedometer2"></i> Dashboard
             </a>
-            <a href="kpis-ran.html" class="nav-link" data-section="kpi-ran">
+            <a href="kpis-ran.php" class="nav-link" data-section="kpi-ran">
                 <i class="bi bi-wifi"></i> KPIs RAN
             </a>
-            <a href="kpis-core.html" class="nav-link" data-section="kpi-core">
+            <a href="kpis-core.php" class="nav-link" data-section="kpi-core">
                 <i class="bi bi-hdd-stack"></i> KPIs CORE
             </a>
-            <a href="map-view.html" class="nav-link" data-section="map-view">
+            <a href="map-view.php" class="nav-link" data-section="map-view">
                 <i class="bi bi-map"></i> Cartographie
             </a>
-            <!--<a href="users-management.html" class="nav-link" data-section="users-management" id="navUsersManagement">
+            <!--<a href="users-management.php" class="nav-link" data-section="users-management" id="navUsersManagement">
                 <i class="bi bi-people"></i> Gestion Users
             </a>-->
-            <a href="users-management.html" class="nav-link admin-only" data-section="users-management">
+            <a href="users-management.php" class="nav-link admin-only" data-section="users-management">
                 <i class="bi bi-people"></i> Gestion Users
             </a>
-            <a href="alerts.html" class="nav-link active" data-section="alerts">
+            <a href="alerts.php" class="nav-link active" data-section="alerts">
                 <i class="bi bi-bell"></i> Alertes
             </a>
         </nav>
@@ -382,20 +394,9 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/api.js"></script>
-    <script src="js/logout.js"></script>
-    <script src="js/chart.js"></script>
-    <script src="js/alerts.js"></script>
+    <script src="js/logout.js?v=2"></script>
     <script src="js/app.js"></script>
-
-    <script>
-        // Initialisation supplémentaire si nécessaire
-        document.addEventListener('DOMContentLoaded', function() {
-            // initLogoutHandler est déjà appelé dans dashboard.js
-            // mais on peut ajouter un appel de sécurité
-            if (typeof initLogoutHandler === 'function') {
-                initLogoutHandler();
-            }
-        });
-    </script>
+    <script src="js/charts.js"></script>
+    <script src="js/alerts.js"></script>
 </body>
 </html>

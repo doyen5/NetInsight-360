@@ -1,3 +1,14 @@
+<?php
+// index.php - Page de connexion
+require_once __DIR__ . '/../netinsight360-backend/app/helpers/AuthHelper.php';
+
+// Si déjà connecté, rediriger vers le dashboard
+if (AuthHelper::isLoggedIn()) {
+    header('Location: dashboard.php');
+    exit();
+}
+?>
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
