@@ -142,199 +142,358 @@ canvas#networkCanvas {
     color: rgba(255, 255, 255, 0.6);
 }
 
-/* Section droite - Formulaire */
+/* Section droite - Formulaire 3D Glass */
 .form-section {
-    padding: 50px 45px;
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 520px;
+    background: rgba(0, 0, 0, 0.12);
+}
+
+/* Orbes décoratifs flottants */
+.orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    pointer-events: none;
+    z-index: 0;
+    animation: orbFloat 6s ease-in-out infinite;
+}
+.orb-1 {
+    width: 220px; height: 220px;
+    background: radial-gradient(circle, rgba(0, 163, 196, 0.35) 0%, transparent 70%);
+    top: -60px; right: -40px;
+}
+.orb-2 {
+    width: 160px; height: 160px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%);
+    bottom: -40px; left: -30px;
+    animation-delay: 3s;
+}
+@keyframes orbFloat {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50%       { transform: translateY(-20px) scale(1.05); }
+}
+
+/* Card 3D en verre */
+.form-glass-card {
+    position: relative;
+    z-index: 2;
+    width: calc(100% - 60px);
+    max-width: 330px;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 24px;
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.45),
+        0 2px 8px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.18),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+    transform-style: preserve-3d;
+    transform: perspective(900px) rotateX(0deg) rotateY(0deg);
+    transition: box-shadow 0.25s ease;
+    overflow: hidden;
+    margin: 30px auto;
+}
+
+/* Reflet glare animé */
+.card-glare {
+    position: absolute;
+    inset: 0;
+    border-radius: 24px;
+    background: radial-gradient(600px circle at 0% 0%, rgba(255,255,255,0.08) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 3;
+    transition: background 0.1s ease;
+}
+
+.form-inner {
+    position: relative;
+    z-index: 4;
+    padding: 20px 22px 16px;
+}
+
+/* En-tête du formulaire */
+.form-header {
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.form-icon-badge {
+    width: 38px; height: 38px;
+    margin: 0 auto 8px;
+    background: linear-gradient(135deg, rgba(0, 163, 196, 0.25), rgba(99, 102, 241, 0.25));
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+    color: #00d4ff;
+    box-shadow: 0 4px 20px rgba(0, 163, 196, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
+    transform: translateZ(20px);
 }
 
 .form-section h2 {
-    font-size: 1.8rem;
-    font-weight: 700;
-    margin-bottom: 10px;
-    color: white;
+    font-size: 1.15rem;
+    font-weight: 800;
+    margin-bottom: 3px;
+    background: linear-gradient(135deg, #fff 30%, #00d4ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .form-section .subtitle {
-    color: rgba(255, 255, 255, 0.6);
-    margin-bottom: 35px;
-    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 0;
+    font-size: 0.82rem;
+    line-height: 1.5;
 }
 
-.input-group-custom {
-    margin-bottom: 25px;
+/* Groups de champs */
+.field-group {
+    margin-bottom: 10px;
+}
+
+.field-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: rgba(255, 255, 255, 0.55);
+    margin-bottom: 5px;
+    user-select: none;
+    transition: color 0.3s;
+}
+.field-label i {
+    font-size: 0.85rem;
+    color: #00a3c4;
+}
+
+.field-wrap {
     position: relative;
+    display: flex;
+    align-items: center;
 }
 
-.input-group-custom i {
+/* Icône gauche */
+.field-icon-left {
     position: absolute;
-    left: 18px;
+    left: 14px;
     top: 50%;
     transform: translateY(-50%);
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 1.2rem;
-    transition: all 0.3s ease;
+    font-size: 1.05rem;
+    color: rgba(255, 255, 255, 0.35);
+    pointer-events: none;
+    transition: color 0.3s, transform 0.3s;
     z-index: 2;
 }
 
-.input-group-custom input {
+/* Input */
+.field-input {
     width: 100%;
-    padding: 14px 20px 14px 50px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1.5px solid rgba(255, 255, 255, 0.15);
-    border-radius: 16px;
-    font-size: 1rem;
-    color: white;
-    transition: all 0.3s ease;
+    padding: 9px 44px 9px 44px;
+    font-size: 0.88rem;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1.5px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    font-size: 0.93rem;
+    color: #fff;
+    font-family: 'Inter', sans-serif;
     font-weight: 500;
+    transition: all 0.3s ease;
+    -webkit-appearance: none;
 }
-
-.input-group-custom input:focus {
+.field-input::placeholder { color: rgba(255, 255, 255, 0.28); }
+.field-input:focus {
     outline: none;
-    background: rgba(255, 255, 255, 0.12);
-    border-color: #00d4ff;
-    box-shadow: 0 0 0 4px rgba(0, 212, 255, 0.15);
+    background: rgba(0, 212, 255, 0.07);
+    border-color: rgba(0, 212, 255, 0.6);
+    box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.13), inset 0 1px 0 rgba(255,255,255,0.06);
 }
-
-.input-group-custom input:focus + i {
+.field-input:focus ~ .field-icon-left,
+.field-wrap:focus-within .field-icon-left {
     color: #00d4ff;
-    transform: translateY(-50%) scale(1.1);
+}
+.field-group:focus-within .field-label {
+    color: rgba(0, 212, 255, 0.9);
 }
 
-.input-group-custom input::placeholder {
-    color: rgba(255, 255, 255, 0.4);
+/* Indicateur de validité */
+.field-status-dot {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: transparent;
+    transition: background 0.3s;
+    pointer-events: none;
 }
+.field-input:valid:not(:placeholder-shown) ~ .field-status-dot { background: #10b981; }
+.field-input:invalid:not(:placeholder-shown) ~ .field-status-dot { background: #ef4444; }
+
+/* Bouton œil */
+.eye-toggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    width: 32px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    padding: 0;
+    z-index: 3;
+}
+.eye-toggle:hover {
+    background: rgba(0, 212, 255, 0.15);
+    border-color: rgba(0, 212, 255, 0.4);
+    color: #00d4ff;
+}
+/* Pour le password, padding-right plus grand */
+#password { padding-right: 52px; }
 
 .form-options {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
+    margin-bottom: 18px;
+    margin-top: 2px;
 }
 
+/* Checkbox custom */
 .checkbox-custom {
     display: flex;
     align-items: center;
     gap: 10px;
     cursor: pointer;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.82rem;
+    user-select: none;
 }
-
-.checkbox-custom input {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-    accent-color: #00d4ff;
+.checkbox-custom input[type="checkbox"] { display: none; }
+.checkmark {
+    width: 18px; height: 18px;
+    border: 1.5px solid rgba(255, 255, 255, 0.25);
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.06);
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.25s;
+    flex-shrink: 0;
+}
+.checkbox-custom input[type="checkbox"]:checked ~ .checkmark {
+    background: linear-gradient(135deg, #00a3c4, #006994);
+    border-color: #00a3c4;
+}
+.checkbox-custom input[type="checkbox"]:checked ~ .checkmark::after {
+    content: '';
+    width: 5px; height: 9px;
+    border: 2px solid white;
+    border-top: none; border-left: none;
+    transform: rotate(45deg) translateY(-1px);
+    display: block;
 }
 
 .forgot-link {
-    color: #00d4ff;
+    color: rgba(0, 212, 255, 0.8);
     text-decoration: none;
-    font-size: 0.85rem;
-    transition: all 0.3s;
+    font-size: 0.82rem;
     font-weight: 500;
+    transition: all 0.3s;
 }
+.forgot-link:hover { color: #fff; }
 
-.forgot-link:hover {
-    color: #fff;
-    text-decoration: underline;
-}
-
+/* Bouton connexion */
 .login-btn {
     width: 100%;
     padding: 14px;
-    background: linear-gradient(135deg, #00a3c4, #006994);
+    background: linear-gradient(135deg, #00a3c4 0%, #0077a8 50%, #004f8f 100%);
     border: none;
-    border-radius: 16px;
+    border-radius: 14px;
     color: white;
     font-weight: 700;
-    font-size: 1rem;
+    font-size: 0.95rem;
     cursor: pointer;
     position: relative;
     overflow: hidden;
     transition: all 0.3s ease;
-    margin-bottom: 25px;
-    box-shadow: 0 4px 15px rgba(0, 163, 196, 0.3);
+    margin-bottom: 16px;
+    box-shadow: 0 4px 20px rgba(0, 163, 196, 0.35), inset 0 1px 0 rgba(255,255,255,0.15);
+    letter-spacing: 0.3px;
+    transform: translateZ(8px);
 }
-
-.login-btn::before {
-    content: '';
+.btn-content {
+    display: flex; align-items: center; justify-content: center;
+    gap: 10px; position: relative; z-index: 2;
+}
+.btn-shine {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.3);
-    transform: translate(-50%, -50%);
-    transition: width 0.6s, height 0.6s;
+    top: 0; left: -100%;
+    width: 60%; height: 100%;
+    background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.25) 50%, transparent 70%);
+    transition: left 0.5s ease;
 }
-
-.login-btn:hover::before {
-    width: 300px;
-    height: 300px;
-}
-
+.login-btn:hover .btn-shine { left: 150%; }
 .login-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 163, 196, 0.4);
+    transform: translateY(-2px) translateZ(8px);
+    box-shadow: 0 8px 30px rgba(0, 163, 196, 0.5), inset 0 1px 0 rgba(255,255,255,0.2);
 }
-
-.login-btn:active {
-    transform: translateY(1px);
-}
-
-.login-btn.loading {
-    pointer-events: none;
-    opacity: 0.8;
-}
-
+.login-btn:active { transform: translateY(1px) translateZ(4px); }
+.login-btn.loading { pointer-events: none; opacity: 0.75; }
 .login-btn.loading::after {
     content: '';
     position: absolute;
-    width: 20px;
-    height: 20px;
-    top: 50%;
-    right: 20px;
+    width: 18px; height: 18px;
+    top: 50%; right: 18px;
     transform: translateY(-50%);
-    border: 2px solid white;
-    border-top-color: transparent;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: white;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
+@keyframes spin { to { transform: translateY(-50%) rotate(360deg); } }
 
 .help-text {
     text-align: center;
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.78rem;
 }
-
 .help-text a {
-    color: #00d4ff;
+    color: rgba(0, 212, 255, 0.7);
     text-decoration: none;
+    transition: color 0.2s;
 }
+.help-text a:hover { color: #00d4ff; }
 
 .error-message {
-    background: rgba(220, 53, 69, 0.2);
+    background: rgba(220, 53, 69, 0.15);
     backdrop-filter: blur(8px);
     border: 1px solid rgba(220, 53, 69, 0.3);
     border-radius: 12px;
-    padding: 12px;
+    padding: 11px 14px;
     margin-bottom: 20px;
     color: #ff6b6b;
-    font-size: 0.85rem;
+    font-size: 0.83rem;
     display: none;
     align-items: center;
     gap: 10px;
 }
-
-.error-message.show {
-    display: flex;
-}
+.error-message.show { display: flex; }
 
 /* Responsive */
 @media (max-width: 991px) {
@@ -342,29 +501,262 @@ canvas#networkCanvas {
         border-right: none;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
-    .form-section {
-        padding: 40px 30px;
-    }
-    
-    .logo-icon {
-        width: 100px;
-        height: 100px;
-    }
+    .form-section { min-height: auto; }
+    .logo-icon { width: 100px; height: 100px; }
 }
 
 @media (max-width: 768px) {
-    .login-card {
-        margin: 20px;
-    }
-    .form-section {
-        padding: 30px 25px;
-    }
-    .logo-section {
-        padding: 40px 30px;
-    }
-    
-    .logo-icon {
-        width: 80px;
-        height: 80px;
-    }
+    .login-card { margin: 20px; }
+    .form-inner { padding: 28px 22px 22px; }
+    .logo-section { padding: 40px 30px; }
+    .logo-icon { width: 80px; height: 80px; }
+    .form-glass-card { width: calc(100% - 30px); }
+}
+
+/* ============================================================
+   PANDA DE FEEDBACK CONNEXION
+   ============================================================ */
+
+/* Conteneur positionné en bas à droite */
+.panda-wrapper {
+    position: fixed;
+    bottom: -260px;
+    right: 32px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: bottom 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+}
+.panda-wrapper.show {
+    bottom: 20px;
+}
+
+/* Bulle de dialogue */
+.panda-bubble {
+    background: rgba(15, 25, 50, 0.92);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 212, 255, 0.35);
+    border-radius: 16px;
+    padding: 10px 16px;
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    text-align: center;
+    margin-bottom: 6px;
+    position: relative;
+    white-space: nowrap;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    opacity: 0;
+    transform: scale(0.8) translateY(10px);
+    transition: opacity 0.3s 0.2s ease, transform 0.3s 0.2s ease;
+}
+.panda-wrapper.show .panda-bubble {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+}
+.bubble-tail {
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid rgba(15, 25, 50, 0.92);
+}
+
+/* Corps du panda */
+.panda { position: relative; width: 100px; height: 100px; }
+
+.panda-body {
+    position: relative;
+    width: 100px; height: 100px;
+}
+
+/* Oreilles */
+.panda-ear {
+    position: absolute;
+    width: 28px; height: 28px;
+    background: #1a1a1a;
+    border-radius: 50%;
+    top: 0;
+    z-index: 1;
+}
+.panda-ear-left  { left: 8px; }
+.panda-ear-right { right: 8px; }
+
+/* Tête (cercle blanc) */
+.panda-head {
+    position: absolute;
+    width: 84px; height: 78px;
+    background: #f0f0f0;
+    border-radius: 50%;
+    top: 12px;
+    left: 8px;
+    z-index: 2;
+    overflow: visible;
+}
+
+/* Taches oculaires noires */
+.panda-eye-patch {
+    position: absolute;
+    width: 26px; height: 22px;
+    background: #1a1a1a;
+    border-radius: 50%;
+    top: 14px;
+}
+.panda-eye-patch-left  { left: 8px;  transform: rotate(-10deg); }
+.panda-eye-patch-right { right: 8px; transform: rotate(10deg);  }
+
+/* Yeux */
+.panda-eye {
+    position: absolute;
+    width: 14px; height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    top: 17px;
+    z-index: 3;
+}
+.panda-eye-left  { left: 13px;  }
+.panda-eye-right { right: 13px; }
+
+.panda-pupil {
+    position: absolute;
+    width: 8px; height: 8px;
+    background: #111;
+    border-radius: 50%;
+    top: 3px; left: 3px;
+    transition: transform 0.3s;
+}
+.panda-shine {
+    position: absolute;
+    width: 3px; height: 3px;
+    background: white;
+    border-radius: 50%;
+    top: 2px; left: 8px;
+}
+
+/* Nez */
+.panda-nose {
+    position: absolute;
+    width: 12px; height: 8px;
+    background: #333;
+    border-radius: 50%;
+    left: 50%; top: 38px;
+    transform: translateX(-50%);
+    z-index: 3;
+}
+
+/* Bouche — clippée par pseudo */
+.panda-mouth {
+    position: absolute;
+    left: 50%; top: 50px;
+    transform: translateX(-50%);
+    width: 28px; height: 14px;
+    z-index: 3;
+    overflow: hidden;
+}
+/* Bouche triste (défaut) */
+.panda-mouth::before {
+    content: '';
+    position: absolute;
+    width: 22px; height: 22px;
+    border: 3px solid #333;
+    border-radius: 50%;
+    bottom: 4px; left: 3px;
+    clip-path: inset(50% 0 0 0); /* moitié basse = arc vers le bas = triste */
+    transition: all 0.4s;
+}
+/* Bouche heureuse */
+.panda-wrapper.happy .panda-mouth::before {
+    clip-path: inset(0 0 50% 0); /* moitié haute = arc vers le haut = sourire */
+    bottom: auto; top: -4px;
+}
+
+/* Joues */
+.panda-cheek {
+    position: absolute;
+    width: 18px; height: 10px;
+    background: rgba(255, 150, 150, 0.45);
+    border-radius: 50%;
+    top: 44px;
+    z-index: 3;
+    opacity: 0;
+    transition: opacity 0.4s;
+}
+.panda-cheek-left  { left: 4px; }
+.panda-cheek-right { right: 4px; }
+.panda-wrapper.happy .panda-cheek { opacity: 1; }
+
+/* Larmes (visibles en mode erreur) */
+.panda-tear {
+    position: absolute;
+    width: 5px; height: 0;
+    background: linear-gradient(to bottom, #5bc8f5, rgba(91,200,245,0));
+    border-radius: 50% 50% 50% 50% / 0 0 100% 100%;
+    top: 42px;
+    z-index: 5;
+    transition: height 0.5s 0.3s ease;
+}
+.panda-tear-left  { left: 22px; }
+.panda-tear-right { right: 22px; }
+
+/* Larmes visibles en état erreur */
+.panda-wrapper.error .panda-tear { height: 22px; }
+
+/* Animation larme qui tombe */
+@keyframes tearDrop {
+    0%   { height: 0; opacity: 1; }
+    60%  { height: 22px; opacity: 1; }
+    100% { height: 22px; opacity: 0; transform: translateY(8px); }
+}
+.panda-wrapper.error .panda-tear {
+    animation: tearDrop 1.2s ease 0.3s infinite;
+}
+
+/* Yeux tristes (légèrement plissés vers le bas au centre) */
+.panda-wrapper.error .panda-eye { transform: scaleY(0.75) translateY(1px); }
+/* Yeux heureux (un peu plissés par le bas = joyeux) */
+.panda-wrapper.happy .panda-eye { transform: scaleY(0.6) translateY(2px); }
+
+/* Bras */
+.panda-arm {
+    position: absolute;
+    width: 22px; height: 36px;
+    background: #1a1a1a;
+    border-radius: 40%;
+    bottom: 0; z-index: 1;
+    transition: transform 0.4s;
+}
+.panda-arm-left  { left: 0;  transform: rotate(20deg);  transform-origin: top right; }
+.panda-arm-right { right: 0; transform: rotate(-20deg); transform-origin: top left; }
+
+/* Bras vers le haut en mode succès */
+.panda-wrapper.happy .panda-arm-left  { transform: rotate(-60deg); }
+.panda-wrapper.happy .panda-arm-right { transform: rotate(60deg);  }
+
+/* Animation entrée : légère oscillation */
+@keyframes pandaBounce {
+    0%   { transform: translateY(0); }
+    30%  { transform: translateY(-10px); }
+    55%  { transform: translateY(-4px); }
+    75%  { transform: translateY(-8px); }
+    100% { transform: translateY(0); }
+}
+.panda-wrapper.show .panda {
+    animation: pandaBounce 0.8s ease 0.4s both;
+}
+
+/* Couleur bulle selon état */
+.panda-wrapper.error  .panda-bubble { border-color: rgba(239,68,68,0.5);  color: #fca5a5; }
+.panda-wrapper.happy  .panda-bubble { border-color: rgba(16,185,129,0.5); color: #6ee7b7; }
+.panda-wrapper.error  .bubble-tail  { border-top-color: rgba(15,25,50,0.92); }
+.panda-wrapper.happy  .bubble-tail  { border-top-color: rgba(15,25,50,0.92); }
+
+@media (max-width: 576px) {
+    .panda-wrapper { right: 12px; }
+    .panda-bubble  { font-size: 0.75rem; }
 }

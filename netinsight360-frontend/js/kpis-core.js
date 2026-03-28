@@ -282,6 +282,18 @@ function initCoreReports() {
             }
         });
     }
+
+    const exportPdfBtn = document.getElementById('exportPdf');
+    if (exportPdfBtn) {
+        exportPdfBtn.addEventListener('click', async () => {
+            try {
+                const result = await API.exportPdf({ type: 'core', domain: 'CORE', ...coreFilters });
+                if (result.success && result.url) window.open(result.url, '_blank');
+            } catch (error) {
+                console.error('[KPIs CORE] Erreur export PDF:', error);
+            }
+        });
+    }
 }
 
 /**

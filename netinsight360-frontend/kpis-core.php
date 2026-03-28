@@ -112,7 +112,7 @@ $userRole = AuthHelper::getUserRole();
         </div>
 
         <div class="filter-bar">
-            <div class="filter-group"><label><i class="bi bi-flag"></i> Pays</label><select id="filterCountry"><option value="all">Tous les pays</option><option value="CI">🇨🇮 Côte d'Ivoire</option><option value="NE">🇳🇪 Niger</option><option value="BJ">🇧🇯 Bénin</option><option value="TG">🇹🇬 Togo</option><option value="CF">🇨🇫 Centrafrique</option></select></div>
+            <div class="filter-group"><label><i class="bi bi-flag"></i> Pays</label><select id="filterCountry"><option value="all">Tous les pays</option><option value="CI">🇨🇮 Côte d'Ivoire</option><option value="NE">🇳🇪 Niger</option><option value="BJ">🇧🇯 Bénin</option><option value="TG">🇹🇬 Togo</option></select></div>
             <div class="filter-group"><label><i class="bi bi-building"></i> Vendor</label><select id="filterVendor"><option value="all">Tous</option><option value="Huawei">Huawei</option><option value="Ericsson">Ericsson</option></select></div>
             <button class="btn btn-primary btn-sm" id="applyFilters"><i class="bi bi-funnel"></i> Appliquer</button>
             <button class="btn btn-secondary btn-sm" id="resetFilters"><i class="bi bi-arrow-repeat"></i> Réinitialiser</button>
@@ -143,7 +143,7 @@ $userRole = AuthHelper::getUserRole();
             <div class="col-md-4"><div class="stat-card"><h6><i class="bi bi-graph-up"></i> Score de santé CORE</h6><canvas id="healthScoreChart" height="200"></canvas></div></div>
         </div>
 
-        <div class="row mt-4"><div class="col-12"><div class="stat-card"><h6><i class="bi bi-file-text"></i> Rapports et Analyses KPIs CORE</h6><div class="report-buttons"><button class="btn btn-whatsapp" id="shareWhatsApp"><i class="bi bi-whatsapp"></i> Partager sur WhatsApp</button><button class="btn btn-powerpoint" id="exportPowerPoint"><i class="bi bi-file-ppt"></i> Exporter Rapport Hebdo</button><button class="btn btn-info" id="weeklyComparison"><i class="bi bi-graph-up"></i> Comparaison Hebdomadaire</button></div></div></div></div>
+        <div class="row mt-4"><div class="col-12"><div class="stat-card"><h6><i class="bi bi-file-text"></i> Rapports et Analyses KPIs CORE</h6><div class="report-buttons"><button class="btn btn-whatsapp" id="shareWhatsApp"><i class="bi bi-whatsapp"></i> Partager sur WhatsApp</button><button class="btn btn-powerpoint" id="exportPowerPoint"><i class="bi bi-file-ppt"></i> Exporter Rapport Hebdo</button><button class="btn btn-danger" id="exportPdf"><i class="bi bi-file-earmark-pdf"></i> Exporter PDF</button><button class="btn btn-info" id="weeklyComparison"><i class="bi bi-graph-up"></i> Comparaison Hebdomadaire</button></div></div></div></div>
     </div>
 
     <!-- Modals -->

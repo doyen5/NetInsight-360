@@ -322,6 +322,16 @@ function initFullReports() {
     if (printBtn) {
         printBtn.addEventListener('click', () => window.print());
     }
+
+    const exportPdfMapBtn = document.getElementById('exportPdfMapBtn');
+    if (exportPdfMapBtn) {
+        exportPdfMapBtn.addEventListener('click', async () => {
+            try {
+                const result = await API.exportPdf({ type: 'map', ...fullFilters });
+                if (result.success && result.url) window.open(result.url, '_blank');
+            } catch (error) { console.error('[MapView] Erreur export PDF:', error); }
+        });
+    }
 }
 
 /**
@@ -333,8 +343,7 @@ function centerOnCountry(countryName) {
         'Côte d\'Ivoire': [6.877, -5.282, 7],
         'Niger': [14.512, 6.112, 6],
         'Bénin': [7.496, 2.603, 7],
-        'Togo': [7.131, 1.223, 7],
-        'Centrafrique': [5.394, 18.558, 7]
+        'Togo': [7.131, 1.223, 7]
     };
     
     const coords = countryMap[countryName];

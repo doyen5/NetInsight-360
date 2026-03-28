@@ -265,7 +265,6 @@ $userRole = AuthHelper::getUserRole();
                         <option value="NE">🇳🇪 Niger</option>
                         <option value="BJ">🇧🇯 Bénin</option>
                         <option value="TG">🇹🇬 Togo</option>
-                        <option value="CF">🇨🇫 Centrafrique</option>
                     </select>
                 </div>
                 <div class="filter-group">

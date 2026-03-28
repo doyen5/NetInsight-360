@@ -32,11 +32,37 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     /**
+     * Affiche le panda avec un message (state = 'error' | 'happy')
+     */
+    function showPanda(state, message) {
+        const wrapper = document.getElementById('pandaWrapper');
+        const msgEl   = document.getElementById('pandaMsg');
+        if (!wrapper || !msgEl) return;
+
+        // Réinitialiser les classes d'état
+        wrapper.classList.remove('show', 'error', 'happy');
+        msgEl.textContent = message;
+
+        // Forcer un reflow pour que la transition se rejoue
+        void wrapper.offsetWidth;
+
+        wrapper.classList.add('show', state);
+
+        // Masquer après délai
+        const delay = state === 'happy' ? 2200 : 3200;
+        clearTimeout(wrapper._hideTimer);
+        wrapper._hideTimer = setTimeout(() => {
+            wrapper.classList.remove('show');
+        }, delay);
+    }
+
+    /**
      * Affiche un message d'erreur
      */
     function showError(message) {
         errorText.textContent = message;
         errorMessage.classList.add('show');
+        showPanda('error', message);
         setTimeout(() => {
             errorMessage.classList.remove('show');
         }, 3000);
@@ -83,6 +109,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Animation de succès
                 loginBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i> Connexion réussie...';
                 loginBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+                showPanda('happy', 'Bienvenue ! 🎉');
                 
                 // Redirection
                 setTimeout(() => {
@@ -153,5 +180,52 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (e) {
             console.warn('[Auth] Erreur lecture rememberedUser');
         }
+    }
+
+    // ── Toggle afficher/masquer mot de passe ─────────────────────────────────
+    const togglePasswordBtn = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+    const eyeIcon = document.getElementById('eyeIcon');
+    if (togglePasswordBtn && passwordInput && eyeIcon) {
+        togglePasswordBtn.addEventListener('click', () => {
+            const isHidden = passwordInput.type === 'password';
+            passwordInput.type = isHidden ? 'text' : 'password';
+            eyeIcon.className = isHidden ? 'bi bi-eye-fill' : 'bi bi-eye-slash-fill';
+            passwordInput.focus();
+        });
+    }
+
+    // ── Effet 3D tilt sur la card formulaire ─────────────────────────────────
+    const formCard = document.getElementById('formCard');
+    const cardGlare = document.getElementById('cardGlare');
+    if (formCard) {
+        const MAX_TILT = 10; // degrés max
+
+        formCard.addEventListener('mousemove', (e) => {
+            const rect = formCard.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top  + rect.height / 2;
+            const dx = (e.clientX - cx) / (rect.width  / 2);
+            const dy = (e.clientY - cy) / (rect.height / 2);
+
+            const rotY =  dx * MAX_TILT;
+            const rotX = -dy * MAX_TILT;
+
+            formCard.style.transform =
+                `perspective(900px) rotateX(${rotX}deg) rotateY(${rotY}deg) scale3d(1.02,1.02,1.02)`;
+
+            // Déplacer le reflet selon la position de la souris
+            if (cardGlare) {
+                const glareX = ((e.clientX - rect.left) / rect.width)  * 100;
+                const glareY = ((e.clientY - rect.top)  / rect.height) * 100;
+                cardGlare.style.background =
+                    `radial-gradient(400px circle at ${glareX}% ${glareY}%, rgba(255,255,255,0.1) 0%, transparent 60%)`;
+            }
+        });
+
+        formCard.addEventListener('mouseleave', () => {
+            formCard.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg) scale3d(1,1,1)';
+            if (cardGlare) cardGlare.style.background = 'none';
+        });
     }
 });

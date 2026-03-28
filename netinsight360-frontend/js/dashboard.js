@@ -360,6 +360,18 @@ function initDashboardReports() {
             }
         });
     }
+
+    const exportPdfBtn = document.getElementById('exportPdf');
+    if (exportPdfBtn) {
+        exportPdfBtn.addEventListener('click', async () => {
+            try {
+                const result = await API.exportPdf({ type: 'dashboard' });
+                if (result.success && result.url) window.open(result.url, '_blank');
+            } catch (error) {
+                console.error('[Dashboard] Erreur export PDF:', error);
+            }
+        });
+    }
 }
 
 /**

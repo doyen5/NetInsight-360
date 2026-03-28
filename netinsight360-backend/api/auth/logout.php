@@ -11,17 +11,7 @@
  */
 
 // Headers CORS pour permettre les requêtes depuis le frontend
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: http://localhost:8080');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
-header('Access-Control-Allow-Credentials: true');
-
-// Gérer la requête OPTIONS (pre-flight CORS)
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
+require_once __DIR__ . '/../cors.php';
 
 // Vérifier que la méthode HTTP est POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -52,7 +42,7 @@ try {
 if ($pdo && isset($_COOKIE['remember_token'])) {
     try {
         $stmt = $pdo->prepare("DELETE FROM user_tokens WHERE token = ?");
-        $stmt->execute([$_COOKIE['remember_token']]);
+        $stmt->execute([hash('sha256', $_COOKIE['remember_token'])]);
     } catch (Exception $e) {
         error_log('Erreur suppression token: ' . $e->getMessage());
     }

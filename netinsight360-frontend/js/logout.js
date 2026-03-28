@@ -234,8 +234,7 @@ async function updateUserInterface() {
     // Afficher le rôle de l'utilisateur
     const roleMap = {
         'ADMIN': 'Administrateur',
-        'FO_NPM': 'Agent Superviseur',
-        'FO_CORE_RAN': 'Agent Partageur',
+        'FO_ANALYSTE': 'Agent Analyste',
         'CUSTOMER': 'Agent Visualiseur'
     };
     const headerUserRoleEl = document.getElementById('headerUserRole');
@@ -247,16 +246,14 @@ async function updateUserInterface() {
 
 /**
  * Applique les restrictions d'affichage selon le rôle de l'utilisateur
- * @param {string} role - Rôle de l'utilisateur (ADMIN, FO_NPM, FO_CORE_RAN, CUSTOMER)
+ * @param {string} role - Rôle de l'utilisateur (ADMIN, FO_ANALYSTE, CUSTOMER)
  */
 function applyRoleRestrictions(role) {
     // Éléments réservés aux administrateurs
     const adminOnlyElements = document.querySelectorAll('.admin-only');
     
-    // Éléments réservés aux agents superviseurs (FO_NPM)
+    // Éléments réservés aux agents analystes (FO_ANALYSTE)
     const npmOnlyElements = document.querySelectorAll('.npm-only');
-    
-    // Éléments réservés aux agents partageurs (FO_CORE_RAN)
     const coreOnlyElements = document.querySelectorAll('.core-only');
     
     // Éléments restreints pour les visualiseurs (CUSTOMER)
@@ -272,9 +269,8 @@ function applyRoleRestrictions(role) {
         adminOnlyElements.forEach(el => el.style.display = '');
         npmOnlyElements.forEach(el => el.style.display = '');
         coreOnlyElements.forEach(el => el.style.display = '');
-    } else if (role === 'FO_NPM') {
+    } else if (role === 'FO_ANALYSTE') {
         npmOnlyElements.forEach(el => el.style.display = '');
-    } else if (role === 'FO_CORE_RAN') {
         coreOnlyElements.forEach(el => el.style.display = '');
     }
     

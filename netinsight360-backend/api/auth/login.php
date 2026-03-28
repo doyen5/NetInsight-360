@@ -4,22 +4,8 @@
  * Endpoint: POST /api/auth/login.php
  */
 
-// Activation des erreurs pour le debug
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
 // Headers CORS
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: http://localhost:8080');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
-header('Access-Control-Allow-Credentials: true');
-
-// Gérer la requête OPTIONS (pre-flight CORS)
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
+require_once __DIR__ . '/../cors.php';
 
 // Vérifier que la méthode est POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -102,7 +88,7 @@ try {
             $insertStmt = $pdo->prepare("INSERT INTO user_tokens (user_id, token, expires_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?)");
             $insertStmt->execute([
                 $user['id'],
-                password_hash($token, PASSWORD_DEFAULT),
+                hash('sha256', $token),
                 $expires,
                 $_SERVER['REMOTE_ADDR'] ?? null,
                 $_SERVER['HTTP_USER_AGENT'] ?? null

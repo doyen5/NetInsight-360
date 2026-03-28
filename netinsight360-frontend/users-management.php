@@ -104,9 +104,8 @@ if ($userRole !== 'ADMIN') {
                     <select id="filterRole">
                         <option value="all">Tous les rÃ´les</option>
                         <option value="ADMIN">Administrateur</option>
-                        <option value="FO_NPM">Agent Superviseur</option>
-                        <option value="FO_CORE_RAN">Agent Partageur</option>
-                        <option value="FO_CUSTOMER">Agent Visualiseur</option>
+                        <option value="FO_ANALYSTE">Agent Analyste</option>
+                        <option value="CUSTOMER">Agent Visualiseur</option>
                     </select>
                 </div>
                 <div class="search-box"><i class="bi bi-search"></i>
@@ -162,9 +161,8 @@ if ($userRole !== 'ADMIN') {
                     <div class="mb-3"><label class="form-label">RÃ´le *</label>
                         <select class="form-control" id="userRole">
                             <option value="ADMIN">Administrateur</option>
-                            <option value="FO_NPM">Agent Superviseur</option>
-                            <option value="FO_CORE_RAN">Agent Partageur</option>
-                            <option value="FO_CUSTOMER">Agent Visualiseur</option>
+                            <option value="FO_ANALYSTE">Agent Analyste</option>
+                            <option value="CUSTOMER">Agent Visualiseur</option>
                         </select>
                     </div>
                     <div class="mb-3"><label class="form-label">Statut</label>

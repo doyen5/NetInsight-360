@@ -114,7 +114,7 @@ $userRole = AuthHelper::getUserRole();
         </div>
 
         <div class="filter-bar">
-            <div class="filter-group"><label><i class="bi bi-flag"></i> Pays</label><select id="filterCountry"><option value="all">Tous les pays</option><option value="CI">🇨🇮 Côte d'Ivoire</option><option value="NE">🇳🇪 Niger</option><option value="BJ">🇧🇯 Bénin</option><option value="TG">🇹🇬 Togo</option><option value="CF">🇨🇫 Centrafrique</option></select></div>
+            <div class="filter-group"><label><i class="bi bi-flag"></i> Pays</label><select id="filterCountry"><option value="all">Tous les pays</option><option value="CI">🇨🇮 Côte d'Ivoire</option><option value="NE">🇳🇪 Niger</option><option value="BJ">🇧🇯 Bénin</option><option value="TG">🇹🇬 Togo</option></select></div>
             <div class="filter-group"><label><i class="bi bi-building"></i> Vendor</label><select id="filterVendor"><option value="all">Tous</option><option value="Huawei">Huawei</option><option value="Ericsson">Ericsson</option></select></div>
             <div class="filter-group"><label><i class="bi bi-signal"></i> Technologie</label><select id="filterTech"><option value="all">Toutes</option><option value="2G">2G</option><option value="3G">3G</option><option value="4G">4G</option></select></div>
             <div class="filter-group"><label><i class="bi bi-diagram-3"></i> Domaine</label><select id="filterDomain"><option value="all">Tous</option><option value="RAN">RAN</option><option value="CORE">CORE</option></select></div>
@@ -147,7 +147,7 @@ $userRole = AuthHelper::getUserRole();
             <div class="col-12"><div class="stat-card"><h6><i class="bi bi-table"></i> Liste des sites (cliquez sur un site pour voir les détails)</h6><div class="table-responsive"><table class="table table-hover" id="sitesTable"><thead><tr><th>Site ID</th><th>Nom</th><th>Pays</th><th>Vendor</th><th>Technologie</th><th>Domaine</th><th>KPI Global</th><th>Statut</th><th>Actions</th></tr></thead><tbody id="sitesTableBody"><tr><td colspan="9" class="text-center">Chargement des données...</td></tr></tbody></table></div><div class="mt-3" id="paginationControls"></div></div></div>
         </div>
 
-        <div class="row mt-4"><div class="col-12"><div class="stat-card"><h6><i class="bi bi-file-text"></i> Rapports Cartographiques</h6><div class="report-buttons"><button class="btn btn-whatsapp" id="shareMapBtn"><i class="bi bi-whatsapp"></i> Partager la carte</button><button class="btn btn-powerpoint" id="exportMapBtn"><i class="bi bi-file-ppt"></i> Exporter rapport</button><button class="btn btn-info" id="printMapBtn"><i class="bi bi-printer"></i> Imprimer la carte</button></div></div></div></div>
+        <div class="row mt-4"><div class="col-12"><div class="stat-card"><h6><i class="bi bi-file-text"></i> Rapports Cartographiques</h6><div class="report-buttons"><button class="btn btn-whatsapp" id="shareMapBtn"><i class="bi bi-whatsapp"></i> Partager la carte</button><button class="btn btn-powerpoint" id="exportMapBtn"><i class="bi bi-file-ppt"></i> Exporter rapport</button><button class="btn btn-danger" id="exportPdfMapBtn"><i class="bi bi-file-earmark-pdf"></i> Exporter PDF</button><button class="btn btn-info" id="printMapBtn"><i class="bi bi-printer"></i> Imprimer la carte</button></div></div></div></div>
     </div>
 
     <!-- Modals -->

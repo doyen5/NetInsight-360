@@ -71,8 +71,8 @@ function updateUsersTable() {
             <td>${user.id}</td>
             <td><strong>${escapeHtml(user.name)}</strong></td>
             <td>${escapeHtml(user.email)}</td>
-            <td><span class="role-badge role-${user.role === 'ADMIN' ? 'admin' : (user.role === 'FO_NPM' ? 'npm' : (user.role === 'FO_CORE_RAN' ? 'core' : 'customer'))}">
-                ${user.role === 'ADMIN' ? 'Administrateur' : (user.role === 'FO_NPM' ? 'Agent Superviseur' : (user.role === 'FO_CORE_RAN' ? 'Agent Partageur' : 'Agent Visualiseur'))}
+            <td><span class="role-badge role-${user.role === 'ADMIN' ? 'admin' : (user.role === 'FO_ANALYSTE' ? 'analyste' : 'customer')}">
+                ${user.role === 'ADMIN' ? 'Administrateur' : (user.role === 'FO_ANALYSTE' ? 'Agent Analyste' : 'Agent Visualiseur')}
             </span></td>
             <td>${user.created_at?.split('T')[0] || '-'}</td>
             <td>${user.last_login?.split('T')[0] || 'Jamais'}</td>
@@ -149,8 +149,8 @@ async function loadUsersCharts() {
         const stats = result.data;
         
         chartManager.createPieChart('roleChart', {
-            labels: ['Administrateurs', 'Agents Superviseurs', 'Agents Partageurs', 'Agents Visualiseurs'],
-            datasets: [{ data: [stats.admin || 0, stats.npm || 0, stats.core || 0, stats.customer || 0], backgroundColor: ['#ef4444', '#f59e0b', '#00a3c4', '#10b981'] }]
+            labels: ['Administrateurs', 'Agents Analystes', 'Agents Visualiseurs'],
+            datasets: [{ data: [stats.admin || 0, stats.npm || 0, stats.customer || 0], backgroundColor: ['#ef4444', '#00a3c4', '#10b981'] }]
         });
         
         if (stats.evolution) {
@@ -378,8 +378,7 @@ function exportUsers() {
     
     filtered.forEach(user => {
         const roleLabel = user.role === 'ADMIN' ? 'Administrateur' : 
-                         (user.role === 'FO_NPM' ? 'Agent Superviseur' : 
-                         (user.role === 'FO_CORE_RAN' ? 'Agent Partageur' : 'Agent Visualiseur'));
+                         (user.role === 'FO_ANALYSTE' ? 'Agent Analyste' : 'Agent Visualiseur');
         csv += `"${user.id}","${user.name}","${user.email}","${roleLabel}","${user.status}","${user.created_at || ''}","${user.last_login || ''}"\n`;
     });
     

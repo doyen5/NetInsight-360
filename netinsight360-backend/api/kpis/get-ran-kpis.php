@@ -8,10 +8,9 @@
  *  - distribution : { huawei, ericsson, '2G', '3G', '4G', countries[] }
  */
 
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: http://localhost:8080');
-header('Access-Control-Allow-Credentials: true');
+require_once __DIR__ . '/../cors.php';
 
+require_once __DIR__ . '/../auth/require-auth.php';
 require_once __DIR__ . '/../../config/database.php';
 
 try {

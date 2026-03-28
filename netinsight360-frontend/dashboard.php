@@ -150,7 +150,7 @@ $userRole = AuthHelper::getUserRole();
 
         <!-- Filtres -->
         <div class="filter-bar">
-            <div class="filter-group"><label><i class="bi bi-flag"></i> Pays</label><select id="filterCountry"><option value="all">Tous</option><option value="CI">Côte d'Ivoire</option><option value="NE">Niger</option><option value="TG">Togo</option><option value="BJ">Bénin</option><option value="CF">Centrafrique</option></select></div>
+            <div class="filter-group"><label><i class="bi bi-flag"></i> Pays</label><select id="filterCountry"><option value="all">Tous</option><option value="CI">Côte d'Ivoire</option><option value="NE">Niger</option><option value="TG">Togo</option><option value="BJ">Bénin</option></select></div>
             <div class="filter-group"><label><i class="bi bi-building"></i> Vendor</label><select id="filterVendor"><option value="all">Tous</option><option value="Huawei">Huawei</option><option value="Ericsson">Ericsson</option></select></div>
             <div class="filter-group"><label><i class="bi bi-signal"></i> Technologie</label><select id="filterTech"><option value="all">Toutes</option><option value="2G">2G</option><option value="3G">3G</option><option value="4G">4G</option></select></div>
             <div class="filter-group"><label><i class="bi bi-diagram-3"></i> Domaine</label><select id="filterDomain"><option value="all">Tous</option><option value="RAN">RAN</option><option value="CORE">CORE</option></select></div>
@@ -175,7 +175,7 @@ $userRole = AuthHelper::getUserRole();
         </div>
 
         <!-- Rapports -->
-        <div class="row mt-4"><div class="col-12"><div class="stat-card"><h6><i class="bi bi-file-text"></i> Rapports et Analyses</h6><div class="report-buttons"><button class="btn btn-whatsapp" id="shareWhatsApp"><i class="bi bi-whatsapp"></i> Partager sur WhatsApp</button><button class="btn btn-success" id="exportExcel"><i class="bi bi-file-earmark-excel"></i> Exporter Excel</button><button class="btn btn-powerpoint" id="exportPowerPoint"><i class="bi bi-file-ppt"></i> Exporter PowerPoint</button><button class="btn btn-info" id="weeklyComparison"><i class="bi bi-graph-up"></i> Comparaison Hebdomadaire</button></div></div></div></div>
+        <div class="row mt-4"><div class="col-12"><div class="stat-card"><h6><i class="bi bi-file-text"></i> Rapports et Analyses</h6><div class="report-buttons"><button class="btn btn-whatsapp" id="shareWhatsApp"><i class="bi bi-whatsapp"></i> Partager sur WhatsApp</button><button class="btn btn-success" id="exportExcel"><i class="bi bi-file-earmark-excel"></i> Exporter Excel</button><button class="btn btn-powerpoint" id="exportPowerPoint"><i class="bi bi-file-ppt"></i> Exporter PowerPoint</button><button class="btn btn-danger" id="exportPdf"><i class="bi bi-file-earmark-pdf"></i> Exporter PDF</button><button class="btn btn-info" id="weeklyComparison"><i class="bi bi-graph-up"></i> Comparaison Hebdomadaire</button></div></div></div></div>
     </div>
 
     <!-- Modals -->

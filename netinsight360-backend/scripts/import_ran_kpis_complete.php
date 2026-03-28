@@ -123,26 +123,32 @@ class RanKpiCompleteImporter
         echo "Date: " . $this->date . "\n";
         echo "========================================\n\n";
         
-        // Heure de référence (H-2)
-        $currentHour = date('G');
-        $targetHour = $currentHour - 2;
-        echo "[INFO] Heure de référence: " . $targetHour . "h (H-2)\n\n";
+        // Heure de référence (H-2) — gestion du débordement sur le jour précédent
+        $currentHour = (int)date('G');
+        $targetHour  = $currentHour - 2;
+        if ($targetHour < 0) {
+            $targetHour += 24;
+            $targetDate  = date('Y-m-d', strtotime('-1 day'));
+        } else {
+            $targetDate  = date('Y-m-d');
+        }
+        echo "[INFO] Heure de référence: {$targetHour}h du {$targetDate} (H-2)\n\n";
         
         // Import 2G
         echo "--- IMPORT 2G ---\n";
-        $this->import2GKpis($targetHour);
+        $this->import2GKpis($targetDate, $targetHour);
         echo "   Importé: " . $this->stats['2G']['imported'] . " enregistrements\n";
         echo "   Échecs: " . $this->stats['2G']['failed'] . "\n\n";
         
         // Import 3G
         echo "--- IMPORT 3G ---\n";
-        $this->import3GKpis($targetHour);
+        $this->import3GKpis($targetDate, $targetHour);
         echo "   Importé: " . $this->stats['3G']['imported'] . " enregistrements\n";
         echo "   Échecs: " . $this->stats['3G']['failed'] . "\n\n";
         
         // Import 4G
         echo "--- IMPORT 4G ---\n";
-        $this->import4GKpis($targetHour);
+        $this->import4GKpis($targetDate, $targetHour);
         echo "   Importé: " . $this->stats['4G']['imported'] . " enregistrements\n";
         echo "   Échecs: " . $this->stats['4G']['failed'] . "\n\n";
         
@@ -254,7 +260,7 @@ class RanKpiCompleteImporter
     /**
      * Import des KPIs 2G
      */
-    private function import2GKpis($targetHour)
+    private function import2GKpis($targetDate, $targetHour)
     {
         $sql = "
             SELECT 
@@ -279,14 +285,14 @@ class RanKpiCompleteImporter
                     THEN SUM(HO_SUCCES) * 100.0 / SUM(HO_ATTEMPT)
                     ELSE 98.5 END AS handover_sr
             FROM network_2g_main_kpis_hourly
-            WHERE DATE_ID = CURDATE()
+            WHERE DATE_ID = ?
               AND HOUR(HOUR_ID) = ?
               AND prismis.give_site_id(CELL_NAME) IS NOT NULL
             GROUP BY site_id, DATE_ID, HOUR_ID, vendor
         ";
         
         $stmt = $this->remoteDb->prepare($sql);
-        $stmt->execute([$targetHour]);
+        $stmt->execute([$targetDate, $targetHour]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         echo "   Récupéré: " . count($rows) . " sites 2G\n";
@@ -316,7 +322,7 @@ class RanKpiCompleteImporter
     /**
      * Import des KPIs 3G
      */
-    private function import3GKpis($targetHour)
+    private function import3GKpis($targetDate, $targetHour)
     {
         $sql = "
             SELECT 
@@ -346,14 +352,14 @@ class RanKpiCompleteImporter
                     THEN SUM(SOFT_HO_NUM) * 100.0 / SUM(SOFT_HO_DENUM) 
                     ELSE 96.0 END AS soft_ho_rate
             FROM network_3g_main_kpis_hourly
-            WHERE DATE = CURDATE()
+            WHERE DATE = ?
               AND HOUR(HOUR) = ?
               AND prismis.give_site_id(NE) IS NOT NULL
             GROUP BY site_id, DATE, HOUR, vendor
         ";
         
         $stmt = $this->remoteDb->prepare($sql);
-        $stmt->execute([$targetHour]);
+        $stmt->execute([$targetDate, $targetHour]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         echo "   Récupéré: " . count($rows) . " sites 3G\n";
@@ -380,7 +386,7 @@ class RanKpiCompleteImporter
     /**
      * Import des KPIs 4G
      */
-    private function import4GKpis($targetHour)
+    private function import4GKpis($targetDate, $targetHour)
     {
         // Détection de la table 4G
         $tables = ['lte_network_main_kpis_hourly', 'network_4g_main_kpis_hourly'];
@@ -434,14 +440,14 @@ class RanKpiCompleteImporter
                     THEN SUM(INTER_FREQUENCY_NUM) * 100.0 / SUM(INTER_FREQUENCY_DENUM) 
                     ELSE 96.5 END AS lte_inter_freq_sr
             FROM {$tableName}
-            WHERE date = CURDATE()
+            WHERE date = ?
               AND HOUR(hour) = ?
               AND prismis.give_site_id(NE) IS NOT NULL
             GROUP BY site_id, date, hour, vendor
         ";
         
         $stmt = $this->remoteDb->prepare($sql);
-        $stmt->execute([$targetHour]);
+        $stmt->execute([$targetDate, $targetHour]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         echo "   Récupéré: " . count($rows) . " sites 4G\n";

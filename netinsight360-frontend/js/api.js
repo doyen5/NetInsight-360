@@ -189,14 +189,14 @@ class API {
     }
     
     static async forgotPassword(email) {
-        return this.request('/users/forgot-password.php', {
+        return this.request('/auth/forgot-password.php', {
             method: 'POST',
             body: { email }
         });
     }
     
     static async resetPassword(token, email, password) {
-        return this.request('/users/reset-password.php', {
+        return this.request('/auth/reset-password.php', {
             method: 'POST',
             body: { token, email, password }
         });
@@ -231,6 +231,12 @@ class API {
     static async exportExcel(type, filters = {}) {
         const params = new URLSearchParams({ type, ...filters }).toString();
         return this.request(`/reports/export-excel.php?${params}`);
+    }
+
+    static async exportPdf(filters = {}) {
+        const params = new URLSearchParams(filters).toString();
+        const suffix = params ? `?${params}` : '';
+        return this.request(`/reports/export-pdf.php${suffix}`);
     }
     
     // ============================================

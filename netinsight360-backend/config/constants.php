@@ -70,8 +70,7 @@ define('COUNTRIES', [
     'CI' => ['name' => 'Côte d\'Ivoire', 'code' => 'CI', 'center_lat' => 6.877, 'center_lng' => -5.282, 'zoom' => 7],
     'NE' => ['name' => 'Niger', 'code' => 'NE', 'center_lat' => 14.512, 'center_lng' => 6.112, 'zoom' => 6],
     'BJ' => ['name' => 'Bénin', 'code' => 'BJ', 'center_lat' => 7.496, 'center_lng' => 2.603, 'zoom' => 7],
-    'TG' => ['name' => 'Togo', 'code' => 'TG', 'center_lat' => 7.131, 'center_lng' => 1.223, 'zoom' => 7],
-    'CF' => ['name' => 'Centrafrique', 'code' => 'CF', 'center_lat' => 5.394, 'center_lng' => 18.558, 'zoom' => 7]
+    'TG' => ['name' => 'Togo', 'code' => 'TG', 'center_lat' => 7.131, 'center_lng' => 1.223, 'zoom' => 7]
 ]);
 
 // ============================================

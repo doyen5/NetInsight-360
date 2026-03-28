@@ -3,10 +3,9 @@
  * NetInsight 360 - API: Récupération des sites
  */
 
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: http://localhost:8080');
-header('Access-Control-Allow-Credentials: true');
+require_once __DIR__ . '/../cors.php';
 
+require_once __DIR__ . '/../auth/require-auth.php';
 require_once __DIR__ . '/../../config/database.php';
 
 try {
@@ -90,7 +89,7 @@ try {
     
     // Ajouter le nom du pays - Utilisez 'country_name'
     $countries = [];
-    $countryStmt = $pdo->query("SELECT country_code, country_name FROM countries");
+    $countryStmt = $pdo->query("SELECT country_code, country_name FROM countries WHERE is_active = 1");
     while ($row = $countryStmt->fetch(PDO::FETCH_ASSOC)) {
         $countries[$row['country_code']] = $row['country_name'];
     }

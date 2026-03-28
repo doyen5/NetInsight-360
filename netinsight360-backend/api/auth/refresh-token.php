@@ -4,10 +4,7 @@
  * Endpoint: POST /api/auth/refresh-token.php
  */
 
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: http://localhost:8080');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Credentials: true');
+require_once __DIR__ . '/../cors.php';
 
 // Gérer OPTIONS
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -43,7 +40,7 @@ $stmt->execute([$_SESSION['user_id']]);
 $insertStmt = $pdo->prepare("INSERT INTO user_tokens (user_id, token, expires_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?)");
 $insertStmt->execute([
     $_SESSION['user_id'],
-    password_hash($newToken, PASSWORD_DEFAULT),
+    hash('sha256', $newToken),
     $expires,
     $_SERVER['REMOTE_ADDR'] ?? null,
     $_SERVER['HTTP_USER_AGENT'] ?? null

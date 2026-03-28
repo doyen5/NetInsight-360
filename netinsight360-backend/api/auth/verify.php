@@ -4,9 +4,7 @@
  * Endpoint: GET /api/auth/verify.php
  */
 
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: http://localhost:8080');
-header('Access-Control-Allow-Credentials: true');
+require_once __DIR__ . '/../cors.php';
 
 // Gérer OPTIONS
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -40,7 +38,7 @@ if (isset($_COOKIE['remember_token'])) {
     
     // Rechercher le token
     $stmt = $pdo->prepare("SELECT user_id, expires_at FROM user_tokens WHERE token = ?");
-    $stmt->execute([$token]);
+    $stmt->execute([hash('sha256', $token)]);
     $tokenData = $stmt->fetch();
     
     if ($tokenData && strtotime($tokenData['expires_at']) > time()) {

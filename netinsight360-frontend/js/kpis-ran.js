@@ -331,6 +331,16 @@ function initRanReports() {
             } catch (error) { console.error('[KPIs RAN] Erreur comparaison:', error); }
         });
     }
+
+    const exportPdfBtn = document.getElementById('exportPdf');
+    if (exportPdfBtn) {
+        exportPdfBtn.addEventListener('click', async () => {
+            try {
+                const result = await API.exportPdf({ type: 'ran', domain: 'RAN', ...ranFilters });
+                if (result.success && result.url) window.open(result.url, '_blank');
+            } catch (error) { console.error('[KPIs RAN] Erreur export PDF:', error); }
+        });
+    }
 }
 
 /**

@@ -9,10 +9,9 @@
  * Le KPI dÃ©gradant est affichÃ© dans le modal "DÃ©tails du site" cÃ´tÃ© frontend.
  */
 
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: http://localhost:8080');
-header('Access-Control-Allow-Credentials: true');
+require_once __DIR__ . '/../cors.php';
 
+require_once __DIR__ . '/../auth/require-auth.php';
 require_once __DIR__ . '/../../config/database.php';
 
 try {

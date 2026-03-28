@@ -58,35 +58,83 @@ if (AuthHelper::isLoggedIn()) {
                             </div>
                             <!-- Section droite : Formulaire de connexion -->
                             <div class="col-lg-7 form-section">
-                                <h2>Bienvenue</h2>
-                                <p class="subtitle">Connectez-vous à votre espace de supervision réseau</p>
-                                <div class="error-message" id="errorMessage">
-                                    <i class="bi bi-exclamation-triangle-fill"></i>
-                                    <span id="errorText">Identifiants incorrects</span>
+                                <!-- Orbes décoratifs 3D -->
+                                <div class="orb orb-1"></div>
+                                <div class="orb orb-2"></div>
+
+                                <div class="form-glass-card" id="formCard">
+                                    <!-- Reflet glare -->
+                                    <div class="card-glare" id="cardGlare"></div>
+
+                                    <div class="form-inner">
+                                        <div class="form-header">
+                                            <div class="form-icon-badge">
+                                                <i class="bi bi-shield-check"></i>
+                                            </div>
+                                            <h2>Bienvenue</h2>
+                                            <p class="subtitle">Connectez-vous à votre espace</p>
+                                        </div>
+
+                                        <div class="error-message" id="errorMessage">
+                                            <i class="bi bi-exclamation-triangle-fill"></i>
+                                            <span id="errorText">Identifiants incorrects</span>
+                                        </div>
+
+                                        <form id="loginForm">
+                                            <!-- Champ email -->
+                                            <div class="field-group">
+                                                <label for="email" class="field-label">
+                                                    <i class="bi bi-envelope-fill"></i>
+                                                    Adresse email
+                                                </label>
+                                                <div class="field-wrap">
+                                                    <span class="field-icon-left"><i class="bi bi-person-circle"></i></span>
+                                                    <input type="email" id="email" class="field-input" placeholder="exemple@domaine.com" required autocomplete="email">
+                                                    <span class="field-status-dot" id="emailDot"></span>
+                                                </div>
+                                            </div>
+
+                                            <!-- Champ mot de passe -->
+                                            <div class="field-group">
+                                                <label for="password" class="field-label">
+                                                    <i class="bi bi-shield-lock-fill"></i>
+                                                    Mot de passe
+                                                </label>
+                                                <div class="field-wrap">
+                                                    <span class="field-icon-left"><i class="bi bi-lock-fill"></i></span>
+                                                    <input type="password" id="password" class="field-input" placeholder="••••••••" required autocomplete="current-password">
+                                                    <button type="button" class="eye-toggle" id="togglePassword" tabindex="-1" aria-label="Afficher/masquer le mot de passe">
+                                                        <i class="bi bi-eye-slash-fill" id="eyeIcon"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div class="form-options">
+                                                <label class="checkbox-custom">
+                                                    <input type="checkbox" id="rememberMe">
+                                                    <span class="checkmark"></span>
+                                                    <span>Rester connecté</span>
+                                                </label>
+                                                <a href="#" class="forgot-link" id="forgotPassword">
+                                                    <i class="bi bi-question-circle me-1"></i>Mot de passe oublié ?
+                                                </a>
+                                            </div>
+
+                                            <button type="submit" class="login-btn" id="loginBtn">
+                                                <span class="btn-content">
+                                                    <i class="bi bi-box-arrow-in-right"></i>
+                                                    <span>Se connecter</span>
+                                                </span>
+                                                <div class="btn-shine"></div>
+                                            </button>
+
+                                            <div class="help-text">
+                                                <i class="bi bi-headset"></i> Assistance :
+                                                <a href="mailto:princedesirek@gmail.com">princedesirek@gmail.com</a>
+                                            </div>
+                                        </form>
+                                    </div>
                                 </div>
-                                <form id="loginForm">
-                                    <div class="input-group-custom">
-                                        <i class="bi bi-envelope-fill"></i>
-                                        <input type="email" id="email" placeholder="Adresse email" required>
-                                    </div>
-                                    <div class="input-group-custom">
-                                        <i class="bi bi-lock-fill"></i>
-                                        <input type="password" id="password" placeholder="Mot de passe" required>
-                                    </div>
-                                    <div class="form-options">
-                                        <label class="checkbox-custom">
-                                            <input type="checkbox" id="rememberMe"> 
-                                            <span>Rester connecté</span>
-                                        </label>
-                                        <a href="#" class="forgot-link" id="forgotPassword">Mot de passe oublié ?</a>
-                                    </div>
-                                    <button type="submit" class="login-btn" id="loginBtn">
-                                        <i class="bi bi-box-arrow-in-right me-2"></i> Se connecter
-                                    </button>
-                                    <div class="help-text">
-                                        <i class="bi bi-headset"></i> Assistance technique : <a href="mailto:princedesirek@gmail.com">princedesirek@gmail.com</a>
-                                    </div>
-                                </form>
                             </div>
                         </div>
                     </div>
@@ -97,6 +145,49 @@ if (AuthHelper::isLoggedIn()) {
 
     <!-- Canvas pour l'animation réseau de fond -->
     <canvas id="networkCanvas"></canvas>
+
+    <!-- Panda de feedback connexion -->
+    <div class="panda-wrapper" id="pandaWrapper">
+        <div class="panda-bubble" id="pandaBubble">
+            <span id="pandaMsg">Identifiants incorrects !</span>
+            <div class="bubble-tail"></div>
+        </div>
+        <div class="panda" id="pandaChar">
+            <!-- Corps -->
+            <div class="panda-body">
+                <!-- Oreilles -->
+                <div class="panda-ear panda-ear-left"></div>
+                <div class="panda-ear panda-ear-right"></div>
+                <!-- Tête -->
+                <div class="panda-head">
+                    <!-- Taches oculaires -->
+                    <div class="panda-eye-patch panda-eye-patch-left"></div>
+                    <div class="panda-eye-patch panda-eye-patch-right"></div>
+                    <!-- Yeux -->
+                    <div class="panda-eye panda-eye-left">
+                        <div class="panda-pupil"></div>
+                        <div class="panda-shine"></div>
+                    </div>
+                    <div class="panda-eye panda-eye-right">
+                        <div class="panda-pupil"></div>
+                        <div class="panda-shine"></div>
+                    </div>
+                    <!-- Bouche -->
+                    <div class="panda-nose"></div>
+                    <div class="panda-mouth" id="pandaMouth"></div>
+                    <!-- Joues -->
+                    <div class="panda-cheek panda-cheek-left"></div>
+                    <div class="panda-cheek panda-cheek-right"></div>
+                </div>
+                <!-- Larmes (état erreur) -->
+                <div class="panda-tear panda-tear-left"></div>
+                <div class="panda-tear panda-tear-right"></div>
+                <!-- Bras -->
+                <div class="panda-arm panda-arm-left"></div>
+                <div class="panda-arm panda-arm-right"></div>
+            </div>
+        </div>
+    </div>
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

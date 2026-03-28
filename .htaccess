@@ -1,0 +1,24 @@
+# NetInsight 360 — Sécurité Apache
+
+# Bloquer l'accès aux fichiers sensibles
+<FilesMatch "(\.env|\.env\..*|\.git|composer\.lock|composer\.json|package\.json|package-lock\.json)$">
+    Require all denied
+</FilesMatch>
+
+# Bloquer l'accès aux dossiers sensibles
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^netinsight360-backend/config/ - [F,L]
+    RewriteRule ^netinsight360-backend/logs/ - [F,L]
+    RewriteRule ^netinsight360-backend/data/ - [F,L]
+</IfModule>
+
+# Désactiver le listing des répertoires
+Options -Indexes
+
+# En-têtes de sécurité
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+</IfModule>
