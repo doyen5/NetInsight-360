@@ -10,6 +10,28 @@ let dashboardMap = null;
 let dashboardMarkers = [];
 let dashboardCharts = {};
 
+/**
+ * Affiche un toast en bas à droite avec la date/heure de la dernière connexion
+ */
+function showLastLoginToast() {
+    const raw = sessionStorage.getItem('lastLoginToast');
+    if (!raw) return;
+    sessionStorage.removeItem('lastLoginToast');
+
+    // Formater la date en français
+    const d = new Date(raw.replace(' ', 'T'));
+    const formatted = d.toLocaleDateString('fr-FR', {
+        weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
+    }) + ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+    const msgEl = document.getElementById('lastLoginMsg');
+    const toastEl = document.getElementById('lastLoginToast');
+    if (!msgEl || !toastEl) return;
+
+    msgEl.textContent = 'Dernière connexion : ' + formatted;
+    new bootstrap.Toast(toastEl).show();
+}
+
 // Un seul point d'entrée : initDashboard() gère l'auth, le logout et l'UI
 
 /**
@@ -104,10 +126,11 @@ async function loadMapMarkers(filters = {}) {
 
 /**
  * Charge les statistiques du dashboard
+ * @param {Object} filters - Filtres optionnels (country, vendor, tech)
  */
-async function loadDashboardStats() {
+async function loadDashboardStats(filters = {}) {
     try {
-        const result = await API.getDashboardStats();
+        const result = await API.getDashboardStats(filters);
         if (!result.success) return;
         
         const stats = result.data;
@@ -223,6 +246,8 @@ function initDashboardFilters() {
             
             await loadTopWorstSites(filters);
             await loadMapMarkers(filters);
+            // Mettre à jour les stats avec les filtres appliqués
+            await loadDashboardStats(filters);
         });
     }
     
@@ -236,6 +261,7 @@ function initDashboardFilters() {
             
             await loadTopWorstSites({});
             await loadMapMarkers({});
+            await loadDashboardStats({});
             if (dashboardMap) dashboardMap.flyTo([8.0, 2.0], 5);
         });
     }
@@ -325,6 +351,8 @@ function initDashboardReports() {
                 const result = await API.getWeeklyComparison();
                 if (result.success) {
                     const ctx = document.getElementById('comparisonChart').getContext('2d');
+                    // Détruire le graphique précédent pour éviter un crash au 2ème clic
+                    Chart.getChart('comparisonChart')?.destroy();
                     new Chart(ctx, {
                         type: 'bar',
                         data: result.data
@@ -447,6 +475,9 @@ function escapeHtml(text) {
 
 // Initialisation au chargement
 document.addEventListener('DOMContentLoaded', initDashboard);
+
+// Toast "Dernière connexion" : déclenché indépendamment des appels réseau
+document.addEventListener('DOMContentLoaded', () => setTimeout(showLastLoginToast, 800));
 
 // Exporter les fonctions globales
 window.showSiteDetails = showSiteDetails;

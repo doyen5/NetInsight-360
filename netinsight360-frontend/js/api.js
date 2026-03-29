@@ -265,8 +265,13 @@ class API {
     // DASHBOARD
     // ============================================
     
-    static async getDashboardStats() {
-        return this.request('/dashboard/get-stats.php');
+    static async getDashboardStats(filters = {}) {
+        const params = new URLSearchParams();
+        if (filters.country && filters.country !== 'all') params.set('country', filters.country);
+        if (filters.vendor  && filters.vendor  !== 'all') params.set('vendor',  filters.vendor);
+        if (filters.tech    && filters.tech    !== 'all') params.set('tech',    filters.tech);
+        const qs = params.toString();
+        return this.request('/dashboard/get-stats.php' + (qs ? '?' + qs : ''));
     }
     
     static async getGlobalTrends(kpi = 'RNA') {

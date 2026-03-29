@@ -149,7 +149,7 @@ async function loadFullSitesTable() {
         if (!tbody) return;
         
         if (paginated.length === 0) {
-            tbody.innerHTML = '米<td colspan="9" class="text-center">Aucun site trouvé</td>米';
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center">Aucun site trouvé</td></tr>';
             return;
         }
         

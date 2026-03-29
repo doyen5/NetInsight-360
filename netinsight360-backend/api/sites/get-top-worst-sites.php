@@ -19,6 +19,9 @@ try {
     $tech    = $_GET['tech']    ?? 'all';
     $domain  = $_GET['domain']  ?? 'all';
 
+    // Dernière date disponible (pas forcément aujourd'hui si l'import tourne en H-2)
+    $lastDate = $pdo->query("SELECT MAX(kpi_date) FROM kpis_ran")->fetchColumn() ?: date('Y-m-d');
+
     $baseSelect = "SELECT
             s.id,
             s.name,
@@ -34,7 +37,7 @@ try {
             k.worst_kpi_name,
             k.worst_kpi_value
         FROM sites s
-        INNER JOIN kpis_ran     k   ON k.site_id = s.id AND k.kpi_date = CURDATE()
+        INNER JOIN kpis_ran     k   ON k.site_id = s.id AND k.kpi_date = '$lastDate'
         LEFT  JOIN site_mapping sm  ON sm.remote_id = s.id
         LEFT  JOIN countries    c   ON c.country_code = s.country_code";
 
@@ -46,7 +49,8 @@ try {
     if ($domain  !== 'all') { $where[] = 's.domain = ?';       $params[] = $domain;  }
 
     $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
-    $having = "HAVING kpi_global > 0 AND latitude IS NOT NULL AND latitude != 0 AND longitude != 0";
+    // Pas de filtre lat/lng pour la liste : les sites sans coords sont quand même pertinents
+    $having = "HAVING kpi_global > 0";
 
     // Top 5 meilleurs (kpi_global DESC)
     $stmtTop = $pdo->prepare("$baseSelect $whereClause $having ORDER BY kpi_global DESC LIMIT 5");

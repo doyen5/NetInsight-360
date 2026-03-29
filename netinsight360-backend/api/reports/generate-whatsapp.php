@@ -10,25 +10,41 @@ try {
     $tech   = $_POST['tech']   ?? $_GET['tech']   ?? 'all';
     $date   = date('d/m/Y');
 
-    // Stats globales
-    $stmt = $pdo->query("SELECT COUNT(*) AS total FROM sites");
-    $totalSites = $stmt->fetchColumn();
+    // Conditions dynamiques selon les filtres
+    $siteConds  = [];
+    $siteParams = [];
+    if ($domain !== 'all') { $siteConds[] = 's.domain = ?';       $siteParams[] = $domain; }
 
-    $stmt = $pdo->query("SELECT ROUND(AVG(kpi_global), 2) AS avg FROM kpis_ran WHERE kpi_date = CURDATE()");
-    $avgKpi = $stmt->fetchColumn() ?? 0;
+    $kpiConds  = ['k.kpi_date = CURDATE()', 'k.kpi_global > 0'];
+    $kpiParams = [];
+    if ($domain !== 'all') { $kpiConds[] = 's.domain = ?';        $kpiParams[] = $domain; }
+    if ($tech   !== 'all') { $kpiConds[] = 'k.technology = ?';    $kpiParams[] = $tech;   }
 
-    $stmt = $pdo->query("SELECT COUNT(*) FROM kpis_ran WHERE kpi_date = CURDATE() AND kpi_global < 90");
-    $critical = $stmt->fetchColumn();
+    // Stats globales (filtrées)
+    $sitesWhere = $siteConds ? 'INNER JOIN sites s ON s.id = k.site_id WHERE ' . implode(' AND ', $siteConds) : '';
+    $stmtTotal  = $pdo->prepare("SELECT COUNT(DISTINCT s.id) AS total FROM sites s" . ($siteConds ? ' WHERE ' . implode(' AND ', $siteConds) : ''));
+    $stmtTotal->execute($siteParams);
+    $totalSites = $stmtTotal->fetchColumn();
 
-    // 5 pires sites
-    $worstStmt = $pdo->query("
+    $kpiWhere = implode(' AND ', $kpiConds);
+    $stmtAvg  = $pdo->prepare("SELECT ROUND(AVG(k.kpi_global), 2) AS avg FROM kpis_ran k INNER JOIN sites s ON s.id = k.site_id WHERE $kpiWhere");
+    $stmtAvg->execute($kpiParams);
+    $avgKpi = $stmtAvg->fetchColumn() ?? 0;
+
+    $stmtCrit = $pdo->prepare("SELECT COUNT(*) FROM kpis_ran k INNER JOIN sites s ON s.id = k.site_id WHERE $kpiWhere AND k.kpi_global < 90");
+    $stmtCrit->execute($kpiParams);
+    $critical = $stmtCrit->fetchColumn();
+
+    // 5 pires sites (filtrés)
+    $worstStmt = $pdo->prepare("
         SELECT s.name, k.technology, k.kpi_global, k.worst_kpi_name, k.worst_kpi_value
         FROM sites s
-        INNER JOIN kpis_ran k ON k.site_id = s.id AND k.kpi_date = CURDATE()
-        WHERE k.kpi_global > 0
+        INNER JOIN kpis_ran k ON k.site_id = s.id
+        WHERE $kpiWhere
         ORDER BY k.kpi_global ASC
         LIMIT 5
     ");
+    $worstStmt->execute($kpiParams);
     $worst = $worstStmt->fetchAll(PDO::FETCH_ASSOC);
 
     $worstLines = array_map(function ($s) {

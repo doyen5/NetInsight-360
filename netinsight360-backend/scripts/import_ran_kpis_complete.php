@@ -134,23 +134,33 @@ class RanKpiCompleteImporter
         }
         echo "[INFO] Heure de référence: {$targetHour}h du {$targetDate} (H-2)\n\n";
         
-        // Import 2G
-        echo "--- IMPORT 2G ---\n";
-        $this->import2GKpis($targetDate, $targetHour);
-        echo "   Importé: " . $this->stats['2G']['imported'] . " enregistrements\n";
-        echo "   Échecs: " . $this->stats['2G']['failed'] . "\n\n";
-        
-        // Import 3G
-        echo "--- IMPORT 3G ---\n";
-        $this->import3GKpis($targetDate, $targetHour);
-        echo "   Importé: " . $this->stats['3G']['imported'] . " enregistrements\n";
-        echo "   Échecs: " . $this->stats['3G']['failed'] . "\n\n";
-        
-        // Import 4G
-        echo "--- IMPORT 4G ---\n";
-        $this->import4GKpis($targetDate, $targetHour);
-        echo "   Importé: " . $this->stats['4G']['imported'] . " enregistrements\n";
-        echo "   Échecs: " . $this->stats['4G']['failed'] . "\n\n";
+        // Import 2G/3G/4G dans une transaction pour garantir l'atomicité
+        $this->localDb->beginTransaction();
+        try {
+            // Import 2G
+            echo "--- IMPORT 2G ---\n";
+            $this->import2GKpis($targetDate, $targetHour);
+            echo "   Importé: " . $this->stats['2G']['imported'] . " enregistrements\n";
+            echo "   Échecs: " . $this->stats['2G']['failed'] . "\n\n";
+            
+            // Import 3G
+            echo "--- IMPORT 3G ---\n";
+            $this->import3GKpis($targetDate, $targetHour);
+            echo "   Importé: " . $this->stats['3G']['imported'] . " enregistrements\n";
+            echo "   Échecs: " . $this->stats['3G']['failed'] . "\n\n";
+            
+            // Import 4G
+            echo "--- IMPORT 4G ---\n";
+            $this->import4GKpis($targetDate, $targetHour);
+            echo "   Importé: " . $this->stats['4G']['imported'] . " enregistrements\n";
+            echo "   Échecs: " . $this->stats['4G']['failed'] . "\n\n";
+
+            $this->localDb->commit();
+        } catch (Exception $e) {
+            $this->localDb->rollBack();
+            echo "[ERREUR] Transaction annulée (rollback) : " . $e->getMessage() . "\n";
+            throw $e;
+        }
         
         // Génération des alertes
         echo "--- GÉNÉRATION DES ALERTES ---\n";

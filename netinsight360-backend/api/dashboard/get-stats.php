@@ -10,12 +10,47 @@ require_once __DIR__ . '/../../config/database.php';
 
 try {
     $pdo = Database::getLocalConnection();
-    
-    // Total sites
-    $totalSites = $pdo->query("SELECT COUNT(*) FROM sites WHERE status = 'active'")->fetchColumn();
-    
-    // Disponibilité RAN moyenne
-    $ranAvg = $pdo->query("SELECT AVG(kpi_global) FROM kpis_ran WHERE technology IN ('2G','3G','4G') AND kpi_global > 0 ORDER BY kpi_date DESC LIMIT 100")->fetchColumn();
+
+    // Paramètres de filtrage (optionnels)
+    $country = $_GET['country'] ?? 'all';
+    $vendor  = $_GET['vendor']  ?? 'all';
+    $tech    = $_GET['tech']    ?? 'all';
+
+    // Conditions dynamiques pour les sites
+    $siteConds  = ["s.status = 'active'"];
+    $siteParams = [];
+    if ($country !== 'all') { $siteConds[] = 's.country_code = ?'; $siteParams[] = $country; }
+    if ($vendor  !== 'all') { $siteConds[] = 's.vendor = ?';       $siteParams[] = $vendor;  }
+    $siteWhere = implode(' AND ', $siteConds);
+
+    // Total sites (filtré)
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM sites s WHERE $siteWhere");
+    $stmt->execute($siteParams);
+    $totalSites = $stmt->fetchColumn();
+
+    // Conditions dynamiques pour les KPIs RAN
+    $techList = ['2G', '3G', '4G'];
+    if ($tech !== 'all' && in_array($tech, $techList, true)) {
+        $techList = [$tech];
+    }
+    $techPlaceholders = implode(',', array_fill(0, count($techList), '?'));
+    $ranConds  = ["k.technology IN ($techPlaceholders)", 'k.kpi_global > 0'];
+    $ranParams = $techList;
+    if ($country !== 'all') { $ranConds[] = 's.country_code = ?'; $ranParams[] = $country; }
+    if ($vendor  !== 'all') { $ranConds[] = 's.vendor = ?';       $ranParams[] = $vendor;  }
+    $ranWhere  = implode(' AND ', $ranConds);
+
+    // Disponibilité RAN moyenne (filtrée)
+    $stmtRan = $pdo->prepare(
+        "SELECT AVG(k.kpi_global)
+         FROM kpis_ran k
+         INNER JOIN sites s ON s.id = k.site_id
+         WHERE $ranWhere
+         ORDER BY k.kpi_date DESC
+         LIMIT 100"
+    );
+    $stmtRan->execute($ranParams);
+    $ranAvg = $stmtRan->fetchColumn();
     
     // Packet Loss CORE moyen (si la table existe)
     try {

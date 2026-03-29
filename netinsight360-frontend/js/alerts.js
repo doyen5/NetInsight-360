@@ -251,7 +251,7 @@ function initAlertsFilters() {
     const searchInput = document.getElementById('searchAlert');
     const resetBtn = document.getElementById('resetFiltersBtn');
     
-    const applyFilters = () => {
+    const applyFilters = async () => {
         alertsFilters = {
             type: filterType?.value || 'all',
             country: filterCountry?.value || 'all',
@@ -259,7 +259,8 @@ function initAlertsFilters() {
             search: searchInput?.value.trim() || ''
         };
         alertsCurrentPage = 1;
-        updateAlertsList();
+        // Recharger les alertes depuis l'API avec les nouveaux filtres
+        await loadAlerts();
         loadAlertsCharts();
     };
     
@@ -273,14 +274,14 @@ function initAlertsFilters() {
     }
     
     if (resetBtn) {
-        resetBtn.addEventListener('click', () => {
+        resetBtn.addEventListener('click', async () => {
             if (filterType) filterType.value = 'all';
             if (filterCountry) filterCountry.value = 'all';
             if (filterDomain) filterDomain.value = 'all';
             if (searchInput) searchInput.value = '';
             alertsFilters = { type: 'all', country: 'all', domain: 'all', search: '' };
             alertsCurrentPage = 1;
-            updateAlertsList();
+            await loadAlerts();
             loadAlertsCharts();
         });
     }

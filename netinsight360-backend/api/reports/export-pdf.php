@@ -14,8 +14,8 @@
  *   country = CI | NE | BJ | TG | CF | all
  */
 
-header('Access-Control-Allow-Origin: http://localhost:8080');
-header('Access-Control-Allow-Credentials: true');
+// Headers CORS dynamiques (définis dans cors.php)
+require_once __DIR__ . '/../cors.php';
 
 require_once __DIR__ . '/../auth/require-auth.php';
 require_once __DIR__ . '/../../config/database.php';

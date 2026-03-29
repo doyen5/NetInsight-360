@@ -36,7 +36,7 @@ try {
     $pdo = Database::getLocalConnection();
     
     // Récupérer l'utilisateur
-    $stmt = $pdo->prepare("SELECT id, name, email, password, role, status FROM users WHERE email = ?");
+    $stmt = $pdo->prepare("SELECT id, name, email, password, role, status, last_login FROM users WHERE email = ?");
     $stmt->execute([$email]);
     $user = $stmt->fetch();
     
@@ -94,8 +94,9 @@ try {
                 $_SERVER['HTTP_USER_AGENT'] ?? null
             ]);
             
-            // Définir le cookie
-            setcookie('remember_token', $token, time() + 86400 * 30, '/', '', false, true);
+            // Définir le cookie (secure=true si HTTPS, false en dev HTTP local)
+            $isSecure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+            setcookie('remember_token', $token, time() + 86400 * 30, '/', '', $isSecure, true);
         }
     }
     
@@ -103,11 +104,13 @@ try {
     echo json_encode([
         'success' => true,
         'user' => [
-            'id' => $user['id'],
-            'name' => $user['name'],
-            'email' => $user['email'],
-            'role' => $user['role'],
-            'loggedInAt' => date('Y-m-d H:i:s')
+            'id'          => $user['id'],
+            'name'        => $user['name'],
+            'email'       => $user['email'],
+            'role'        => $user['role'],
+            'loggedInAt'  => date('Y-m-d H:i:s'),
+            // Dernière connexion AVANT celle-ci (null si c'est la première)
+            'lastLogin'   => $user['last_login'] ?? null
         ]
     ]);
     

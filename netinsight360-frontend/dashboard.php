@@ -16,6 +16,7 @@ $userRole = AuthHelper::getUserRole();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>NetInsight 360 - Dashboard</title>
+    <link rel="icon" type="image/png" href="assets/img/logo.PNG">
     
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -175,7 +176,7 @@ $userRole = AuthHelper::getUserRole();
         </div>
 
         <!-- Rapports -->
-        <div class="row mt-4"><div class="col-12"><div class="stat-card"><h6><i class="bi bi-file-text"></i> Rapports et Analyses</h6><div class="report-buttons"><button class="btn btn-whatsapp" id="shareWhatsApp"><i class="bi bi-whatsapp"></i> Partager sur WhatsApp</button><button class="btn btn-success" id="exportExcel"><i class="bi bi-file-earmark-excel"></i> Exporter Excel</button><button class="btn btn-powerpoint" id="exportPowerPoint"><i class="bi bi-file-ppt"></i> Exporter PowerPoint</button><button class="btn btn-danger" id="exportPdf"><i class="bi bi-file-earmark-pdf"></i> Exporter PDF</button><button class="btn btn-info" id="weeklyComparison"><i class="bi bi-graph-up"></i> Comparaison Hebdomadaire</button></div></div></div></div>
+        <div class="row mt-4"><div class="col-12"><div class="stat-card"><h6><i class="bi bi-file-text"></i> Rapports et Analyses</h6><div class="report-buttons"><button class="btn btn-whatsapp" id="shareWhatsApp"><i class="bi bi-whatsapp"></i> Partager sur WhatsApp</button><button class="btn btn-success" id="exportExcel"><i class="bi bi-file-earmark-excel"></i> Exporter Excel</button><button class="btn btn-powerpoint" id="exportPowerPoint"><i class="bi bi-file-earmark-spreadsheet"></i> Exporter CSV</button><button class="btn btn-danger" id="exportPdf"><i class="bi bi-file-earmark-pdf"></i> Exporter PDF</button><button class="btn btn-info" id="weeklyComparison"><i class="bi bi-graph-up"></i> Comparaison Hebdomadaire</button></div></div></div></div>
     </div>
 
     <!-- Modals -->
@@ -185,12 +186,25 @@ $userRole = AuthHelper::getUserRole();
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Toast : dernière connexion -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:9999">
+        <div id="lastLoginToast" class="toast align-items-center text-bg-dark border-0" role="alert" aria-live="assertive" data-bs-autohide="true" data-bs-delay="6000">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="bi bi-clock-history me-2"></i>
+                    <span id="lastLoginMsg">Dernière connexion : —</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+
     <!-- Ordre correct : utilitaires généraux d'abord, puis les pages -->
-    <script src="js/api.js"></script>
+    <script src="js/api.js?v=2"></script>
     <script src="js/logout.js?v=2"></script>
-    <script src="js/app.js"></script>
-    <script src="js/charts.js"></script>
-    <script src="js/dashboard.js"></script>
+    <script src="js/app.js?v=2"></script>
+    <script src="js/charts.js?v=2"></script>
+    <script src="js/dashboard.js?v=2"></script>
 
 </body>
 </html>

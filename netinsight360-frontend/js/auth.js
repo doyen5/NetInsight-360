@@ -97,6 +97,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Sauvegarder les infos utilisateur
                 sessionStorage.setItem('currentUser', JSON.stringify(result.user));
                 
+                // Mémoriser la dernière connexion pour affichage toast sur le dashboard
+                if (result.user.lastLogin) {
+                    sessionStorage.setItem('lastLoginToast', result.user.lastLogin);
+                }
+                
                 // Sauvegarder "Rester connecté"
                 if (remember) {
                     localStorage.setItem('rememberedUser', JSON.stringify({

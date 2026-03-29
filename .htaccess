@@ -10,7 +10,8 @@
     RewriteEngine On
     RewriteRule ^netinsight360-backend/config/ - [F,L]
     RewriteRule ^netinsight360-backend/logs/ - [F,L]
-    RewriteRule ^netinsight360-backend/data/ - [F,L]
+    # Bloquer data/ SAUF le sous-dossier exports/ (fichiers téléchargeables générés)
+    RewriteRule ^netinsight360-backend/data/(?!exports/) - [F,L]
 </IfModule>
 
 # Désactiver le listing des répertoires

@@ -72,11 +72,24 @@ try {
     $sql .= " HAVING latitude IS NOT NULL AND latitude != 0 AND longitude != 0"
           . " AND latitude BETWEEN -5.0 AND 25.0"
           . " AND longitude BETWEEN -18.0 AND 30.0";
-    $sql .= " ORDER BY s.country_code, s.name, k.technology LIMIT 2000";
+    $sql .= " ORDER BY kpi_global ASC LIMIT 2000";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $sites = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // --- Limiter à 10 sites par technologie pour éviter la surcharge de la carte ---
+    // Sélectionne les 10 pires (kpi_global le plus bas) par technologie
+    $limitPerTech = 10;
+    $byTech = [];
+    foreach ($sites as $site) {
+        $t = $site['technology'] ?? 'N/A';
+        if (!isset($byTech[$t])) $byTech[$t] = [];
+        if (count($byTech[$t]) < $limitPerTech) {
+            $byTech[$t][] = $site;
+        }
+    }
+    $sites = array_merge(...array_values($byTech));
 
     // --- Enrichissement : nom du pays ---
     $countries = [];

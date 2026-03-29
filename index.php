@@ -1,5 +1,3 @@
 <?php
-// Version ultra-simple de test
-echo "Le fichier index.php fonctionne !";
-header('Location: netinsight360-frontend/index.php');
+header('Location: /NetInsight%20360/netinsight360-frontend/');
 exit;
