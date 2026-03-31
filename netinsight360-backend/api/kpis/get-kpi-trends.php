@@ -23,11 +23,18 @@ try {
         exit;
     }
 
-    // Validation du nom de KPI contre injection (whitelist colonnes connues)
+    // Validation du nom de KPI contre injection (whitelist colonnes réelles de kpis_ran)
     $allowed = [
-        'RNA','TCH_Availability','CSSR','CDR_TCH','SDCCH_SR','SDCCH_Drop',
-        'RRC_SR','ERAB_SR','HO_SR','UL_BLER','DL_BLER','VoLTE_SR',
-        'Packet_Loss','Latency','CSFB_SR','kpi_global'
+        'kpi_global',
+        // 2G
+        'tch_availability', 'tch_drop_rate', 'handover_sr_2g', 'sdcch_cong', 'sdcch_drop',
+        'cssr_2g', 'tch_cong_rate', 'rna_2g',
+        // 3G
+        'rrc_cs_sr', 'rab_cs_sr', 'rrc_ps_sr', 'cs_drop_rate', 'soft_ho_rate',
+        'cssr_cs_sr', 'cssr_ps_sr', 'ps_drop_rate',
+        // 4G
+        'lte_s1_sr', 'lte_rrc_sr', 'lte_erab_sr', 'lte_session_sr', 'lte_csfb_sr',
+        'lte_erab_drop_rate', 'lte_intra_freq_sr', 'lte_inter_freq_sr',
     ];
     if (!in_array($kpiName, $allowed, true)) {
         http_response_code(400);

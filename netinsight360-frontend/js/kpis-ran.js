@@ -6,6 +6,28 @@
  * Toutes les données proviennent de l'API backend
  */
 
+// Correspondance libellé français worst_kpi_name → colonne SQL dans kpis_ran
+const KPI_LABEL_TO_COLUMN = {
+    'Disponibilité TCH':  'tch_availability',
+    'Taux de chute appel':'tch_drop_rate',
+    'Succès Handover':    'handover_sr_2g',
+    'SDCCH Congestion':   'sdcch_cong',
+    'SDCCH Chute':        'sdcch_drop',
+    'RRC CS SR':          'rrc_cs_sr',
+    'RAB CS SR':          'rab_cs_sr',
+    'RRC PS SR':          'rrc_ps_sr',
+    'Chute CS':           'cs_drop_rate',
+    'Soft HO':            'soft_ho_rate',
+    'S1 SR':              'lte_s1_sr',
+    'RRC SR':             'lte_rrc_sr',
+    'ERAB SR':            'lte_erab_sr',
+    'Session SR':         'lte_session_sr',
+    'CSFB SR':            'lte_csfb_sr',
+    'Chute ERAB':         'lte_erab_drop_rate',
+    'HO Intra-freq':      'lte_intra_freq_sr',
+    'HO Inter-freq':      'lte_inter_freq_sr',
+};
+
 let ranMap = null;
 let ranMarkers = [];
 let ranFilters = { country: 'all', vendor: 'all', tech: 'all' };
@@ -138,19 +160,22 @@ async function loadWorstSitesTable() {
             return;
         }
         
-        tbody.innerHTML = paginated.map((site, idx) => `
-            <tr class="site-row-${site.status}">
+        tbody.innerHTML = paginated.map((site, idx) => {
+            const worstLabel = site.worst_kpi_name
+                ? `<span style="font-size:0.8rem">${escapeHtml(site.worst_kpi_name)}</span><br><strong>${site.worst_kpi_value}%</strong>`
+                : `<strong>${site.kpi_global}%</strong>`;
+            return `<tr class="site-row-${site.status}">
                 <td>${start + idx + 1}</td>
                 <td><strong>${escapeHtml(site.id)}</strong></td>
                 <td>${escapeHtml(site.name)}</td>
                 <td><i class="bi bi-flag"></i> ${escapeHtml(site.country_name)}</td>
                 <td><span class="badge-tech">${site.technology}</span></td>
                 <td>${site.vendor}</td>
-                <td><strong>${site.kpi_global}%</strong></td>
+                <td>${worstLabel}</td>
                 <td><span class="status-badge status-${site.status}">${site.status === 'good' ? '✓ OK' : (site.status === 'warning' ? '⚠️ Alerte' : '🔴 Critique')}</span></td>
                 <td><button class="btn-details" onclick="showRanSiteDetails('${site.id}')"><i class="bi bi-eye-fill"></i></button></td>
-            </tr>
-        `).join('');
+            </tr>`;
+        }).join('');
         
         // Pagination
         const paginationDiv = document.getElementById('paginationControls');
@@ -277,9 +302,9 @@ function initRanReports() {
     if (exportWorstBtn) {
         exportWorstBtn.addEventListener('click', async () => {
             try {
-                const result = await API.exportExcel('worst_sites', { domain: 'RAN', ...ranFilters });
+                const result = await API.exportPdf({ type: 'worst_sites', domain: 'RAN', ...ranFilters });
                 if (result.success && result.url) window.open(result.url, '_blank');
-            } catch (error) { console.error('[KPIs RAN] Erreur export:', error); }
+            } catch (error) { console.error('[KPIs RAN] Erreur export PDF:', error); }
         });
     }
 
@@ -303,16 +328,6 @@ function initRanReports() {
                 if (result.success && result.report)
                     window.open(`https://wa.me/?text=${encodeURIComponent(result.report)}`, '_blank');
             } catch (error) { console.error('[KPIs RAN] Erreur partage WhatsApp:', error); }
-        });
-    }
-
-    const exportPptBtn = document.getElementById('exportPowerPoint');
-    if (exportPptBtn) {
-        exportPptBtn.addEventListener('click', async () => {
-            try {
-                const result = await API.generatePowerpointReport({ domain: 'RAN', ...ranFilters });
-                if (result.success && result.url) window.open(result.url, '_blank');
-            } catch (error) { console.error('[KPIs RAN] Erreur export PPT:', error); }
         });
     }
 
@@ -355,57 +370,98 @@ async function showRanSiteDetails(siteId) {
         const site = result.data;
         window.currentSiteForModal = site;
         
-        document.getElementById('modalSiteTitle').innerText = `${site.name} - ${site.country_name}`;
+        // Titre + sous-titre
+        document.getElementById('modalSiteTitle').innerText = site.name;
+        const subtitle = document.getElementById('modalSiteSubtitle');
+        if (subtitle) subtitle.innerText = `${site.country_name} — ${site.vendor} — ${site.technology}`;
+
+        // Barre de stats (comme image 2)
+        const statusLabel = site.status === 'good' ? 'Bon' : (site.status === 'warning' ? 'Alerte' : 'Critique');
+        const statusColor = site.status === 'good' ? '#10b981' : (site.status === 'warning' ? '#f59e0b' : '#ef4444');
+        const lastDate = site.latest_kpis?.kpi_date ?? 'N/A';
+        const lastImport = site.latest_kpis?.imported_at ? site.latest_kpis.imported_at.substring(0, 16).replace('T', ' ') : 'N/A';
+        const worstKpiName = site.worst_kpi?.worst_kpi_name ?? (site.kpis_by_tech?.[0]?.worst_kpi_name ?? 'N/A');
+        const statsBar = document.getElementById('modalStatsBar');
+        if (statsBar) statsBar.innerHTML = [
+            `<div><span class="text-muted">KPI dégradant</span><br><strong>${escapeHtml(worstKpiName)}</strong></div>`,
+            `<div><span class="text-muted">KPI Global</span><br><strong style="color:${statusColor};font-size:1.1rem">${site.kpi_global}%</strong></div>`,
+            `<div><span class="text-muted">Statut</span><br><strong style="color:${statusColor}">${statusLabel}</strong></div>`,
+            `<div><span class="text-muted">Dernière date KPI</span><br><strong>${lastDate}</strong></div>`,
+            `<div><span class="text-muted">Dernier import</span><br><strong>${lastImport}</strong></div>`,
+        ].join('');
+
+        // Infos générales (colonne gauche)
         document.getElementById('modalSiteInfo').innerHTML = `
-            <table class="table table-sm">
-                <tr><td><strong>ID Site</strong></td><td>${escapeHtml(site.id)}</td></tr>
-                <tr><td><strong>Nom</strong></td><td>${escapeHtml(site.name)}</td></tr>
-                <tr><td><strong>Pays</strong></td><td>${escapeHtml(site.country_name)}</td></tr>
-                <tr><td><strong>Vendor</strong></td><td>${escapeHtml(site.vendor)}</td></tr>
-                <tr><td><strong>Technologie</strong></td><td>${escapeHtml(site.technology)}</td></tr>
-                <tr><td><strong>KPI Global</strong></td><td>${site.kpi_global}%</td></tr>
+            <table class="table table-sm table-borderless mb-0" style="font-size:0.85rem">
+                <tr><td class="text-muted pe-2">ID Site</td><td><strong>${escapeHtml(site.id)}</strong></td></tr>
+                <tr><td class="text-muted pe-2">Pays</td><td>${escapeHtml(site.country_name)}</td></tr>
+                <tr><td class="text-muted pe-2">Vendor</td><td>${escapeHtml(site.vendor)}</td></tr>
+                <tr><td class="text-muted pe-2">Technologie</td><td>${escapeHtml(site.technology)}</td></tr>
+                <tr><td class="text-muted pe-2">Domaine</td><td>${escapeHtml(site.domain)}</td></tr>
+                ${site.region ? `<tr><td class="text-muted pe-2">Région</td><td>${escapeHtml(site.region)}</td></tr>` : ''}
+                ${site.localite ? `<tr><td class="text-muted pe-2">Localité</td><td>${escapeHtml(site.localite)}</td></tr>` : ''}
+                ${(site.latitude && site.latitude !== 0) ? `<tr><td class="text-muted pe-2">GPS</td><td style="font-size:0.75rem">${site.latitude}, ${site.longitude}</td></tr>` : ''}
             </table>
         `;
 
-        // Pires KPIs par technologie
+        // KPIs dégradants par technologie (colonne droite)
         const worstDiv = document.getElementById('modalWorstKpis');
         if (worstDiv) {
             const techs = site.kpis_by_tech || [];
             if (techs.length === 0) {
-                worstDiv.innerHTML = '<p class="text-muted">Aucune donnée disponible</p>';
+                worstDiv.innerHTML = '<p class="text-muted small">Aucune donnée disponible</p>';
             } else {
+                const techColors = { '2G': '#10b981', '3G': '#00a3c4', '4G': '#f59e0b' };
                 worstDiv.innerHTML = techs.map(t => {
-                    const kpiLine = t.worst_kpi_name
-                        ? `<span class="text-danger">↓ ${escapeHtml(t.worst_kpi_name)}: ${t.worst_kpi_value}%</span>`
-                        : '<span class="text-muted">N/A</span>';
-                    return `<div class="d-flex justify-content-between align-items-center py-1 border-bottom">
-                        <span><span class="badge bg-secondary me-2">${escapeHtml(t.technology)}</span> KPI: <strong>${t.kpi_global}%</strong></span>
-                        ${kpiLine}
+                    const tc = techColors[t.technology] || '#6c757d';
+                    const kpiGlobalColor = t.status === 'good' ? '#10b981' : (t.status === 'warning' ? '#f59e0b' : '#ef4444');
+                    const worstLine = t.worst_kpi_name
+                        ? `<div style="font-size:0.78rem;color:#ef4444"><i class="bi bi-arrow-down-short"></i> <strong>${escapeHtml(t.worst_kpi_name)}</strong> : ${t.worst_kpi_value}%</div>`
+                        : `<div style="font-size:0.78rem" class="text-muted">Aucun KPI dégradant</div>`;
+                    return `<div class="mb-2 p-2 rounded" style="background:#f8f9fa;border-left:3px solid ${tc}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="badge" style="background:${tc}">${escapeHtml(t.technology)}</span>
+                            <span style="font-size:0.85rem">KPI Global : <strong style="color:${kpiGlobalColor}">${t.kpi_global}%</strong></span>
+                            <small class="text-muted">${t.kpi_date ?? ''}</small>
+                        </div>
+                        ${worstLine}
                     </div>`;
                 }).join('');
             }
         }
         
-        // Charger les tendances
-        const trends = await API.getKpiTrends(siteId, 'RNA', 5);
-        if (trends.success && trends.data) {
-            chartManager.createLineChart('trend5DaysChart', {
-                labels: trends.data.labels,
-                datasets: [{
-                    label: `${site.name} - Évolution RNA (%)`,
-                    data: trends.data.values,
-                    borderColor: site.status === 'good' ? '#10b981' : (site.status === 'warning' ? '#f59e0b' : '#ef4444'),
-                    fill: true
-                }]
-            });
-        }
-        
-        // Détruire l'instance précédente du chart pour éviter les conflits
-        const existingChart = Chart.getChart('trend5DaysChart');
-        if (existingChart) existingChart.destroy();
-
+        // Ouvrir le modal immédiatement (ne pas attendre le chart)
         const modalEl = document.getElementById('siteDetailsModal');
         bootstrap.Modal.getOrCreateInstance(modalEl).show();
+
+        // Charger la tendance du KPI le plus dégradant (pas kpi_global)
+        try {
+            // Trouver la techno avec le kpi_global le plus bas
+            const worstTech = (site.kpis_by_tech || []).reduce(
+                (min, t) => (!min || parseFloat(t.kpi_global) < parseFloat(min.kpi_global)) ? t : min,
+                null
+            );
+            const worstLabel  = worstTech?.worst_kpi_name ?? null;
+            const kpiColumn   = KPI_LABEL_TO_COLUMN[worstLabel] ?? 'kpi_global';
+            const kpiDisplay  = worstLabel ?? 'KPI Global';
+
+            const trends = await API.getKpiTrends(siteId, kpiColumn, 14);
+            if (trends.success && trends.data) {
+                const trendColor = site.status === 'good' ? '#10b981' : (site.status === 'warning' ? '#f59e0b' : '#ef4444');
+                chartManager.createLineChart('trend5DaysChart', {
+                    labels: trends.data.labels,
+                    datasets: [{
+                        label: `${site.name} — ${kpiDisplay} (%)`,
+                        data: trends.data.values,
+                        borderColor: trendColor,
+                        backgroundColor: trendColor + '33',
+                        fill: true
+                    }]
+                });
+            }
+        } catch (trendErr) {
+            console.warn('[KPIs RAN] Tendance non disponible:', trendErr);
+        }
 
         // Bouton partage WhatsApp dans le modal
         const shareBtn = document.getElementById('shareSiteWhatsApp');

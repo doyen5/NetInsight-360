@@ -130,13 +130,13 @@ $userRole = AuthHelper::getUserRole();
         <div class="stat-card mb-4"><h6><i class="bi bi-map"></i> Carte des sites RAN</h6><div id="map" style="height: 450px;"></div></div>
 
         <div class="row g-4 mb-4">
-            <div class="col-md-12"><div class="stat-card"><div class="d-flex justify-content-between align-items-center mb-3"><h6><i class="bi bi-exclamation-triangle-fill text-danger"></i> Pires sites - Analyse détaillée</h6><div class="btn-group"><button class="btn btn-sm btn-outline-primary" id="exportWorstSites"><i class="bi bi-download"></i> Exporter</button><button class="btn btn-sm btn-outline-success" id="shareWorstSites"><i class="bi bi-whatsapp"></i> Partager</button></div></div><div class="table-responsive"><table class="table table-hover" id="worstSitesTable"><thead class="table-light"><tr><th>#</th><th>Site ID</th><th>Nom du site</th><th>Pays</th><th>Technologie</th><th>Vendor</th><th>KPI Global</th><th>Status</th><th>Actions</th></tr></thead><tbody id="worstSitesList"><tr><td colspan="9" class="text-center">Chargement des données...</td></tr></tbody></table></div><div class="mt-3" id="paginationControls"></div></div></div>
+            <div class="col-md-12"><div class="stat-card"><div class="d-flex justify-content-between align-items-center mb-3"><h6><i class="bi bi-exclamation-triangle-fill text-danger"></i> Pires sites - Analyse détaillée</h6><div class="btn-group"><button class="btn btn-sm btn-outline-danger" id="exportWorstSites"><i class="bi bi-file-earmark-pdf"></i> Exporter PDF</button><button class="btn btn-sm btn-outline-success" id="shareWorstSites"><i class="bi bi-whatsapp"></i> Partager</button></div></div><div class="table-responsive"><table class="table table-hover" id="worstSitesTable"><thead class="table-light"><tr><th>#</th><th>Site ID</th><th>Nom du site</th><th>Pays</th><th>Technologie</th><th>Vendor</th><th>KPI Dégradant</th><th>Status</th><th>Actions</th></tr></thead><tbody id="worstSitesList"><tr><td colspan="9" class="text-center">Chargement des données...</td></tr></tbody></table></div><div class="mt-3" id="paginationControls"></div></div></div>
         </div>
 
         <div class="row g-4">
             <div class="col-md-6"><div class="stat-card"><h6><i class="bi bi-phone"></i> KPIs 2G - Performance voix</h6><canvas id="kpi2GChart" height="250"></canvas></div></div>
             <div class="col-md-6"><div class="stat-card"><h6><i class="bi bi-signal"></i> KPIs 3G - Performance données</h6><canvas id="kpi3GChart" height="250"></canvas></div></div>
-            <div class="col-md-12"><div class="stat-card"><h6><i class="bi bi-speedometer2"></i> KPIs 4G - Performance LTE</h6><canvas id="kpi4GChart" height="300"></canvas></div></div>
+            <div class="col-md-12"><div class="stat-card"><h6><i class="bi bi-speedometer2"></i> KPIs 4G - Performance LTE</h6><canvas id="kpi4GChart" height="100"></canvas></div></div>
         </div>
 
         <div class="row g-4 mt-2">
@@ -145,20 +145,20 @@ $userRole = AuthHelper::getUserRole();
             <div class="col-md-4"><div class="stat-card"><h6><i class="bi bi-flag"></i> Répartition par pays</h6><canvas id="countryChart" height="200"></canvas></div></div>
         </div>
 
-        <div class="row mt-4"><div class="col-12"><div class="stat-card"><h6><i class="bi bi-file-text"></i> Rapports et Analyses KPIs RAN</h6><div class="report-buttons"><button class="btn btn-whatsapp" id="shareWhatsApp"><i class="bi bi-whatsapp"></i> Partager sur WhatsApp</button><button class="btn btn-powerpoint" id="exportPowerPoint"><i class="bi bi-file-earmark-spreadsheet"></i> Exporter CSV</button><button class="btn btn-danger" id="exportPdf"><i class="bi bi-file-earmark-pdf"></i> Exporter PDF</button><button class="btn btn-info" id="weeklyComparison"><i class="bi bi-graph-up"></i> Comparaison Hebdomadaire</button></div></div></div></div>
+        <div class="row mt-4"><div class="col-12"><div class="stat-card"><h6><i class="bi bi-file-text"></i> Rapports et Analyses KPIs RAN</h6><div class="report-buttons"><button class="btn btn-whatsapp" id="shareWhatsApp"><i class="bi bi-whatsapp"></i> Partager sur WhatsApp</button><button class="btn btn-danger" id="exportPdf"><i class="bi bi-file-earmark-pdf"></i> Exporter PDF</button><button class="btn btn-info" id="weeklyComparison"><i class="bi bi-graph-up"></i> Comparaison Hebdomadaire</button></div></div></div></div>
     </div>
 
     <!-- Modals -->
-    <div class="modal fade" id="siteDetailsModal" tabindex="-1"><div class="modal-dialog modal-xl"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title" id="modalSiteTitle">Détails du site</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row"><div class="col-md-6"><h6><i class="bi bi-info-circle"></i> Informations générales</h6><div id="modalSiteInfo" class="p-3 bg-light rounded"></div></div><div class="col-md-6"><h6><i class="bi bi-exclamation-triangle"></i> Top 5 pires KPIs</h6><div id="modalWorstKpis" class="p-3 bg-light rounded"></div></div></div><div class="row mt-4"><div class="col-12"><h6><i class="bi bi-graph-up"></i> Trend sur 5 jours</h6><canvas id="trend5DaysChart" height="200"></canvas></div></div></div><div class="modal-footer"><button class="btn btn-success" id="shareSiteWhatsApp"><i class="bi bi-whatsapp"></i> Partager sur WhatsApp</button><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button></div></div></div></div>
+    <div class="modal fade" id="siteDetailsModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header py-2" style="background:linear-gradient(135deg,#1e3a5f,#00a3c4);color:white"><div><h6 class="modal-title mb-0" id="modalSiteTitle">Détails du site</h6><small id="modalSiteSubtitle" class="opacity-75 small"></small></div><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div id="modalStatsBar" class="px-3 py-2 border-bottom d-flex flex-wrap gap-3" style="background:#f8f9fa;font-size:0.8rem"></div><div class="modal-body p-3"><div class="row g-3"><div class="col-md-5"><p class="text-muted small text-uppercase fw-bold mb-2"><i class="bi bi-info-circle"></i> Informations générales</p><div id="modalSiteInfo"></div></div><div class="col-md-7"><p class="text-muted small text-uppercase fw-bold mb-2"><i class="bi bi-exclamation-triangle"></i> KPIs dégradants par technologie</p><div id="modalWorstKpis"></div></div></div><div class="mt-3"><p class="text-muted small text-uppercase fw-bold mb-1"><i class="bi bi-graph-up"></i> Trend KPI Global — 14 jours</p><canvas id="trend5DaysChart" height="110"></canvas></div></div><div class="modal-footer py-2"><button class="btn btn-success btn-sm" id="shareSiteWhatsApp"><i class="bi bi-whatsapp"></i> Partager WhatsApp</button><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fermer</button></div></div></div></div>
     <div class="modal fade" id="comparisonModal" tabindex="-1"><div class="modal-dialog modal-xl"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Comparaison Hebdomadaire des KPIs RAN</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><canvas id="comparisonChart" height="300"></canvas><div class="mt-4" id="comparisonLessons"></div></div></div></div></div>
     <div id="logoutConfirmModal" class="logout-confirm-modal"><div class="logout-confirm-card"><i class="bi bi-box-arrow-right"></i><h3>Déconnexion</h3><p>Êtes-vous sûr de vouloir vous déconnecter ?</p><div class="logout-confirm-buttons"><button class="btn-cancel-logout" id="cancelLogoutBtn"><i class="bi bi-x-lg"></i> Annuler</button><button class="btn-confirm-logout" id="confirmLogoutBtn"><i class="bi bi-check-lg"></i> Déconnecter</button></div></div></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="js/api.js"></script>
+    <script src="js/api.js?v=2"></script>
     <script src="js/logout.js?v=2"></script>
-    <script src="js/app.js"></script>
-    <script src="js/charts.js"></script>
-    <script src="js/kpis-ran.js"></script>
+    <script src="js/app.js?v=2"></script>
+    <script src="js/charts.js?v=2"></script>
+    <script src="js/kpis-ran.js?v=6"></script>
 </body>
 </html>

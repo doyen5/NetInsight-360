@@ -24,24 +24,6 @@ async function generateWhatsAppReport(filters = {}) {
 }
 
 /**
- * Génère un rapport PowerPoint
- * @param {object} filters - Filtres à appliquer
- * @returns {Promise<string>} - URL du rapport
- */
-async function generatePowerpointReport(filters = {}) {
-    try {
-        const result = await API.generatePowerpointReport(filters);
-        if (result.success && result.url) {
-            return result.url;
-        }
-        throw new Error(result.error || 'Erreur de génération');
-    } catch (error) {
-        console.error('[Reports] Erreur génération PowerPoint:', error);
-        throw error;
-    }
-}
-
-/**
  * Exporte des données en Excel
  * @param {string} type - Type de données (sites, alerts, users)
  * @param {object} filters - Filtres à appliquer
@@ -79,7 +61,6 @@ function shareViaWhatsApp(text) {
 
 // Exporter les fonctions
 window.generateWhatsAppReport = generateWhatsAppReport;
-window.generatePowerpointReport = generatePowerpointReport;
 window.exportToExcel = exportToExcel;
 window.openReport = openReport;
 window.shareViaWhatsApp = shareViaWhatsApp;

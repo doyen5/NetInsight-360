@@ -327,22 +327,7 @@ function initDashboardReports() {
         });
     }
     
-    const exportBtn = document.getElementById('exportPowerPoint');
-    if (exportBtn) {
-        exportBtn.addEventListener('click', async () => {
-            try {
-                const result = await API.generatePowerpointReport();
-                if (result.success && result.url) {
-                    window.open(result.url, '_blank');
-                } else {
-                    alert('Rapport généré. Vérifiez le dossier des exports.');
-                }
-            } catch (error) {
-                console.error('[Dashboard] Erreur export:', error);
-                alert('Erreur lors de l\'export');
-            }
-        });
-    }
+
     
     const weeklyBtn = document.getElementById('weeklyComparison');
     if (weeklyBtn) {
@@ -350,12 +335,50 @@ function initDashboardReports() {
             try {
                 const result = await API.getWeeklyComparison();
                 if (result.success) {
+                    // Barre de stats
+                    const statsBar = document.getElementById('comparisonStatsBar');
+                    if (statsBar && result.data?.datasets?.length === 2) {
+                        const [ds1, ds2] = result.data.datasets;
+                        const avg = arr => arr.length ? (arr.reduce((a,b) => a+b,0)/arr.length).toFixed(1) : '0';
+                        const avgRecent   = avg(ds1.data);
+                        const avgPrevious = avg(ds2.data);
+                        const diff = (parseFloat(avgRecent) - parseFloat(avgPrevious)).toFixed(2);
+                        const diffColor = diff >= 0 ? '#10b981' : '#ef4444';
+                        const techLabels = result.data.labels || [];
+                        const techCells = techLabels.map((t, i) => {
+                            const v1 = ds1.data[i] ?? 0, v2 = ds2.data[i] ?? 0;
+                            const d = (v1 - v2).toFixed(1);
+                            const c = d >= 0 ? '#10b981' : '#ef4444';
+                            return `<div class="text-center px-3"><span class="text-muted">${t}</span><br><strong>${v1}%</strong> <span style="color:${c};font-size:0.75rem">${d >= 0 ? '+':''}${d}%</span></div>`;
+                        }).join('');
+                        statsBar.innerHTML = `
+                            <div class="w-100 d-flex justify-content-center gap-4 pb-2 border-bottom">
+                                <div class="text-center"><span class="text-muted">Période récente</span><br><strong>${ds1.label}</strong></div>
+                                <div class="text-center"><span class="text-muted">Période précédente</span><br><strong>${ds2.label}</strong></div>
+                            </div>
+                            <div class="w-100 d-flex justify-content-center gap-4 pt-2">
+                                ${techCells}
+                                <div class="text-center px-3"><span class="text-muted">Évolution globale</span><br><strong style="color:${diffColor}">${diff >= 0 ? '+':''}${diff}%</strong></div>
+                            </div>`;
+                    }
+
+                    // Graphique compact
                     const ctx = document.getElementById('comparisonChart').getContext('2d');
-                    // Détruire le graphique précédent pour éviter un crash au 2ème clic
                     Chart.getChart('comparisonChart')?.destroy();
                     new Chart(ctx, {
                         type: 'bar',
-                        data: result.data
+                        data: result.data,
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+                                tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}%` } }
+                            },
+                            scales: {
+                                y: { beginAtZero: false, min: 80, max: 100, ticks: { font: { size: 10 }, callback: v => v + '%' }, grid: { color: '#f0f0f0' } },
+                                x: { ticks: { font: { size: 11 } } }
+                            }
+                        }
                     });
                     document.getElementById('comparisonLessons').innerHTML = result.lessons || '';
                     new bootstrap.Modal(document.getElementById('comparisonModal')).show();

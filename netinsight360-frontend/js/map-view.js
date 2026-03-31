@@ -306,18 +306,6 @@ function initFullReports() {
         });
     }
     
-    const exportBtn = document.getElementById('exportMapBtn');
-    if (exportBtn) {
-        exportBtn.addEventListener('click', async () => {
-            try {
-                const result = await API.generatePowerpointReport({ type: 'map', filters: fullFilters });
-                if (result.success && result.url) window.open(result.url, '_blank');
-            } catch (error) {
-                console.error('[MapView] Erreur export:', error);
-            }
-        });
-    }
-    
     const printBtn = document.getElementById('printMapBtn');
     if (printBtn) {
         printBtn.addEventListener('click', () => window.print());

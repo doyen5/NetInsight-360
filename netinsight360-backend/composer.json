@@ -1,0 +1,14 @@
+{
+    "name": "netinsight360/backend",
+    "description": "NetInsight 360 Backend",
+    "type": "project",
+    "authors": [
+        {
+            "name": "Doyen5",
+            "email": "princedesirek@gmail.com"
+        }
+    ],
+    "require": {
+        "phpoffice/phppresentation": "^0.9.0"
+    }
+}

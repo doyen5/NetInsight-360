@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Rapport NetInsight 360 — 31/03/2026 12:56</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #1e293b; background: #fff; }
+  .page { max-width: 1050px; margin: 0 auto; padding: 20px 30px; }
+  /* Header */
+  .header { background: linear-gradient(135deg, #0c1a3d 0%, #00a3c4 100%); color: white; padding: 28px 32px; border-radius: 12px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; }
+  .header h1 { font-size: 1.6em; font-weight: 800; letter-spacing: -0.5px; }
+  .header .subtitle { font-size: 0.85em; opacity: 0.85; margin-top: 4px; }
+  .header .meta { text-align: right; font-size: 0.82em; opacity: 0.9; }
+  /* KPI Cards */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .kpi-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; text-align: center; }
+  .kpi-card .label { font-size: 0.78em; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .kpi-card .value { font-size: 1.9em; font-weight: 800; margin: 6px 0 2px; }
+  .kpi-card .sublabel { font-size: 0.75em; color: #94a3b8; }
+  .value-blue   { color: #00a3c4; }
+  .value-green  { color: #10b981; }
+  .value-yellow { color: #f59e0b; }
+  .value-red    { color: #ef4444; }
+  /* Distribution */
+  .distrib-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; }
+  .stat-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px 20px; }
+  .stat-card h3 { font-size: 0.9em; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+  .dist-item { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #f1f5f9; }
+  .dist-item:last-child { border-bottom: none; }
+  .dist-label { font-size: 0.88em; }
+  .dist-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .dist-bar { height: 8px; border-radius: 4px; min-width: 4px; }
+  .dist-count { font-weight: 700; font-size: 0.9em; min-width: 30px; text-align: right; }
+  /* Table */
+  .section-title { font-size: 1em; font-weight: 700; color: #1e293b; margin-bottom: 12px; padding: 10px 14px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #00a3c4; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.83em; }
+  thead th { background: #0c1a3d; color: white; padding: 9px 10px; text-align: left; font-weight: 600; }
+  tbody tr:nth-child(even) { background: #f8fafc; }
+  tbody td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
+  .badge { background: #e0e7ff; color: #4f46e5; padding: 2px 8px; border-radius: 20px; font-size: 0.82em; font-weight: 600; }
+  .status-good     { color: #059669; font-weight: 600; }
+  .status-warning  { color: #d97706; font-weight: 600; }
+  .status-critical { color: #dc2626; font-weight: 600; }
+  /* Footer */
+  .footer { margin-top: 28px; text-align: center; font-size: 0.78em; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 12px; }
+  /* Print */
+  @media print {
+    body { font-size: 9pt; }
+    .page { padding: 10px 15px; }
+    .header { padding: 18px 20px; }
+    .no-print { display: none !important; }
+    table { font-size: 7.5pt; }
+    thead th { font-size: 7.5pt; padding: 6px 7px; }
+    tbody td  { padding: 5px 7px; }
+    .kpi-card .value { font-size: 1.5em; }
+    @page { margin: 15mm; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Bouton impression (masqué à l'impression) -->
+  <div class="no-print" style="text-align:right; margin-bottom:12px;">
+    <button onclick="window.print()" style="background:#00a3c4;color:#fff;border:none;padding:10px 22px;border-radius:8px;font-size:0.9em;font-weight:600;cursor:pointer;">
+      🖨️ Imprimer / Enregistrer en PDF
+    </button>
+  </div>
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <div style="font-size:0.75em;opacity:0.7;margin-bottom:4px;">📡 RAPPORT D'ANALYSE RÉSEAU</div>
+      <h1>NetInsight 360 — RAN</h1>
+      <div class="subtitle">Supervisez. Analysez. Optimisez.</div>
+    </div>
+    <div class="meta">
+      <div style="font-size:1em;font-weight:700">31/03/2026 12:56</div>
+      <div>Données au : 2026-03-31</div>
+      <div style="margin-top:6px;background:rgba(255,255,255,0.15);padding:4px 10px;border-radius:20px;">Confidentiel</div>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="label">Sites supervisés</div>
+      <div class="value value-blue">2189</div>
+      <div class="sublabel">Total du réseau</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">KPI Global moyen</div>
+      <div class="value value-green">98.53%</div>
+      <div class="sublabel">Objectif ≥ 99.5%</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">Sites bons</div>
+      <div class="value value-green">6538</div>
+      <div class="sublabel">KPI ≥ 95%</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">Sites critiques</div>
+      <div class="value value-red">310</div>
+      <div class="sublabel">KPI &lt; 90%</div>
+    </div>
+  </div>
+
+  <!-- Distribution -->
+  <div class="distrib-grid">
+    <div class="stat-card">
+      <h3>📊 Répartition par statut</h3>
+      <div class="dist-item">
+        <span class="dist-label" style="color:#059669">✅ Bon (≥ 95%)</span>
+        <div class="dist-bar-wrap"><div class="dist-bar" style="width:60px;background:#10b981"></div><span class="dist-count">6538</span></div>
+      </div>
+      <div class="dist-item">
+        <span class="dist-label" style="color:#d97706">⚠️ Alerte (90-95%)</span>
+        <div class="dist-bar-wrap"><div class="dist-bar" style="width:40px;background:#f59e0b"></div><span class="dist-count">304</span></div>
+      </div>
+      <div class="dist-item">
+        <span class="dist-label" style="color:#dc2626">🔴 Critique (< 90%)</span>
+        <div class="dist-bar-wrap"><div class="dist-bar" style="width:50px;background:#ef4444"></div><span class="dist-count">310</span></div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <h3>📶 Répartition par technologie</h3>
+      <table><thead><tr><th>Technologie</th><th>Nombre de sites</th></tr></thead><tbody><tr><td>2G</td><td>2162</td></tr><tr><td>3G</td><td>1987</td></tr><tr><td>4G</td><td>1001</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <!-- Table pires sites -->
+  <div class="section-title">⚠️ Top 20 — Pires sites du réseau</div>
+  <table>
+    <thead>
+      <tr><th>#</th><th>Site ID</th><th>Nom du site</th><th>Pays</th><th>Techno</th><th>Vendor</th><th>KPI Global</th><th>Statut</th><th>KPI Dégradant</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+            <td>1</td>
+            <td><strong>IM427</strong></td>
+            <td>DJEDANA_R</td>
+            <td>Côte d&#039;Ivoire</td>
+            <td><span class="badge">2G</span></td>
+            <td>Huawei</td>
+            <td><strong>65.78%</strong></td>
+            <td class="status-critical">Critique</td>
+            <td style="font-size:0.82em">Succès Handover (41.67%)</td>
+        </tr><tr>
+            <td>2</td>
+            <td><strong>ET400</strong></td>
+            <td>NUMBER_ONE</td>
+            <td>Côte d&#039;Ivoire</td>
+            <td><span class="badge">2G</span></td>
+            <td>Ericsson</td>
+            <td><strong>66.05%</strong></td>
+            <td class="status-critical">Critique</td>
+            <td style="font-size:0.82em">Disponibilité TCH (15.31%)</td>
+        </tr><tr>
+            <td>3</td>
+            <td><strong>ET988</strong></td>
+            <td>YOP_NUMBER_ONE_EXT</td>
+            <td>Côte d&#039;Ivoire</td>
+            <td><span class="badge">2G</span></td>
+            <td>Ericsson</td>
+            <td><strong>66.40%</strong></td>
+            <td class="status-critical">Critique</td>
+            <td style="font-size:0.82em">Disponibilité TCH (15.79%)</td>
+        </tr><tr>
+            <td>4</td>
+            <td><strong>AC127</strong></td>
+            <td>AC127</td>
+            <td>Côte d&#039;Ivoire</td>
+            <td><span class="badge">2G</span></td>
+            <td>Ericsson</td>
+            <td><strong>66.67%</strong></td>
+            <td class="status-critical">Critique</td>
+            <td style="font-size:0.82em">Disponibilité TCH (0.00%)</td>
+        </tr><tr>
+            <td>5</td>
+            <td><strong>AC288</strong></td>
+            <td>BOUNA</td>
+            <td>Côte d&#039;Ivoire</td>
+            <td><span class="badge">2G</span></td>
+            <td>Ericsson</td>
+            <td><strong>66.67%</strong></td>
+            <td class="status-critical">Critique</td>
+            <td style="font-size:0.82em">Disponibilité TCH (0.00%)</td>
+        </tr><tr>
+            <td>6</td>
+            <td><strong>AC359</strong></td>
+            <td>AVICENNE</td>
+            <td>Côte d&#039;Ivoire</td>
+            <td><span class="badge">2G</span></td>
+            <td>Ericsson</td>
+            <td><strong>66.67%</strong></td>
+            <td class="status-critical">Critique</td>
+            <td style="font-size:0.82em">Disponibilité TCH (0.00%)</td>
+        </tr><tr>
+            <td>7</td>
+            <td><strong>AC634</strong></td>
+            <td>ABINADER</td>
+            <td>Côte d&#039;Ivoire</td>
+            <td><span class="badge">2G</span></td>
+            <td>Ericsson</td>
+            <td><strong>66.67%</strong></td>
+            <td class="status-critical">Critique</td>
+            <td style="font-size:0.82em">Disponibilité TCH (0.00%)</td>
+        </tr><tr>
+            <td>8</td>
+            <td><strong>AC663</strong></td>
+            <td>BRIDGE_BANK</td>
+            <td>Côte d&#039;Ivoire</td>
+            <td><span class="badge">2G</span></td>
+            <td>Ericsson</td>
+            <td><strong>66.67%</strong></td>
+            <td class="status-critical">Critique</td>
+            <td style="font-size:0.82em">Disponibilité TCH (0.00%)</td>
+        </tr><tr>
+            <td>9</td>
+            <td><strong>AC717</strong></td>
+            <td>DAGBA_EXTENSION</td>
+            <td>Côte d&#039;Ivoire</td>
+            <td><span class="badge">2G</span></td>
+            <td>Ericsson</td>
+            <td><strong>66.67%</strong></td>
+            <td class="status-critical">Critique</td>
+            <td style="font-size:0.82em">Disponibilité TCH (0.00%)</td>
+        </tr><tr>
+            <td>10</td>
+            <td><strong>AC988</strong></td>
+            <td>BELLE_EPINE</td>
+            <td>Côte d&#039;Ivoire</td>
+            <td><span class="badge">2G</span></td>
+            <td>Ericsson</td>
+            <td><strong>66.67%</strong></td>
+            <td class="status-critical">Critique</td>
+            <td style="font-size:0.82em">Disponibilité TCH (0.00%)</td>
+        </tr><tr>
+            <td>11</td>
+            <td><strong>AC999</strong></td>
+            <td>AC999</td>
+            <td>Côte d&#039;Ivoire</td>
+            <td><span class="badge">2G</span></td>
+            <td>Ericsson</td>
+            <td><strong>66.67%</strong></td>
+            <td class="status-critical">Critique</td>
+            <td style="font-size:0.82em">Disponibilité TCH (0.00%)</td>
+        </tr><tr>
+            <td>12</td>
+            <td><strong>ET036</strong></td>
+            <td>MICRO_TOUR_C</td>
+            <td>Côte d&#039;Ivoire</td>
+            <td><span class="badge">2G</span></td>
+            <td>Ericsson</td>
+            <td><strong>66.67%</strong></td>
+            <td class="status-critical">Critique</td>
+            <td style="font-size:0.82em">Disponibilité TCH (0.00%)</td>
+        </tr><tr>
+            <td>13</td>
+            <td><strong>ET038</strong></td>
+            <td>MICRO_TOUR_D</td>
+            <td>Côte d&#039;Ivoire</td>
+            <td><span class="badge">2G</span></td>
+            <td>Ericsson</td>
+            <td><strong>66.67%</strong></td>
+            <td class="status-critical">Critique</td>
+            <td style="font-size:0.82em">Disponibilité TCH (0.00%)</td>
+        </tr><tr>
+            <td>14</td>
+            <td><strong>ET040</strong></td>
+            <td>MICRO_PLTX_PRESIDENCE_2</td>
+            <td>Côte d&#039;Ivoire</td>
+            <td><span class="badge">2G</span></td>
+            <td>Ericsson</td>
+            <td><strong>66.67%</strong></td>
+            <td class="status-critical">Critique</td>
+            <td style="font-size:0.82em">Disponibilité TCH (0.00%)</td>
+        </tr><tr>
+            <td>15</td>
+            <td><strong>ET051</strong></td>
+            <td>ET051</td>
+            <td>Côte d&#039;Ivoire</td>
+            <td><span class="badge">2G</span></td>
+            <td>Ericsson</td>
+            <td><strong>66.67%</strong></td>
+            <td class="status-critical">Critique</td>
+            <td style="font-size:0.82em">Disponibilité TCH (0.00%)</td>
+        </tr><tr>
+            <td>16</td>
+            <td><strong>ET058</strong></td>
+            <td>BLANCHON_EXTENSION</td>
+            <td>Côte d&#039;Ivoire</td>
+            <td><span class="badge">2G</span></td>
+            <td>Ericsson</td>
+            <td><strong>66.67%</strong></td>
+            <td class="status-critical">Critique</td>
+            <td style="font-size:0.82em">Disponibilité TCH (0.00%)</td>
+        </tr><tr>
+            <td>17</td>
+            <td><strong>ET089</strong></td>
+            <td>ET089</td>
+            <td>Côte d&#039;Ivoire</td>
+            <td><span class="badge">2G</span></td>
+            <td>Ericsson</td>
+            <td><strong>66.67%</strong></td>
+            <td class="status-critical">Critique</td>
+            <td style="font-size:0.82em">Disponibilité TCH (0.00%)</td>
+        </tr><tr>
+            <td>18</td>
+            <td><strong>ET487</strong></td>
+            <td>ZUZUOKO</td>
+            <td>Côte d&#039;Ivoire</td>
+            <td><span class="badge">2G</span></td>
+            <td>Ericsson</td>
+            <td><strong>66.67%</strong></td>
+            <td class="status-critical">Critique</td>
+            <td style="font-size:0.82em">Disponibilité TCH (0.00%)</td>
+        </tr><tr>
+            <td>19</td>
+            <td><strong>ET704</strong></td>
+            <td>BINGES_GBAGBA</td>
+            <td>Côte d&#039;Ivoire</td>
+            <td><span class="badge">2G</span></td>
+            <td>Ericsson</td>
+            <td><strong>66.67%</strong></td>
+            <td class="status-critical">Critique</td>
+            <td style="font-size:0.82em">Disponibilité TCH (0.00%)</td>
+        </tr><tr>
+            <td>20</td>
+            <td><strong>ET706</strong></td>
+            <td>GLOPLOU</td>
+            <td>Côte d&#039;Ivoire</td>
+            <td><span class="badge">2G</span></td>
+            <td>Huawei</td>
+            <td><strong>66.67%</strong></td>
+            <td class="status-critical">Critique</td>
+            <td style="font-size:0.82em">Disponibilité TCH (0.00%)</td>
+        </tr>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    Rapport généré automatiquement par NetInsight 360 le 31/03/2026 12:56 — Données confidentielles, usage interne uniquement
+  </div>
+</div>
+<script>
+  // Auto-print si paramètre ?autoprint=1
+  if (new URLSearchParams(window.location.search).get('autoprint') === '1') {
+    window.addEventListener('load', () => setTimeout(() => window.print(), 500));
+  }
+</script>
+</body>
+</html>

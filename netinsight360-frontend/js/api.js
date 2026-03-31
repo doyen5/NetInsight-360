@@ -217,13 +217,6 @@ class API {
         });
     }
     
-    static async generatePowerpointReport(filters = {}) {
-        return this.request('/reports/generate-powerpoint.php', {
-            method: 'POST',
-            body: filters
-        });
-    }
-    
     static async getWeeklyComparison() {
         return this.request('/reports/get-weekly-comparison.php');
     }
