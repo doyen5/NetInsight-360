@@ -31,16 +31,50 @@ $remember = isset($input['remember']) ? (bool)$input['remember'] : false;
 
 // Connexion à la base de données
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../config/constants.php';
 
 try {
     $pdo = Database::getLocalConnection();
-    
+    $ip  = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+
+    // ---------------------------------------------------------------
+    // Rate limiting : MAX_LOGIN_ATTEMPTS tentatives / LOGIN_ATTEMPT_TIMEOUT min
+    // ---------------------------------------------------------------
+    $pdo->exec("CREATE TABLE IF NOT EXISTS login_attempts (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        ip_address   VARCHAR(45)  NOT NULL,
+        email        VARCHAR(255) NOT NULL,
+        attempted_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_ip_email   (ip_address, email),
+        INDEX idx_attempted_at (attempted_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    $window   = date('Y-m-d H:i:s', strtotime('-' . LOGIN_ATTEMPT_TIMEOUT . ' minutes'));
+    $cntStmt  = $pdo->prepare("
+        SELECT COUNT(*) FROM login_attempts
+        WHERE (ip_address = ? OR email = ?) AND attempted_at > ?
+    ");
+    $cntStmt->execute([$ip, $email, $window]);
+    if ((int)$cntStmt->fetchColumn() >= MAX_LOGIN_ATTEMPTS) {
+        http_response_code(429);
+        echo json_encode([
+            'success' => false,
+            'error'   => 'Trop de tentatives de connexion. Réessayez dans ' . LOGIN_ATTEMPT_TIMEOUT . ' minutes.',
+        ]);
+        exit();
+    }
+
+    // Nettoyer les vieilles tentatives (> 1 heure) pour éviter la croissance infinie
+    $pdo->exec("DELETE FROM login_attempts WHERE attempted_at < DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+
     // Récupérer l'utilisateur
     $stmt = $pdo->prepare("SELECT id, name, email, password, role, status, last_login FROM users WHERE email = ?");
     $stmt->execute([$email]);
     $user = $stmt->fetch();
-    
+
     if (!$user) {
+        // Enregistrer la tentative (email inexistant)
+        $pdo->prepare("INSERT INTO login_attempts (ip_address, email) VALUES (?, ?)")->execute([$ip, $email]);
         echo json_encode(['success' => false, 'error' => 'Email ou mot de passe incorrect']);
         exit();
     }
@@ -53,9 +87,14 @@ try {
     
     // Vérifier le mot de passe
     if (!password_verify($password, $user['password'])) {
+        // Enregistrer la tentative échouée
+        $pdo->prepare("INSERT INTO login_attempts (ip_address, email) VALUES (?, ?)")->execute([$ip, $email]);
         echo json_encode(['success' => false, 'error' => 'Email ou mot de passe incorrect']);
         exit();
     }
+
+    // Connexion réussie : effacer les tentatives précédentes pour cet email
+    $pdo->prepare("DELETE FROM login_attempts WHERE email = ?")->execute([$email]);
     
     // Démarrer la session
     session_start();

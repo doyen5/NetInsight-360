@@ -8,6 +8,7 @@
 
 let coreMap = null;
 let coreMarkers = [];
+let coreCountryBorderLayer = null;
 let coreFilters = { country: 'all', vendor: 'all' };
 let coreCurrentPage = 1;
 let coreItemsPerPage = 10;
@@ -58,7 +59,7 @@ async function loadCoreMapMarkers() {
         
         result.data.forEach(site => {
             const icon = L.divIcon({
-                html: `<div style="background:#00a3c4; width:12px; height:12px; border-radius:2px; transform:rotate(45deg); border:2px solid white;"></div>`,
+                html: `<div style="background:${API.COLORS.tech['CORE']}; width:12px; height:12px; border-radius:2px; transform:rotate(45deg); border:2px solid white;"></div>`,
                 iconSize: [12, 12]
             });
             
@@ -72,6 +73,8 @@ async function loadCoreMapMarkers() {
             `);
             coreMarkers.push(marker);
         });
+        // Badge : X sites affichés
+        API.updateMapCountBadge({ count: coreMarkers.length, total_count: result.data?.length ?? coreMarkers.length });
     } catch (error) {
         console.error('[KPIs CORE] Erreur chargement marqueurs:', error);
     }
@@ -171,7 +174,7 @@ async function loadCoreCharts() {
         if (trends) {
             chartManager.createLineChart('packetLossTrendChart', {
                 labels: trends.labels,
-                datasets: [{ label: 'Packet Loss (%)', data: trends.packet_loss, borderColor: '#ef4444', fill: true }]
+                datasets: [{ label: 'Packet Loss (%)', data: trends.packet_loss, borderColor: API.COLORS.status.bad, fill: true }]
             });
         }
         
@@ -179,7 +182,7 @@ async function loadCoreCharts() {
         if (byCountry) {
             chartManager.createBarChart('latencyCountryChart', {
                 labels: byCountry.map(c => c.name),
-                datasets: [{ label: 'Latence (ms)', data: byCountry.map(c => c.latency), backgroundColor: '#00a3c4' }]
+                datasets: [{ label: 'Latence (ms)', data: byCountry.map(c => c.latency), backgroundColor: API.COLORS.tech['4G'] }]
             });
         }
         
@@ -187,7 +190,7 @@ async function loadCoreCharts() {
         if (byVendor) {
             chartManager.createBarChart('vendorPacketLossChart', {
                 labels: ['Huawei', 'Ericsson'],
-                datasets: [{ label: 'Packet Loss (%)', data: [byVendor.huawei || 0, byVendor.ericsson || 0], backgroundColor: ['#00a3c4', '#f59e0b'] }]
+                datasets: [{ label: 'Packet Loss (%)', data: [byVendor.huawei || 0, byVendor.ericsson || 0], backgroundColor: [API.COLORS.tech['4G'], API.COLORS.tech['3G']] }]
             });
         }
         
@@ -195,19 +198,19 @@ async function loadCoreCharts() {
         if (distribution) {
             chartManager.createPieChart('vendorChart', {
                 labels: ['Huawei', 'Ericsson'],
-                datasets: [{ data: [distribution.huawei || 0, distribution.ericsson || 0], backgroundColor: ['#00a3c4', '#f59e0b'] }]
+                datasets: [{ data: [distribution.huawei || 0, distribution.ericsson || 0], backgroundColor: [API.COLORS.tech['4G'], API.COLORS.tech['3G']] }]
             });
             
             chartManager.createBarChart('countryChart', {
                 labels: distribution.countries?.map(c => c.name) || [],
-                datasets: [{ label: 'Nombre de sites CORE', data: distribution.countries?.map(c => c.count) || [], backgroundColor: '#00a3c4' }]
+                datasets: [{ label: 'Nombre de sites CORE', data: distribution.countries?.map(c => c.count) || [], backgroundColor: API.COLORS.tech['4G'] }]
             });
         }
         
         const healthScore = result.data.health_score || 75;
         chartManager.createPieChart('healthScoreChart', {
             labels: ['Santé du réseau', 'Dégradation'],
-            datasets: [{ data: [healthScore, 100 - healthScore], backgroundColor: ['#10b981', '#e2e8f0'] }]
+            datasets: [{ data: [healthScore, 100 - healthScore], backgroundColor: [API.COLORS.status.good, '#e2e8f0'] }]
         });
     } catch (error) {
         console.error('[KPIs CORE] Erreur chargement graphiques:', error);
@@ -232,6 +235,7 @@ function initCoreFilters() {
             await loadCoreWorstSitesTable();
             await loadCoreCharts();
             await loadCoreMapMarkers();
+            await showCoreCountryBorder(coreFilters.country);
         });
     }
     
@@ -248,8 +252,42 @@ function initCoreFilters() {
             await loadCoreWorstSitesTable();
             await loadCoreCharts();
             await loadCoreMapMarkers();
-            if (coreMap) coreMap.flyTo([8.0, 2.0], 5);
+            await showCoreCountryBorder('all');
         });
+    }
+}
+
+async function showCoreCountryBorder(countryCode) {
+    if (!coreMap) return;
+
+    if (coreCountryBorderLayer) {
+        coreMap.removeLayer(coreCountryBorderLayer);
+        coreCountryBorderLayer = null;
+    }
+
+    if (!countryCode || countryCode === 'all') {
+        coreMap.flyTo([8.0, 2.0], 5);
+        return;
+    }
+
+    try {
+        const res = await fetch(`../netinsight360-backend/api/map/get-country-border.php?cc=${encodeURIComponent(countryCode)}`);
+        if (!res.ok) return;
+        const geojson = await res.json();
+
+        coreCountryBorderLayer = L.geoJSON(geojson, {
+            style: {
+                color: '#1e3a5f',
+                weight: 2.5,
+                opacity: 0.9,
+                fillColor: '#1e3a5f',
+                fillOpacity: 0.04
+            }
+        }).addTo(coreMap);
+
+        coreMap.fitBounds(coreCountryBorderLayer.getBounds(), { padding: [60, 60], maxZoom: 8 });
+    } catch (err) {
+        console.warn('[KPIs CORE] Frontières pays non disponibles:', err);
     }
 }
 
@@ -334,7 +372,7 @@ async function showCoreSiteDetails(siteId) {
                 datasets: [{
                     label: `${site.name} - Évolution Packet Loss (%)`,
                     data: trends.data.values,
-                    borderColor: '#ef4444',
+                    borderColor: API.COLORS.status.bad,
                     fill: true
                 }]
             });

@@ -90,6 +90,7 @@ $userRole = AuthHelper::getUserRole();
                 <i class="bi bi-people"></i> Gestion Users
             </a>
             <a href="alerts.php" class="nav-link"><i class="bi bi-bell"></i> Alertes</a>
+            <a href="admin-tools.php" class="nav-link admin-only"><i class="bi bi-tools"></i> Outils Admin</a>
         </nav>
     </div>
 
@@ -152,7 +153,7 @@ $userRole = AuthHelper::getUserRole();
     </div>
 
     <!-- Modals -->
-    <div class="modal fade" id="siteDetailsModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title" id="modalSiteTitle">Détails du site</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row"><div class="col-md-6"><h6><i class="bi bi-info-circle"></i> Informations générales</h6><div id="modalSiteInfo" class="p-3 bg-light rounded"></div></div><div class="col-md-6"><h6><i class="bi bi-bar-chart"></i> Performances</h6><div id="modalSitePerformance" class="p-3 bg-light rounded"></div></div></div><div class="row mt-3"><div class="col-12"><h6><i class="bi bi-geo-alt"></i> Localisation</h6><div id="modalSiteLocation" class="p-3 bg-light rounded"></div></div></div></div><div class="modal-footer"><button class="btn btn-success" id="shareSiteBtn"><i class="bi bi-whatsapp"></i> Partager</button><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button></div></div></div></div>
+    <div class="modal fade" id="siteDetailsModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header py-2" style="background:linear-gradient(135deg,#1e3a5f,#00a3c4);color:white"><div><h6 class="modal-title mb-0" id="modalSiteTitle">Détails du site</h6><small id="modalSiteSubtitle" class="opacity-75 small"></small></div><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div id="modalStatsBar" class="px-3 py-2 border-bottom d-flex flex-wrap gap-3" style="background:#f8f9fa;font-size:0.8rem"></div><div class="modal-body p-3"><div class="row g-3"><div class="col-md-5"><p class="text-muted small text-uppercase fw-bold mb-2"><i class="bi bi-info-circle"></i> Informations générales</p><div id="modalSiteInfo"></div></div><div class="col-md-7"><p class="text-muted small text-uppercase fw-bold mb-2"><i class="bi bi-exclamation-triangle"></i> KPIs dégradants par technologie</p><div id="modalWorstKpis"></div></div></div><div class="mt-3"><p class="text-muted small text-uppercase fw-bold mb-1"><i class="bi bi-graph-up"></i> Trend KPI Global — 14 jours</p><canvas id="trend5DaysChart" height="110"></canvas></div></div><div class="modal-footer py-2"><button class="btn btn-success btn-sm" id="shareSiteWhatsApp"><i class="bi bi-whatsapp"></i> Partager WhatsApp</button><button class="btn btn-outline-success btn-sm" id="exportSiteCsv"><i class="bi bi-file-earmark-excel"></i> Export CSV</button><button class="btn btn-outline-danger btn-sm" id="exportSitePdf"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fermer</button></div></div></div></div>
     <div id="logoutConfirmModal" class="logout-confirm-modal"><div class="logout-confirm-card"><i class="bi bi-box-arrow-right"></i><h3>Déconnexion</h3><p>Êtes-vous sûr de vouloir vous déconnecter ?</p><div class="logout-confirm-buttons"><button class="btn-cancel-logout" id="cancelLogoutBtn"><i class="bi bi-x-lg"></i> Annuler</button><button class="btn-confirm-logout" id="confirmLogoutBtn"><i class="bi bi-check-lg"></i> Déconnecter</button></div></div></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -161,6 +162,7 @@ $userRole = AuthHelper::getUserRole();
     <script src="js/api.js"></script>
     <script src="js/logout.js?v=2"></script>
     <script src="js/app.js"></script>
+    <script src="js/charts.js?v=2"></script>
     <script src="js/map-view.js"></script>
 </body>
 </html>

@@ -14,8 +14,10 @@
 
 let fullMap = null;
 let fullMarkers = [];
-let fullSitesData = []; // cache des sites chargés pour les graphiques
+let fullSitesData = []; // cache des marqueurs carte (20 pires/tech)
+let fullTableData = []; // cache du tableau (tous les sites filtrés, triés par criticité)
 let fullFilters = { country: 'all', vendor: 'all', tech: 'all', domain: 'all', status: 'all' };
+let fullCountryBorderLayer = null; // Couche Leaflet GeoJSON des frontières du pays sélectionné
 let fullCurrentPage = 1;
 let fullItemsPerPage = 10;
 
@@ -28,9 +30,14 @@ async function initMapView() {
     
     await updateUserInterface();
     initFullMap();
-    await loadFullMapMarkers();
-    await loadFullSitesTable();
+
+    // Chargement parallèle : carte + tableau (sources distinctes)
+    await Promise.all([
+        loadFullMapMarkers(),
+        loadFullSitesTable(),
+    ]);
     await loadFullCharts();
+
     initFullFilters();
     initFullReports();
 }
@@ -64,15 +71,8 @@ async function loadFullMapMarkers() {
         const sites = result.data;
         fullSitesData = sites; // mise en cache pour les graphiques
         
-        // Centrer la carte si un seul pays
-        if (fullFilters.country !== 'all') {
-            try {
-                const countryBounds = await API.getCountryBounds(fullFilters.country);
-                if (countryBounds.success && countryBounds.data) {
-                    fullMap.flyTo(countryBounds.data.center, countryBounds.data.zoom);
-                }
-            } catch (e) { /* silencieux si non disponible */ }
-        }
+        // Afficher les frontières GeoJSON du pays sélectionné et zoomer dessus
+        await showFullCountryBorder(fullFilters.country);
         
         sites.forEach(site => {
             // Skip sites without valid coordinates
@@ -83,13 +83,9 @@ async function loadFullMapMarkers() {
             }
             let color;
             if (site.domain === 'CORE') {
-                color = '#00a3c4';
-            } else if (site.status === 'good') {
-                color = '#10b981';
-            } else if (site.status === 'warning') {
-                color = '#f59e0b';
+                color = API.COLORS.tech['CORE'];
             } else {
-                color = '#ef4444';
+                color = API.statusColor(site.status);
             }
             
             const icon = L.divIcon({
@@ -114,6 +110,8 @@ async function loadFullMapMarkers() {
         });
         
         updateLegendStats(sites);
+        // Badge : X affichés / Y total
+        API.updateMapCountBadge(result);
     } catch (error) {
         console.error('[MapView] Erreur chargement marqueurs:', error);
     }
@@ -130,73 +128,86 @@ function updateLegendStats(sites) {
 }
 
 /**
- * Charge le tableau des sites
+ * Charge le tableau des sites — appel API dédié, indépendant des marqueurs de la carte.
+ * Données triées par kpi_global ASC (pires sites en premier).
  */
 async function loadFullSitesTable() {
     try {
-        // Utiliser les données de la carte si disponibles, sinon appel API avec limite élevée
-        let sites = fullSitesData;
-        if (!sites || sites.length === 0) {
-            const result = await API.getSites({ ...fullFilters, limit: 9999 });
-            if (!result.success || !result.data) return;
-            sites = result.data;
-        }
-        const totalPages = Math.ceil(sites.length / fullItemsPerPage);
-        const start = (fullCurrentPage - 1) * fullItemsPerPage;
-        const paginated = sites.slice(start, start + fullItemsPerPage);
-        
-        const tbody = document.getElementById('sitesTableBody');
-        if (!tbody) return;
-        
-        if (paginated.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center">Aucun site trouvé</td></tr>';
-            return;
-        }
-        
-        tbody.innerHTML = paginated.map(site => `
-            <tr class="site-row-${site.status}">
-                <td><strong>${escapeHtml(site.id)}</strong></td>
-                <td>${escapeHtml(site.name)}</td>
-                <td><i class="bi bi-flag"></i> ${escapeHtml(site.country_name)}</td>
-                <td>${site.vendor}</td>
-                <td><span class="badge-tech">${site.technology}</span></td>
-                <td>${site.domain}</td>
-                <td><strong>${site.kpi_global}%</strong></td>
-                <td><span class="status-badge status-${site.status}">${site.status === 'good' ? 'Bon' : (site.status === 'warning' ? 'Alerte' : 'Critique')}</span></td>
-                <td><button class="btn-details" onclick="showFullSiteDetails('${site.id}')"><i class="bi bi-eye-fill"></i></button></td>
-             </tr>
-        `).join('');
-        
-        const paginationDiv = document.getElementById('paginationControls');
-        if (paginationDiv && totalPages > 1) {
-            let html = '<nav><ul class="pagination">';
-            for (let i = 1; i <= totalPages; i++) {
-                html += `<li class="page-item ${i === fullCurrentPage ? 'active' : ''}">
-                    <button class="page-link" onclick="goToFullPage(${i})">${i}</button>
-                </li>`;
-            }
-            html += '</ul></nav>';
-            paginationDiv.innerHTML = html;
-        } else if (paginationDiv) {
-            paginationDiv.innerHTML = '';
-        }
+        const result = await API.getSites({ ...fullFilters, limit: 1000 });
+        if (!result.success || !result.data) return;
+        fullTableData = result.data;
+        fullCurrentPage = 1;
+        renderSitesTable();
     } catch (error) {
         console.error('[MapView] Erreur chargement tableau:', error);
     }
 }
 
 /**
- * Charge les graphiques (utilise les données déjà en cache)
+ * Rend le tableau (pagination locale sur fullTableData — pas de re-fetch).
+ */
+function renderSitesTable() {
+    const tbody = document.getElementById('sitesTableBody');
+    if (!tbody) return;
+
+    if (!fullTableData || fullTableData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Aucun site trouvé pour ces filtres</td></tr>';
+        const paginationDiv = document.getElementById('paginationControls');
+        if (paginationDiv) paginationDiv.innerHTML = '';
+        return;
+    }
+
+    const totalPages = Math.ceil(fullTableData.length / fullItemsPerPage);
+    const start      = (fullCurrentPage - 1) * fullItemsPerPage;
+    const paginated  = fullTableData.slice(start, start + fullItemsPerPage);
+
+    const statusLabel = s => s === 'good' ? 'Bon' : (s === 'warning' ? 'Alerte' : 'Critique');
+
+    tbody.innerHTML = paginated.map(site => `
+        <tr class="site-row-${site.status}">
+            <td><strong>${escapeHtml(site.id)}</strong></td>
+            <td>${escapeHtml(site.name)}</td>
+            <td><i class="bi bi-flag"></i> ${escapeHtml(site.country_name ?? site.country_code)}</td>
+            <td>${escapeHtml(site.vendor)}</td>
+            <td><span class="badge-tech">${escapeHtml(site.technology)}</span></td>
+            <td>${escapeHtml(site.domain)}</td>
+            <td><strong>${site.kpi_global}%</strong></td>
+            <td><span class="status-badge status-${site.status}">${statusLabel(site.status)}</span></td>
+            <td><button class="btn-details" onclick="showFullSiteDetails('${escapeHtml(site.id)}')"><i class="bi bi-eye-fill"></i></button></td>
+        </tr>
+    `).join('');
+
+    const paginationDiv = document.getElementById('paginationControls');
+    if (!paginationDiv) return;
+    if (totalPages <= 1) { paginationDiv.innerHTML = ''; return; }
+
+    // Pagination compacte : max 7 liens visibles
+    const maxLinks = 7;
+    let startPage = Math.max(1, fullCurrentPage - Math.floor(maxLinks / 2));
+    let endPage   = Math.min(totalPages, startPage + maxLinks - 1);
+    if (endPage - startPage < maxLinks - 1) startPage = Math.max(1, endPage - maxLinks + 1);
+
+    let html = `<nav aria-label="Pages"><ul class="pagination pagination-sm mb-0">`;
+    html += `<li class="page-item ${fullCurrentPage === 1 ? 'disabled' : ''}"><button class="page-link" onclick="goToFullPage(${fullCurrentPage - 1})">&laquo;</button></li>`;
+    if (startPage > 1) html += `<li class="page-item"><button class="page-link" onclick="goToFullPage(1)">1</button></li>${startPage > 2 ? '<li class="page-item disabled"><span class="page-link">…</span></li>' : ''}`;
+    for (let i = startPage; i <= endPage; i++) {
+        html += `<li class="page-item ${i === fullCurrentPage ? 'active' : ''}"><button class="page-link" onclick="goToFullPage(${i})">${i}</button></li>`;
+    }
+    if (endPage < totalPages) html += `${endPage < totalPages - 1 ? '<li class="page-item disabled"><span class="page-link">…</span></li>' : ''}<li class="page-item"><button class="page-link" onclick="goToFullPage(${totalPages})">${totalPages}</button></li>`;
+    html += `<li class="page-item ${fullCurrentPage === totalPages ? 'disabled' : ''}"><button class="page-link" onclick="goToFullPage(${fullCurrentPage + 1})">&raquo;</button></li>`;
+    html += `</ul><span class="text-muted ms-2" style="font-size:0.8rem">${fullTableData.length} sites — page ${fullCurrentPage}/${totalPages}</span></nav>`;
+    paginationDiv.innerHTML = html;
+}
+
+/**
+ * Charge les graphiques (utilise fullTableData — données complètes et filtrées).
  */
 async function loadFullCharts() {
     try {
-        // Utiliser les données déjà chargées (évite un double appel API)
-        let data = fullSitesData;
-        if (!data || data.length === 0) {
-            const result = await API.getSites({ ...fullFilters, limit: 9999 });
-            if (!result.success || !result.data) return;
-            data = result.data;
-        }
+        // fullTableData est chargé par loadFullSitesTable() — utiliser ce cache
+        // Si vide (chargement initial parallèle), utiliser fullSitesData comme fallback
+        const data = (fullTableData && fullTableData.length > 0) ? fullTableData : fullSitesData;
+        if (!data || data.length === 0) return;
         
         // Répartition par statut
         const good = data.filter(s => s.status === 'good').length;
@@ -205,7 +216,7 @@ async function loadFullCharts() {
         
         chartManager.createPieChart('statusChart', {
             labels: ['Bon (≥95%)', 'Alerte (90-95%)', 'Critique (<90%)'],
-            datasets: [{ data: [good, warning, critical], backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }]
+            datasets: [{ data: [good, warning, critical], backgroundColor: [API.COLORS.status.good, API.COLORS.status.warning, API.COLORS.status.bad] }]
         });
         
         // Répartition par technologie
@@ -216,7 +227,7 @@ async function loadFullCharts() {
         
         chartManager.createBarChart('techChart', {
             labels: ['2G', '3G', '4G', 'CORE'],
-            datasets: [{ label: 'Nombre de sites', data: [twoG, threeG, fourG, core], backgroundColor: '#00a3c4' }]
+            datasets: [{ label: 'Nombre de sites', data: [twoG, threeG, fourG, core], backgroundColor: API.COLORS.tech['4G'] }]
         });
         
         // Top pays
@@ -258,8 +269,11 @@ function initFullFilters() {
                 status: document.getElementById('filterStatus')?.value || 'all'
             };
             fullCurrentPage = 1;
-            await loadFullMapMarkers();
-            await loadFullSitesTable();
+            // Carte + tableau rechargés en parallèle (sources indépendantes)
+            await Promise.all([
+                loadFullMapMarkers(),
+                loadFullSitesTable(),
+            ]);
             await loadFullCharts();
         });
     }
@@ -273,18 +287,68 @@ function initFullFilters() {
             });
             fullFilters = { country: 'all', vendor: 'all', tech: 'all', domain: 'all', status: 'all' };
             fullCurrentPage = 1;
-            await loadFullMapMarkers();
-            await loadFullSitesTable();
+            await Promise.all([
+                loadFullMapMarkers(),
+                loadFullSitesTable(),
+            ]);
             await loadFullCharts();
-            if (fullMap) fullMap.flyTo([8.0, 2.0], 5);
+            // Supprimer la couche frontières et revenir à la vue globale
+            await showFullCountryBorder('all');
         });
     }
-    
-    if (fitBoundsBtn && fullMap && fullMarkers.length) {
+
+    // Bouton "Ajuster la vue" — centre la carte sur l'ensemble des marqueurs visibles
+    if (fitBoundsBtn) {
         fitBoundsBtn.addEventListener('click', () => {
+            if (!fullMap) return;
+            if (fullMarkers.length === 0) { fullMap.flyTo([8.0, 2.0], 5); return; }
             const bounds = L.latLngBounds(fullMarkers.map(m => m.getLatLng()));
             fullMap.flyToBounds(bounds, { padding: [50, 50] });
         });
+    }
+}
+
+/**
+ * Affiche les frontières GeoJSON du pays sélectionné sur la carte Map View.
+ * Partage le même endpoint PHP et les mêmes fichiers GeoJSON en cache que le dashboard.
+ * Pays disponibles : ci.geojson, bj.geojson, cf.geojson, ne.geojson, tg.geojson
+ * @param {string} countryCode - Code ISO-2 (ex: 'CI', 'BJ') ou 'all' pour vue globale
+ */
+async function showFullCountryBorder(countryCode) {
+    if (!fullMap) return;
+
+    // Supprimer la couche précédente avant d'en créer une nouvelle
+    if (fullCountryBorderLayer) {
+        fullMap.removeLayer(fullCountryBorderLayer);
+        fullCountryBorderLayer = null;
+    }
+
+    // Pas de pays spécifique : revenir à la vue globale
+    if (!countryCode || countryCode === 'all') {
+        fullMap.flyTo([8.0, 2.0], 5);
+        return;
+    }
+
+    try {
+        const res = await fetch(`../netinsight360-backend/api/map/get-country-border.php?cc=${encodeURIComponent(countryCode)}`);
+        if (!res.ok) return;
+        const geojson = await res.json();
+
+        // Ajouter la couche GeoJSON avec bordure visible et léger fond translucide
+        fullCountryBorderLayer = L.geoJSON(geojson, {
+            style: {
+                color: '#1e3a5f',
+                weight: 2.5,
+                opacity: 0.9,
+                fillColor: '#1e3a5f',
+                fillOpacity: 0.04
+            }
+        }).addTo(fullMap);
+
+        // Zoomer automatiquement pour que tout le pays soit visible
+        fullMap.fitBounds(fullCountryBorderLayer.getBounds(), { padding: [60, 60], maxZoom: 8 });
+    } catch (err) {
+        console.warn('[MapView] Frontières pays non disponibles:', err);
     }
 }
 
@@ -352,51 +416,139 @@ async function showFullSiteDetails(siteId) {
         const site = result.data;
         window.currentSiteForModal = site;
         
-        document.getElementById('modalSiteTitle').innerText = `${site.name} - ${site.country_name}`;
+        // Titre et sous-titre
+        document.getElementById('modalSiteTitle').innerText = site.name;
+        const subtitle = document.getElementById('modalSiteSubtitle');
+        if (subtitle) subtitle.innerText = `${site.country_name} — ${site.vendor} — ${site.technology}`;
+
+        // Barre de stats (kpi dégradant, KPI global, statut, dates)
+        const statusLabel = site.status === 'good' ? 'Bon' : (site.status === 'warning' ? 'Alerte' : 'Critique');
+        const statusColor = API.statusColor(site.status);
+        const lastDate = site.latest_kpis?.kpi_date ?? 'N/A';
+        const lastImport = site.latest_kpis?.imported_at ? site.latest_kpis.imported_at.substring(0,16).replace('T',' ') : 'N/A';
+        const worstKpiName = site.worst_kpi?.worst_kpi_name ?? (site.kpis_by_tech?.[0]?.worst_kpi_name ?? 'N/A');
+        const statsBar = document.getElementById('modalStatsBar');
+        if (statsBar) statsBar.innerHTML = [
+            `<div><span class="text-muted">KPI dégradant</span><br><strong>${escapeHtml(worstKpiName)}</strong></div>`,
+            `<div><span class="text-muted">KPI Global</span><br><strong style="color:${statusColor};font-size:1.1rem">${site.kpi_global}%</strong></div>`,
+            `<div><span class="text-muted">Statut</span><br><strong style="color:${statusColor}">${statusLabel}</strong></div>`,
+            `<div><span class="text-muted">Dernière date KPI</span><br><strong>${lastDate}</strong></div>`,
+            `<div><span class="text-muted">Dernier import</span><br><strong>${lastImport}</strong></div>`,
+        ].join('');
+
+        // Informations générales
         document.getElementById('modalSiteInfo').innerHTML = `
-            <table class="table table-sm">
-                <tr><td><strong>ID Site</strong></td><td>${escapeHtml(site.id)}</td> </tr>
-                <tr><td><strong>Nom</strong></td><td>${escapeHtml(site.name)}</td> </tr>
-                <tr><td><strong>Pays</strong></td><td>${escapeHtml(site.country_name)}</td> </tr>
-                <tr><td><strong>Vendor</strong></td><td>${escapeHtml(site.vendor)}</td> </tr>
-                <tr><td><strong>Technologie</strong></td><td>${escapeHtml(site.technology)}</td> </tr>
-                <tr><td><strong>Domaine</strong></td><td>${escapeHtml(site.domain)}</td> </tr>
-             </table>
+            <table class="table table-sm table-borderless mb-0" style="font-size:0.85rem">
+                <tr><td class="text-muted pe-2">ID Site</td><td><strong>${escapeHtml(site.id)}</strong></td></tr>
+                <tr><td class="text-muted pe-2">Pays</td><td>${escapeHtml(site.country_name)}</td></tr>
+                <tr><td class="text-muted pe-2">Vendor</td><td>${escapeHtml(site.vendor)}</td></tr>
+                <tr><td class="text-muted pe-2">Technologie</td><td>${escapeHtml(site.technology)}</td></tr>
+                <tr><td class="text-muted pe-2">Domaine</td><td>${escapeHtml(site.domain)}</td></tr>
+                ${site.region ? `<tr><td class="text-muted pe-2">Région</td><td>${escapeHtml(site.region)}</td></tr>` : ''}
+                ${site.localite ? `<tr><td class="text-muted pe-2">Localité</td><td>${escapeHtml(site.localite)}</td></tr>` : ''}
+                ${(site.latitude && site.latitude !== 0) ? `<tr><td class="text-muted pe-2">GPS</td><td style="font-size:0.75rem">${site.latitude}, ${site.longitude}</td></tr>` : ''}
+            </table>
         `;
-        
-        document.getElementById('modalSitePerformance').innerHTML = `
-            <table class="table table-sm">
-                <tr><td><strong>KPI Global</strong></td><td class="text-${site.status === 'good' ? 'success' : (site.status === 'warning' ? 'warning' : 'danger')}">${site.kpi_global}%</td> </tr>
-                <tr><td><strong>Statut</strong></td><td><span class="status-badge status-${site.status}">${site.status === 'good' ? 'Bon' : (site.status === 'warning' ? 'Alerte' : 'Critique')}</span></td> </tr>
-             </table>
-        `;
-        
-        document.getElementById('modalSiteLocation').innerHTML = `
-            <table class="table table-sm">
-                <tr><td><strong>Latitude</strong></td><td>${site.latitude || 'N/A'}</td> </tr>
-                <tr><td><strong>Longitude</strong></td><td>${site.longitude || 'N/A'}</td> </tr>
-                 </table>
-        `;
-        
-        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('siteDetailsModal'));
-        modal.show();
+
+        // KPIs dégradants par technologie
+        const worstDiv = document.getElementById('modalWorstKpis');
+        if (worstDiv) {
+            const techs = site.kpis_by_tech || [];
+            if (techs.length === 0) {
+                worstDiv.innerHTML = '<p class="text-muted small">Aucune donnée disponible</p>';
+            } else {
+                const techColors = API.COLORS.tech;
+                worstDiv.innerHTML = techs.map(t => {
+                    const tc = techColors[t.technology] || '#6c757d';
+                    const kpiGlobalColor = API.statusColor(t.status);
+                    const worstLine = t.worst_kpi_name
+                        ? `<div style="font-size:0.78rem;color:#ef4444"><i class="bi bi-arrow-down-short"></i> <strong>${escapeHtml(t.worst_kpi_name)}</strong> : ${t.worst_kpi_value}%</div>`
+                        : `<div style="font-size:0.78rem" class="text-muted">Aucun KPI dégradant</div>`;
+                    return `<div class="mb-2 p-2 rounded" style="background:#f8f9fa;border-left:3px solid ${tc}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="badge" style="background:${tc}">${escapeHtml(t.technology)}</span>
+                            <span style="font-size:0.85rem">KPI Global : <strong style="color:${kpiGlobalColor}">${t.kpi_global}%</strong></span>
+                            <small class="text-muted">${t.kpi_date ?? ''}</small>
+                        </div>
+                        ${worstLine}
+                    </div>`;
+                }).join('');
+            }
+        }
+
+        // Ouvrir le modal
+        const modalEl = document.getElementById('siteDetailsModal');
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+
+        // Charger la tendance KPI (utilise kpi_global si besoin)
+        try {
+            const trends = await API.getKpiTrends(siteId, 'kpi_global', 14, site.technology);
+            if (trends.success && trends.data) {
+                chartManager.createLineChart('trend5DaysChart', {
+                    labels: trends.data.labels,
+                    datasets: [{ label: `${site.name} — KPI Global (%)`, data: trends.data.values, borderColor: API.COLORS.status.bad, backgroundColor: 'rgba(239,68,68,0.1)', fill: true }]
+                }, {
+                    scales: { y: { min: 0, max: 100, ticks: { callback: v => v + '%' } } },
+                    plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}%` } } }
+                });
+            }
+        } catch (trendErr) {
+            console.warn('[MapView] Tendance non disponible:', trendErr);
+        }
+
+        // Bouton partage WhatsApp
+        const shareBtn = document.getElementById('shareSiteWhatsApp');
+        if (shareBtn) {
+            shareBtn.onclick = () => {
+                const s = window.currentSiteForModal;
+                if (!s) return;
+                const msg = `📡 *Site: ${s.name} (${s.country_name})*\nID: ${s.id}\nKPI Global: ${s.kpi_global}%\nVendor: ${s.vendor}\nTechno: ${s.technology}\nStatut: ${s.status}`;
+                window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+            };
+        }
+
+        // Boutons export de fiche site dans le modal
+        const exportSiteCsvBtn = document.getElementById('exportSiteCsv');
+        if (exportSiteCsvBtn) {
+            exportSiteCsvBtn.onclick = async () => {
+                const s = window.currentSiteForModal;
+                if (!s) return;
+                try {
+                    const result = await API.exportSite(s.id, 'csv');
+                    if (result.success && result.url) window.open(result.url, '_blank');
+                } catch (e) { console.error('[MapView] Export CSV site:', e); }
+            };
+        }
+
+        const exportSitePdfBtn = document.getElementById('exportSitePdf');
+        if (exportSitePdfBtn) {
+            exportSitePdfBtn.onclick = async () => {
+                const s = window.currentSiteForModal;
+                if (!s) return;
+                try {
+                    const result = await API.exportSite(s.id, 'pdf');
+                    if (result.success && result.url) window.open(result.url, '_blank');
+                } catch (e) { console.error('[MapView] Export PDF site:', e); }
+            };
+        }
     } catch (error) {
         console.error('[MapView] Erreur chargement détails:', error);
     }
 }
 
 /**
- * Change de page dans le tableau
+ * Change de page dans le tableau (pas de re-fetch — utilise fullTableData en cache).
  * @param {number} page - Numéro de page
  */
 function goToFullPage(page) {
     fullCurrentPage = page;
-    loadFullSitesTable();
+    renderSitesTable();
 }
 
 // Initialisation au chargement
 document.addEventListener('DOMContentLoaded', initMapView);
 
-window.centerOnCountry = centerOnCountry;
+window.centerOnCountry   = centerOnCountry;
 window.showFullSiteDetails = showFullSiteDetails;
-window.goToFullPage = goToFullPage;
+window.goToFullPage      = goToFullPage;
+window.renderSitesTable  = renderSitesTable;

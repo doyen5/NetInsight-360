@@ -112,8 +112,10 @@ class API {
         return this.request(`/kpis/get-core-kpis.php${suffix}`);
     }
     
-    static async getKpiTrends(siteId, kpiName, days = 5) {
-        return this.request(`/kpis/get-kpi-trends.php?site_id=${encodeURIComponent(siteId)}&kpi_name=${encodeURIComponent(kpiName)}&days=${days}`);
+    static async getKpiTrends(siteId, kpiName, days = 5, technology = null) {
+        let url = `/kpis/get-kpi-trends.php?site_id=${encodeURIComponent(siteId)}&kpi_name=${encodeURIComponent(kpiName)}&days=${days}`;
+        if (technology) url += `&technology=${encodeURIComponent(technology)}`;
+        return this.request(url);
     }
     
     static async getKpiPredictions(siteId, kpiName) {
@@ -226,6 +228,13 @@ class API {
         return this.request(`/reports/export-excel.php?${params}`);
     }
 
+    static async exportSite(siteId, format = 'csv') {
+        if (format === 'pdf') {
+            return this.request(`/reports/export-pdf.php?site_id=${encodeURIComponent(siteId)}`);
+        }
+        return this.request(`/reports/export-excel.php?type=site&site_id=${encodeURIComponent(siteId)}`);
+    }
+
     static async exportPdf(filters = {}) {
         const params = new URLSearchParams(filters).toString();
         const suffix = params ? `?${params}` : '';
@@ -270,7 +279,97 @@ class API {
     static async getGlobalTrends(kpi = 'RNA') {
         return this.request(`/dashboard/get-trends.php?kpi=${kpi}`);
     }
+
+    // ============================================
+    // AUDIT
+    // ============================================
+
+    static async getAuditLogs(filters = {}) {
+        const params = new URLSearchParams(filters).toString();
+        const suffix = params ? `?${params}` : '';
+        return this.request(`/audit/get-audit-logs.php${suffix}`);
+    }
+
+    // ============================================
+    // ADMIN — IMPORT
+    // ============================================
+
+    static async getImportStatus() {
+        return this.request('/admin/get-import-status.php');
+    }
+
+    static async runImport() {
+        return this.request('/admin/run-import.php', { method: 'POST' });
+    }
+
+    // ============================================
+    // UTILITAIRES CARTE — Badge compteur sites
+    // ============================================
+
+    /**
+     * Met à jour le badge "X affichés / Y total" dans l'en-tête de la carte.
+     * @param {object} result - Réponse de getMapMarkers (doit contenir count et total_count)
+     * @param {string} mapElementId - ID de l'élément map Leaflet (défaut: 'map')
+     */
+    static updateMapCountBadge(result, mapElementId = 'map') {
+        const mapEl = document.getElementById(mapElementId);
+        if (!mapEl) return;
+        const cardTitle = mapEl.closest('.stat-card')?.querySelector('h6, h5');
+        if (!cardTitle) return;
+
+        let badge = cardTitle.querySelector('.map-count-badge');
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'map-count-badge badge ms-2';
+            badge.style.cssText = 'font-size:0.72rem;font-weight:500;vertical-align:middle;cursor:default';
+            cardTitle.appendChild(badge);
+        }
+
+        const displayed = result.count    ?? 0;
+        const total     = result.total_count ?? displayed;
+
+        if (displayed < total) {
+            badge.className = 'map-count-badge badge bg-warning text-dark ms-2';
+            badge.title     = `Affichage limité à 20 sites par technologie (pires KPI). ${total - displayed} sites masqués.`;
+            badge.textContent = `${displayed} / ${total} sites`;
+        } else {
+            badge.className = 'map-count-badge badge bg-success ms-2';
+            badge.title     = 'Tous les sites sont affichés';
+            badge.textContent = `${displayed} sites`;
+        }
+    }
 }
+
+// ============================================================
+// Couleurs centralisées — référencées par tous les modules JS
+// ============================================================
+API.COLORS = {
+    status: {
+        good:     '#10b981',
+        warning:  '#f59e0b',
+        bad:      '#ef4444',
+        critical: '#ef4444', // alias de bad — statut renvoyé par le backend
+        unknown:  '#94a3b8',
+    },
+    tech: {
+        '2G':   '#10b981',
+        '3G':   '#f59e0b',
+        '4G':   '#00a3c4',
+        'CORE': '#8b5cf6',
+    },
+    trend: {
+        up:   '#10b981',
+        down: '#ef4444',
+        flat: '#94a3b8',
+    },
+    brand: '#00a3c4',
+};
+
+/** Retourne la couleur hex correspondant au statut d'un site. */
+API.statusColor = (status) => API.COLORS.status[status] ?? API.COLORS.status.unknown;
+
+/** Retourne la couleur hex correspondant à une technologie. */
+API.techColor = (tech) => API.COLORS.tech[tech] ?? '#94a3b8';
 
 // Exporter pour utilisation globale
 window.API = API;

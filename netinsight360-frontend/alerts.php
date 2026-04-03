@@ -162,6 +162,7 @@ $userRole = AuthHelper::getUserRole();
             <a href="alerts.php" class="nav-link active" data-section="alerts">
                 <i class="bi bi-bell"></i> Alertes
             </a>
+            <a href="admin-tools.php" class="nav-link admin-only"><i class="bi bi-tools"></i> Outils Admin</a>
         </nav>
     </div>
 

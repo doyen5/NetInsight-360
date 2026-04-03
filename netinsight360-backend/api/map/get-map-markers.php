@@ -78,9 +78,10 @@ try {
     $stmt->execute($params);
     $sites = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // --- Limiter à 10 sites par technologie pour éviter la surcharge de la carte ---
-    // Sélectionne les 10 pires (kpi_global le plus bas) par technologie
-    $limitPerTech = 10;
+    // --- Limiter à 20 sites par technologie pour éviter la surcharge de la carte ---
+    // Sélectionne les 20 pires (kpi_global le plus bas) par technologie
+    $limitPerTech    = 20;
+    $totalBeforeLimit = count($sites); // total AVANT la limite (pour le badge frontend)
     $byTech = [];
     foreach ($sites as $site) {
         $t = $site['technology'] ?? 'N/A';
@@ -108,9 +109,11 @@ try {
     }
 
     echo json_encode([
-        'success' => true,
-        'data'    => $sites,
-        'count'   => count($sites)
+        'success'            => true,
+        'data'               => $sites,
+        'count'              => count($sites),
+        'total_count'        => $totalBeforeLimit,
+        'limit_per_tech'     => 20,
     ]);
 
 } catch (Exception $e) {

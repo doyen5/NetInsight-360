@@ -31,6 +31,7 @@ const KPI_LABEL_TO_COLUMN = {
 let ranMap = null;
 let ranMarkers = [];
 let ranFilters = { country: 'all', vendor: 'all', tech: 'all' };
+let ranCountryBorderLayer = null; // Couche Leaflet GeoJSON des frontières du pays sélectionné
 let ranCurrentPage = 1;
 let ranItemsPerPage = 10;
 
@@ -90,7 +91,7 @@ async function loadRanMapMarkers() {
         
         result.data.forEach(site => {
             if (!site.latitude || !site.longitude || site.latitude == 0) return;
-            const color = site.status === 'good' ? '#10b981' : (site.status === 'warning' ? '#f59e0b' : '#ef4444');
+            const color = API.statusColor(site.status);
             const icon = L.divIcon({
                 html: `<div style="background:${color}; width:12px; height:12px; border-radius:50%; border:2px solid white;"></div>`,
                 iconSize: [12, 12]
@@ -110,6 +111,8 @@ async function loadRanMapMarkers() {
             `);
             ranMarkers.push(marker);
         });
+        // Badge : X affichés / Y total
+        API.updateMapCountBadge(result);
     } catch (error) {
         console.error('[KPIs RAN] Erreur chargement marqueurs:', error);
     }
@@ -207,26 +210,37 @@ async function loadRanCharts() {
         const kpis = result.data.kpis;
         
         // Graphique 2G
-        if (kpis['2G']) {
+        if (kpis['2G'] && Object.keys(kpis['2G']).length > 0) {
             chartManager.createBarChart('kpi2GChart', {
                 labels: Object.keys(kpis['2G']),
-                datasets: [{ label: 'Performance (%)', data: Object.values(kpis['2G']), backgroundColor: '#10b981' }]
+                datasets: [{ label: 'Performance (%)', data: Object.values(kpis['2G']), backgroundColor: API.COLORS.tech['2G'] }]
+            }, {
+                scales: {
+                    y: { beginAtZero: true, ticks: { callback: v => v + '%' } }
+                },
+                plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}%` } } }
             });
         }
         
         // Graphique 3G
-        if (kpis['3G']) {
+        if (kpis['3G'] && Object.keys(kpis['3G']).length > 0) {
             chartManager.createRadarChart('kpi3GChart', {
                 labels: Object.keys(kpis['3G']),
-                datasets: [{ label: 'Performance (%)', data: Object.values(kpis['3G']), backgroundColor: 'rgba(0,163,196,0.2)', borderColor: '#00a3c4' }]
+                datasets: [{ label: 'Performance (%)', data: Object.values(kpis['3G']), backgroundColor: 'rgba(0,163,196,0.2)', borderColor: API.COLORS.tech['4G'] }]
+            }, {
+                scales: { r: { beginAtZero: true, ticks: { callback: v => v + '%' } } },
+                plugins: { legend: { position: 'bottom' } }
             });
         }
         
         // Graphique 4G
-        if (kpis['4G']) {
+        if (kpis['4G'] && Object.keys(kpis['4G']).length > 0) {
             chartManager.createLineChart('kpi4GChart', {
                 labels: Object.keys(kpis['4G']),
-                datasets: [{ label: 'Performance (%)', data: Object.values(kpis['4G']), borderColor: '#f59e0b', fill: true }]
+                datasets: [{ label: 'Performance (%)', data: Object.values(kpis['4G']), borderColor: API.COLORS.tech['3G'], fill: true }]
+            }, {
+                scales: { y: { beginAtZero: true, ticks: { callback: v => v + '%' } } },
+                plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}%` } } }
             });
         }
         
@@ -235,17 +249,17 @@ async function loadRanCharts() {
         if (distribution) {
             chartManager.createPieChart('vendorChart', {
                 labels: ['Huawei', 'Ericsson'],
-                datasets: [{ data: [distribution.huawei || 0, distribution.ericsson || 0], backgroundColor: ['#00a3c4', '#f59e0b'] }]
+                datasets: [{ data: [distribution.huawei || 0, distribution.ericsson || 0], backgroundColor: [API.COLORS.tech['4G'], API.COLORS.tech['3G']] }]
             });
             
             chartManager.createPieChart('techChart', {
                 labels: ['2G', '3G', '4G'],
-                datasets: [{ data: [distribution['2G'] || 0, distribution['3G'] || 0, distribution['4G'] || 0], backgroundColor: ['#10b981', '#f59e0b', '#00a3c4'] }]
+                datasets: [{ data: [distribution['2G'] || 0, distribution['3G'] || 0, distribution['4G'] || 0], backgroundColor: [API.COLORS.tech['2G'], API.COLORS.tech['3G'], API.COLORS.tech['4G']] }]
             });
             
             chartManager.createBarChart('countryChart', {
                 labels: distribution.countries?.map(c => c.name) || [],
-                datasets: [{ label: 'Nombre de sites', data: distribution.countries?.map(c => c.count) || [], backgroundColor: '#00a3c4' }]
+                datasets: [{ label: 'Nombre de sites', data: distribution.countries?.map(c => c.count) || [], backgroundColor: API.COLORS.tech['4G'] }]
             });
         }
     } catch (error) {
@@ -272,6 +286,8 @@ function initRanFilters() {
             await loadWorstSitesTable();
             await loadRanCharts();
             await loadRanMapMarkers();
+            // Afficher les frontières GeoJSON du pays sélectionné
+            await showRanCountryBorder(ranFilters.country);
         });
     }
     
@@ -288,8 +304,52 @@ function initRanFilters() {
             await loadWorstSitesTable();
             await loadRanCharts();
             await loadRanMapMarkers();
-            if (ranMap) ranMap.flyTo([8.0, 2.0], 5);
+            // Supprimer la couche frontières et revenir à la vue globale
+            await showRanCountryBorder('all');
         });
+    }
+}
+
+/**
+ * Affiche les frontières GeoJSON du pays sélectionné sur la carte KPIs RAN.
+ * Utilise le même endpoint PHP que le dashboard (données/cache partagés).
+ * @param {string} countryCode - Code ISO-2 (ex: 'CI', 'BJ') ou 'all' pour vue globale
+ */
+async function showRanCountryBorder(countryCode) {
+    if (!ranMap) return;
+
+    // Supprimer la couche frontières précédente avant d'en créer une nouvelle
+    if (ranCountryBorderLayer) {
+        ranMap.removeLayer(ranCountryBorderLayer);
+        ranCountryBorderLayer = null;
+    }
+
+    // Pas de pays spécifique : revenir à la vue globale Afrique de l'Ouest
+    if (!countryCode || countryCode === 'all') {
+        ranMap.flyTo([8.0, 2.0], 5);
+        return;
+    }
+
+    try {
+        const res = await fetch(`../netinsight360-backend/api/map/get-country-border.php?cc=${encodeURIComponent(countryCode)}`);
+        if (!res.ok) return;
+        const geojson = await res.json();
+
+        // Ajouter la couche GeoJSON avec bordure visible et léger fond translucide
+        ranCountryBorderLayer = L.geoJSON(geojson, {
+            style: {
+                color: '#1e3a5f',
+                weight: 2.5,
+                opacity: 0.9,
+                fillColor: '#1e3a5f',
+                fillOpacity: 0.04
+            }
+        }).addTo(ranMap);
+
+        // Zoomer automatiquement pour que tout le pays soit visible
+        ranMap.fitBounds(ranCountryBorderLayer.getBounds(), { padding: [60, 60], maxZoom: 8 });
+    } catch (err) {
+        console.warn('[KPIs RAN] Frontières pays non disponibles:', err);
     }
 }
 
@@ -356,6 +416,17 @@ function initRanReports() {
             } catch (error) { console.error('[KPIs RAN] Erreur export PDF:', error); }
         });
     }
+
+    const exportExcelBtn = document.getElementById('exportExcel');
+    if (exportExcelBtn) {
+        exportExcelBtn.addEventListener('click', async () => {
+            try {
+                const result = await API.exportExcel('worst_sites', { domain: 'RAN', ...ranFilters });
+                if (result.success && result.url) window.open(result.url, '_blank');
+                else alert('Export Excel généré dans le dossier exports.');
+            } catch (error) { console.error('[KPIs RAN] Erreur export Excel:', error); }
+        });
+    }
 }
 
 /**
@@ -377,7 +448,7 @@ async function showRanSiteDetails(siteId) {
 
         // Barre de stats (comme image 2)
         const statusLabel = site.status === 'good' ? 'Bon' : (site.status === 'warning' ? 'Alerte' : 'Critique');
-        const statusColor = site.status === 'good' ? '#10b981' : (site.status === 'warning' ? '#f59e0b' : '#ef4444');
+        const statusColor = API.statusColor(site.status);
         const lastDate = site.latest_kpis?.kpi_date ?? 'N/A';
         const lastImport = site.latest_kpis?.imported_at ? site.latest_kpis.imported_at.substring(0, 16).replace('T', ' ') : 'N/A';
         const worstKpiName = site.worst_kpi?.worst_kpi_name ?? (site.kpis_by_tech?.[0]?.worst_kpi_name ?? 'N/A');
@@ -411,10 +482,10 @@ async function showRanSiteDetails(siteId) {
             if (techs.length === 0) {
                 worstDiv.innerHTML = '<p class="text-muted small">Aucune donnée disponible</p>';
             } else {
-                const techColors = { '2G': '#10b981', '3G': '#00a3c4', '4G': '#f59e0b' };
+                const techColors = API.COLORS.tech;
                 worstDiv.innerHTML = techs.map(t => {
                     const tc = techColors[t.technology] || '#6c757d';
-                    const kpiGlobalColor = t.status === 'good' ? '#10b981' : (t.status === 'warning' ? '#f59e0b' : '#ef4444');
+                    const kpiGlobalColor = API.statusColor(t.status);
                     const worstLine = t.worst_kpi_name
                         ? `<div style="font-size:0.78rem;color:#ef4444"><i class="bi bi-arrow-down-short"></i> <strong>${escapeHtml(t.worst_kpi_name)}</strong> : ${t.worst_kpi_value}%</div>`
                         : `<div style="font-size:0.78rem" class="text-muted">Aucun KPI dégradant</div>`;
@@ -445,18 +516,34 @@ async function showRanSiteDetails(siteId) {
             const kpiColumn   = KPI_LABEL_TO_COLUMN[worstLabel] ?? 'kpi_global';
             const kpiDisplay  = worstLabel ?? 'KPI Global';
 
-            const trends = await API.getKpiTrends(siteId, kpiColumn, 14);
+            const trends = await API.getKpiTrends(siteId, kpiColumn, 14, worstTech?.technology ?? null);
             if (trends.success && trends.data) {
-                const trendColor = site.status === 'good' ? '#10b981' : (site.status === 'warning' ? '#f59e0b' : '#ef4444');
+                const trendColor = API.statusColor(site.status);
+                // Si les colonnes KPI individuelles sont vides en DB, l'API bascule sur kpi_global
+                const usedLabel = trends.data.used_fallback ? 'KPI Global' : kpiDisplay;
                 chartManager.createLineChart('trend5DaysChart', {
                     labels: trends.data.labels,
                     datasets: [{
-                        label: `${site.name} — ${kpiDisplay} (%)`,
+                        label: `${site.name} — ${usedLabel} (%)`,
                         data: trends.data.values,
                         borderColor: trendColor,
                         backgroundColor: trendColor + '33',
                         fill: true
                     }]
+                }, {
+                    // Forcer l'axe Y en 0-100% pour éviter l'auto-scale par défaut de Chart.js
+                    // (sans ça, des valeurs toutes à 0 ou proches produisent un axe 0–1)
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 100,
+                            ticks: { callback: v => v + '%' }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+                        tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}%` } }
+                    }
                 });
             }
         } catch (trendErr) {
@@ -471,6 +558,31 @@ async function showRanSiteDetails(siteId) {
                 if (!s) return;
                 const msg = `📡 *Site: ${s.name} (${s.country_name})*\nID: ${s.id}\nKPI Global: ${s.kpi_global}%\nVendor: ${s.vendor}\nTechno: ${s.technology}\nStatut: ${s.status}`;
                 window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+            };
+        }
+
+        // Boutons export de fiche site dans le modal
+        const exportSiteCsvBtn = document.getElementById('exportSiteCsv');
+        if (exportSiteCsvBtn) {
+            exportSiteCsvBtn.onclick = async () => {
+                const s = window.currentSiteForModal;
+                if (!s) return;
+                try {
+                    const result = await API.exportSite(s.id, 'csv');
+                    if (result.success && result.url) window.open(result.url, '_blank');
+                } catch (e) { console.error('[KPIs RAN] Export CSV site:', e); }
+            };
+        }
+
+        const exportSitePdfBtn = document.getElementById('exportSitePdf');
+        if (exportSitePdfBtn) {
+            exportSitePdfBtn.onclick = async () => {
+                const s = window.currentSiteForModal;
+                if (!s) return;
+                try {
+                    const result = await API.exportSite(s.id, 'pdf');
+                    if (result.success && result.url) window.open(result.url, '_blank');
+                } catch (e) { console.error('[KPIs RAN] Export PDF site:', e); }
             };
         }
     } catch (error) {

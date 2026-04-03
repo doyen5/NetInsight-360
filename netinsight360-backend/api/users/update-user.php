@@ -78,13 +78,12 @@ try {
 
     // Audit
     $pdo->prepare("
-        INSERT INTO audit_logs (user_id, action, entity_type, entity_id, new_value, ip_address, user_agent, created_at)
-        VALUES (?, 'update_user', 'user', ?, ?, ?, ?, NOW())
+        INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
+        VALUES (?, 'UPDATE_USER', 'user', ?, ?, ?, NOW())
     ")->execute([
         $_SESSION['user_id'], (string)$userId,
         json_encode(['name' => $name, 'email' => $email, 'role' => $role, 'status' => $status]),
-        $_SERVER['REMOTE_ADDR'] ?? null,
-        $_SERVER['HTTP_USER_AGENT'] ?? null
+        $_SERVER['REMOTE_ADDR'] ?? null
     ]);
 
     echo json_encode(['success' => true, 'message' => 'Utilisateur mis à jour avec succès']);

@@ -100,8 +100,9 @@ class ChartManager {
      * Crée un graphique radar
      * @param {string} canvasId - ID du canvas
      * @param {object} data - Données du graphique
+     * @param {object} options - Options Chart.js (optionnel)
      */
-    createRadarChart(canvasId, data) {
+    createRadarChart(canvasId, data, options = {}) {
         const ctx = document.getElementById(canvasId)?.getContext('2d');
         if (!ctx) return null;
         
@@ -109,14 +110,21 @@ class ChartManager {
             this.charts[canvasId].destroy();
         }
         
+        const defaultOptions = {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: { r: { beginAtZero: true } },
+            plugins: { legend: { position: 'bottom' } }
+        };
+        
+        // deep merge des scales si fourni
+        const merged = { ...defaultOptions, ...options };
+        if (options.scales) merged.scales = { ...defaultOptions.scales, ...options.scales };
+        
         this.charts[canvasId] = new Chart(ctx, {
             type: 'radar',
             data: data,
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                scales: { r: { beginAtZero: true, max: 100 } }
-            }
+            options: merged
         });
         
         return this.charts[canvasId];

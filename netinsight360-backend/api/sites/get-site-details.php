@@ -1,12 +1,12 @@
 ﻿<?php
 /**
- * NetInsight 360 - API: DÃ©tails d'un site
+ * NetInsight 360 - API: Détails d'un site
  *
  * Retourne toutes les informations d'un site ainsi que :
- *  - les derniers KPIs (kpis_ran) avec le KPI dÃ©gradant (worst_kpi_name / worst_kpi_value)
- *  - les coordonnÃ©es GPS (prioritÃ© sites.latitude, fallback site_mapping)
+ *  - les derniers KPIs (kpis_ran) avec le KPI dégradant (worst_kpi_name / worst_kpi_value)
+ *  - les coordonnées GPS (priorité sites.latitude, fallback site_mapping)
  *
- * Le KPI dÃ©gradant est affichÃ© dans le modal "DÃ©tails du site" cÃ´tÃ© frontend.
+ * Le KPI dégradant est affiché dans le modal "Détails du site" côté frontend.
  */
 
 require_once __DIR__ . '/../cors.php';
@@ -24,7 +24,7 @@ try {
     }
 
     // --- Informations du site ---
-    // CoordonnÃ©es : prioritÃ© sites.latitude (peuplÃ©e par import depuis sites_database)
+    // Coordonnées : priorité sites.latitude (peuplée par import depuis sites_database)
     // Fallback : site_mapping si sites.latitude = 0
     $stmt = $pdo->prepare("
         SELECT
@@ -41,7 +41,7 @@ try {
     $site = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$site) {
-        echo json_encode(['success' => false, 'error' => 'Site non trouvÃ©']);
+        echo json_encode(['success' => false, 'error' => 'Site non trouvé']);
         exit;
     }
 
@@ -70,10 +70,10 @@ try {
     $kpiStmt->execute([$siteId]);
     $kpiRows = $kpiStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // KPI le plus rÃ©cent (toutes technos confondues)
+    // KPI le plus récent (toutes technos confondues)
     $latestKpi = $kpiRows[0] ?? null;
 
-    // KPI dÃ©gradant global : ligne avec le kpi_global le plus bas du jour
+    // KPI dégradant global : ligne avec le kpi_global le plus bas du jour
     $worstKpi = null;
     foreach ($kpiRows as $row) {
         if ($row['kpi_date'] === date('Y-m-d')) {
@@ -83,12 +83,12 @@ try {
         }
     }
 
-    // Typage numÃ©rique
+    // Typage numérique
     $site['latitude']   = floatval($site['latitude']);
     $site['longitude']  = floatval($site['longitude']);
     $site['kpi_global'] = round(floatval($site['kpi_global']), 2);
 
-    // Construire le tableau de KPIs par technologie (le plus rÃ©cent par techno)
+    // Construire le tableau de KPIs par technologie (le plus récent par techno)
     $kpiByTech = [];
     foreach ($kpiRows as $row) {
         $tech = $row['technology'];

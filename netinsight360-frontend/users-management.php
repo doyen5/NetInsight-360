@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../netinsight360-backend/app/helpers/AuthHelper.php';
 AuthHelper::requireLogin();
 $user = AuthHelper::getUser();
@@ -66,12 +66,13 @@ if ($userRole !== 'ADMIN') {
             <a href="map-view.php"    class="nav-link"><i class="bi bi-map"></i> Cartographie</a>
             <a href="users-management.php" class="nav-link active"><i class="bi bi-people"></i> Gestion Users</a>
             <a href="alerts.php"      class="nav-link"><i class="bi bi-bell"></i> Alertes</a>
+            <a href="admin-tools.php" class="nav-link admin-only"><i class="bi bi-tools"></i> Outils Admin</a>
         </nav>
     </div>
 
     <div class="main-content">
         <div class="header-bar">
-            <div class="welcome-message"><i class="bi bi-person-circle"></i> Bienvenue, <span id="userName">Chargement...</span> ðŸ‘‹</div>
+            <div class="welcome-message"><i class="bi bi-person-circle"></i> Bienvenue, <span id="userName">Chargement...</span> 👋</div>
             <div class="header-right">
                 <div class="date-time" id="currentDateTime"><i class="bi bi-calendar3"></i> <span>Chargement...</span></div>
                 <div class="user-info-header">
@@ -81,13 +82,13 @@ if ($userRole !== 'ADMIN') {
                         <div class="user-role" id="headerUserRole">Chargement...</div>
                     </div>
                 </div>
-                <button class="logout-btn-header" id="logoutBtn"><i class="bi bi-box-arrow-right"></i> DÃ©connexion</button>
+                <button class="logout-btn-header" id="logoutBtn"><i class="bi bi-box-arrow-right"></i> Déconnexion</button>
             </div>
         </div>
 
         <div class="page-header mb-4">
             <h2><i class="bi bi-people-fill"></i> Gestion des Utilisateurs</h2>
-            <p class="text-muted">Administration des comptes, rÃ´les et permissions</p>
+            <p class="text-muted">Administration des comptes, rôles et permissions</p>
         </div>
 
         <!-- KPI Cards -->
@@ -101,9 +102,9 @@ if ($userRole !== 'ADMIN') {
         <!-- Filtres + bouton Ajouter -->
         <div class="filter-bar mb-4">
             <div class="d-flex gap-3 flex-wrap align-items-center">
-                <div class="filter-group"><label><i class="bi bi-person-gear"></i> RÃ´le</label>
+                <div class="filter-group"><label><i class="bi bi-person-gear"></i> Rôle</label>
                     <select id="filterRole">
-                        <option value="all">Tous les rÃ´les</option>
+                        <option value="all">Tous les rôles</option>
                         <option value="ADMIN">Administrateur</option>
                         <option value="FO_ANALYSTE">Agent Analyste</option>
                         <option value="CUSTOMER">Agent Visualiseur</option>
@@ -113,7 +114,7 @@ if ($userRole !== 'ADMIN') {
                     <input type="text" id="searchUser" placeholder="Rechercher par nom, email...">
                     <button id="searchBtn"><i class="bi bi-arrow-right"></i></button>
                 </div>
-                <button class="btn btn-outline-secondary" id="resetFiltersBtn"><i class="bi bi-arrow-repeat"></i> RÃ©initialiser</button>
+                <button class="btn btn-outline-secondary" id="resetFiltersBtn"><i class="bi bi-arrow-repeat"></i> Réinitialiser</button>
                 <button class="btn btn-success ms-auto" id="addUserBtn" data-bs-toggle="modal" data-bs-target="#addUserModal">
                     <i class="bi bi-person-plus-fill"></i> Ajouter un utilisateur
                 </button>
@@ -127,7 +128,7 @@ if ($userRole !== 'ADMIN') {
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead class="table-light">
-                        <tr><th>#</th><th>Nom</th><th>Email</th><th>RÃ´le</th><th>CrÃ©Ã© le</th><th>DerniÃ¨re connexion</th><th>Statut</th><th>Actions</th></tr>
+                        <tr><th>#</th><th>Nom</th><th>Email</th><th>Rôle</th><th>Créé le</th><th>Dernière connexion</th><th>Statut</th><th>Actions</th></tr>
                     </thead>
                     <tbody id="usersTableBody"><tr><td colspan="8" class="text-center">Chargement...</td></tr></tbody>
                 </table>
@@ -137,13 +138,13 @@ if ($userRole !== 'ADMIN') {
 
         <!-- Graphiques -->
         <div class="row g-4 mb-4">
-            <div class="col-md-6"><div class="stat-card"><h6><i class="bi bi-pie-chart"></i> RÃ©partition par rÃ´le</h6><canvas id="roleChart" height="250"></canvas></div></div>
-            <div class="col-md-6"><div class="stat-card"><h6><i class="bi bi-graph-up"></i> Ã‰volution des inscriptions</h6><canvas id="evolutionChart" height="250"></canvas></div></div>
+            <div class="col-md-6"><div class="stat-card"><h6><i class="bi bi-pie-chart"></i> Répartition par rôle</h6><canvas id="roleChart" height="250"></canvas></div></div>
+            <div class="col-md-6"><div class="stat-card"><h6><i class="bi bi-graph-up"></i> Évolution des inscriptions</h6><canvas id="evolutionChart" height="250"></canvas></div></div>
         </div>
 
-        <!-- ActivitÃ© rÃ©cente -->
+        <!-- Activité récente -->
         <div class="row g-4">
-            <div class="col-md-12"><div class="stat-card"><h6><i class="bi bi-clock-history"></i> ActivitÃ© rÃ©cente</h6><div id="recentActivityList"><p class="text-center text-muted">Chargement...</p></div></div></div>
+            <div class="col-md-12"><div class="stat-card"><h6><i class="bi bi-clock-history"></i> Activité récente</h6><div id="recentActivityList"><p class="text-center text-muted">Chargement...</p></div></div></div>
         </div>
     </div>
 
@@ -159,7 +160,7 @@ if ($userRole !== 'ADMIN') {
                     <input type="hidden" id="userId">
                     <div class="mb-3"><label class="form-label">Nom complet *</label><input type="text" class="form-control" id="userName" required></div>
                     <div class="mb-3"><label class="form-label">Adresse email *</label><input type="email" class="form-control" id="userEmail" required></div>
-                    <div class="mb-3"><label class="form-label">RÃ´le *</label>
+                    <div class="mb-3"><label class="form-label">Rôle *</label>
                         <select class="form-control" id="userRole">
                             <option value="ADMIN">Administrateur</option>
                             <option value="FO_ANALYSTE">Agent Analyste</option>
@@ -191,7 +192,7 @@ if ($userRole !== 'ADMIN') {
             </div>
             <div class="modal-body text-center">
                 <i class="bi bi-exclamation-triangle-fill text-danger fs-1"></i>
-                <p class="mt-2">Supprimer <strong id="deleteUserName"></strong> ?<br><small class="text-muted">Cette action est irrÃ©versible.</small></p>
+                <p class="mt-2">Supprimer <strong id="deleteUserName"></strong> ?<br><small class="text-muted">Cette action est irréversible.</small></p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
@@ -202,11 +203,11 @@ if ($userRole !== 'ADMIN') {
 
     <div id="logoutConfirmModal" class="logout-confirm-modal">
         <div class="logout-confirm-card">
-            <i class="bi bi-box-arrow-right"></i><h3>DÃ©connexion</h3>
-            <p>ÃŠtes-vous sÃ»r de vouloir vous dÃ©connecter ?</p>
+            <i class="bi bi-box-arrow-right"></i><h3>Déconnexion</h3>
+            <p>Êtes-vous sûr de vouloir vous déconnecter ?</p>
             <div class="logout-confirm-buttons">
                 <button class="btn-cancel-logout" id="cancelLogoutBtn"><i class="bi bi-x-lg"></i> Annuler</button>
-                <button class="btn-confirm-logout" id="confirmLogoutBtn"><i class="bi bi-check-lg"></i> DÃ©connecter</button>
+                <button class="btn-confirm-logout" id="confirmLogoutBtn"><i class="bi bi-check-lg"></i> Déconnecter</button>
             </div>
         </div>
     </div>
@@ -215,6 +216,7 @@ if ($userRole !== 'ADMIN') {
     <script src="js/api.js"></script>
     <script src="js/logout.js?v=2"></script>
     <script src="js/app.js"></script>
+    <script src="js/charts.js"></script>
     <script src="js/users-management.js"></script>
 </body>
 </html>

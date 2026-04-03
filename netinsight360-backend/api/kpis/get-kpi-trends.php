@@ -12,10 +12,11 @@ require_once __DIR__ . '/../auth/require-auth.php';
 require_once __DIR__ . '/../../config/database.php';
 
 try {
-    $pdo     = Database::getLocalConnection();
-    $siteId  = $_GET['site_id']  ?? '';
-    $kpiName = $_GET['kpi_name'] ?? 'RNA';
-    $days    = max(5, min(30, intval($_GET['days'] ?? 7)));
+    $pdo        = Database::getLocalConnection();
+    $siteId     = $_GET['site_id']     ?? '';
+    $kpiName    = $_GET['kpi_name']    ?? 'RNA';
+    $technology = $_GET['technology']  ?? null;
+    $days       = max(5, min(30, intval($_GET['days'] ?? 7)));
 
     if (empty($siteId)) {
         http_response_code(400);
@@ -42,26 +43,58 @@ try {
         exit;
     }
 
+    // Récupérer les N dates réelles disponibles pour ce site
+    // On filtre par technologie si fournie, afin d'éviter des dates sans données pour cette techno
+    $techFilter = $technology ? 'AND technology = ?' : '';
+    $stmtDates  = $pdo->prepare("
+        SELECT DISTINCT kpi_date
+        FROM kpis_ran
+        WHERE site_id = ? $techFilter
+        ORDER BY kpi_date DESC
+        LIMIT ?
+    ");
+    $dateParams = $technology ? [$siteId, $technology, $days] : [$siteId, $days];
+    $stmtDates->execute($dateParams);
+    $dates = array_reverse($stmtDates->fetchAll(PDO::FETCH_COLUMN));
+
+    // Vérifier si la colonne demandée a réellement des données pour ce site/technologie.
+    // Dans certains cas, l'import ne remplit que kpi_global + worst_kpi_name/value
+    // et laisse les colonnes KPI individuelles à NULL.
+    // Si c'est le cas, on bascule sur kpi_global (toujours rempli) pour avoir un trend utile.
+    if ($kpiName !== 'kpi_global') {
+        $chk = $pdo->prepare("
+            SELECT COUNT(*) AS cnt
+            FROM kpis_ran
+            WHERE site_id = ? $techFilter AND `$kpiName` IS NOT NULL
+            LIMIT 1
+        ");
+        $chk->execute($technology ? [$siteId, $technology] : [$siteId]);
+        if ((int)$chk->fetchColumn() === 0) {
+            // Colonne individuelle vide : repli sur kpi_global
+            $kpiName = 'kpi_global';
+        }
+    }
+
     $labels = [];
     $values = [];
 
-    for ($i = $days - 1; $i >= 0; $i--) {
-        $date     = date('Y-m-d', strtotime("-$i days"));
+    foreach ($dates as $date) {
         $labels[] = date('d/m', strtotime($date));
 
         $stmt = $pdo->prepare("
             SELECT ROUND(AVG(`$kpiName`), 2) AS val
             FROM kpis_ran
-            WHERE site_id = ? AND kpi_date = ?
+            WHERE site_id = ? AND kpi_date = ? $techFilter
         ");
-        $stmt->execute([$siteId, $date]);
+        $params = $technology ? [$siteId, $date, $technology] : [$siteId, $date];
+        $stmt->execute($params);
         $row      = $stmt->fetch(PDO::FETCH_ASSOC);
         $values[] = $row['val'] !== null ? floatval($row['val']) : null;
     }
 
     echo json_encode([
         'success' => true,
-        'data'    => ['labels' => $labels, 'values' => $values, 'kpi_name' => $kpiName]
+        'data'    => ['labels' => $labels, 'values' => $values, 'kpi_name' => $kpiName, 'used_fallback' => $kpiName === 'kpi_global']
     ]);
 
 } catch (Exception $e) {

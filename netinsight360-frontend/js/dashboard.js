@@ -9,6 +9,7 @@
 let dashboardMap = null;
 let dashboardMarkers = [];
 let dashboardCharts = {};
+let countryBorderLayer = null; // Couche Leaflet GeoJSON affichant les frontières du pays sélectionné
 
 /**
  * Affiche un toast en bas à droite avec la date/heure de la dernière connexion
@@ -79,6 +80,50 @@ function initDashboardMap() {
 }
 
 /**
+ * Affiche les frontières GeoJSON du pays sélectionné sur la carte.
+ * Si country = 'all' ou absent, supprime la couche existante.
+ * @param {string} countryCode - Code ISO-2 du pays (ex: 'CI') ou 'all'
+ */
+async function showCountryBorder(countryCode) {
+    if (!dashboardMap) return;
+
+    // Supprimer la couche précédente avant d'en créer une nouvelle
+    if (countryBorderLayer) {
+        dashboardMap.removeLayer(countryBorderLayer);
+        countryBorderLayer = null;
+    }
+
+    // Pas de pays spécifique : remettre la vue globale Afrique de l'Ouest
+    if (!countryCode || countryCode === 'all') {
+        dashboardMap.flyTo([8.0, 2.0], 5);
+        return;
+    }
+
+    try {
+        // Appel à notre endpoint PHP qui sert le GeoJSON (depuis le dossier data/geojson/ local)
+        const res = await fetch(`../netinsight360-backend/api/map/get-country-border.php?cc=${encodeURIComponent(countryCode)}`);
+        if (!res.ok) return;
+        const geojson = await res.json();
+
+        // Ajouter la couche GeoJSON avec un style de frontière visible
+        countryBorderLayer = L.geoJSON(geojson, {
+            style: {
+                color: '#1e3a5f',      // Bleu foncé — cohérent avec la charte graphique
+                weight: 2.5,
+                opacity: 0.9,
+                fillColor: '#1e3a5f',
+                fillOpacity: 0.04     // Léger fond pour délimiter visuellement le pays
+            }
+        }).addTo(dashboardMap);
+
+        // Zoomer automatiquement sur le pays avec du padding pour ne pas coller les bords
+        dashboardMap.fitBounds(countryBorderLayer.getBounds(), { padding: [60, 60], maxZoom: 8 });
+    } catch (err) {
+        console.warn('[Dashboard] Frontières pays non disponibles:', err);
+    }
+}
+
+/**
  * Charge les marqueurs sur la carte
  */
 async function loadMapMarkers(filters = {}) {
@@ -98,7 +143,7 @@ async function loadMapMarkers(filters = {}) {
             const lng = Number(site.longitude);
             if (lat === 0 && lng === 0) return;
 
-            const color = site.status === 'good' ? '#10b981' : (site.status === 'warning' ? '#f59e0b' : '#ef4444');
+            const color = API.statusColor(site.status);
             const icon = L.divIcon({
                 html: `<div style="background:${color}; width:12px; height:12px; border-radius:50%; border:2px solid white;"></div>`,
                 iconSize: [12, 12]
@@ -119,9 +164,14 @@ async function loadMapMarkers(filters = {}) {
             `);
             dashboardMarkers.push(marker);
         });
+        // Badge : X affichés / Y total
+        API.updateMapCountBadge(result);
     } catch (error) {
         console.error('[Dashboard] Erreur chargement marqueurs:', error);
     }
+
+    // Afficher les frontières GeoJSON du pays sélectionné et zoomer dessus
+    await showCountryBorder(filters.country || 'all');
 }
 
 /**
@@ -246,7 +296,6 @@ function initDashboardFilters() {
             
             await loadTopWorstSites(filters);
             await loadMapMarkers(filters);
-            // Mettre à jour les stats avec les filtres appliqués
             await loadDashboardStats(filters);
         });
     }
@@ -262,7 +311,6 @@ function initDashboardFilters() {
             await loadTopWorstSites({});
             await loadMapMarkers({});
             await loadDashboardStats({});
-            if (dashboardMap) dashboardMap.flyTo([8.0, 2.0], 5);
         });
     }
 }
@@ -343,12 +391,12 @@ function initDashboardReports() {
                         const avgRecent   = avg(ds1.data);
                         const avgPrevious = avg(ds2.data);
                         const diff = (parseFloat(avgRecent) - parseFloat(avgPrevious)).toFixed(2);
-                        const diffColor = diff >= 0 ? '#10b981' : '#ef4444';
+                        const diffColor = diff >= 0 ? API.COLORS.trend.up : API.COLORS.trend.down;
                         const techLabels = result.data.labels || [];
                         const techCells = techLabels.map((t, i) => {
                             const v1 = ds1.data[i] ?? 0, v2 = ds2.data[i] ?? 0;
                             const d = (v1 - v2).toFixed(1);
-                            const c = d >= 0 ? '#10b981' : '#ef4444';
+                            const c = d >= 0 ? API.COLORS.trend.up : API.COLORS.trend.down;
                             return `<div class="text-center px-3"><span class="text-muted">${t}</span><br><strong>${v1}%</strong> <span style="color:${c};font-size:0.75rem">${d >= 0 ? '+':''}${d}%</span></div>`;
                         }).join('');
                         statsBar.innerHTML = `
@@ -403,7 +451,13 @@ function initDashboardReports() {
     if (exportExcelBtn) {
         exportExcelBtn.addEventListener('click', async () => {
             try {
-                const result = await API.exportExcel('dashboard');
+                const filters = {
+                    country: document.getElementById('filterCountry')?.value || 'all',
+                    vendor:  document.getElementById('filterVendor')?.value  || 'all',
+                    tech:    document.getElementById('filterTech')?.value    || 'all',
+                    domain:  document.getElementById('filterDomain')?.value  || 'all',
+                };
+                const result = await API.exportExcel('dashboard', filters);
                 if (result.success && result.url) window.open(result.url, '_blank');
                 else alert('Rapport Excel généré dans le dossier exports.');
             } catch (error) {
@@ -416,7 +470,13 @@ function initDashboardReports() {
     if (exportPdfBtn) {
         exportPdfBtn.addEventListener('click', async () => {
             try {
-                const result = await API.exportPdf({ type: 'dashboard' });
+                const filters = {
+                    country: document.getElementById('filterCountry')?.value || 'all',
+                    vendor:  document.getElementById('filterVendor')?.value  || 'all',
+                    tech:    document.getElementById('filterTech')?.value    || 'all',
+                    domain:  document.getElementById('filterDomain')?.value  || 'all',
+                };
+                const result = await API.exportPdf({ type: 'dashboard', ...filters });
                 if (result.success && result.url) window.open(result.url, '_blank');
             } catch (error) {
                 console.error('[Dashboard] Erreur export PDF:', error);

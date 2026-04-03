@@ -87,6 +87,7 @@ $userRole = AuthHelper::getUserRole();
                 <i class="bi bi-people"></i> Gestion Users
             </a>
             <a href="alerts.php" class="nav-link"><i class="bi bi-bell"></i> Alertes</a>
+            <a href="admin-tools.php" class="nav-link admin-only"><i class="bi bi-tools"></i> Outils Admin</a>
         </nav>
     </div>
 

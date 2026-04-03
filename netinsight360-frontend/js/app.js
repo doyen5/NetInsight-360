@@ -9,9 +9,9 @@
 document.addEventListener('DOMContentLoaded', async function() {
     // Vérifier l'authentification sur les pages protégées
     const protectedPages = ['dashboard.html', 'kpis-ran.html', 'kpis-core.html', 
-                            'map-view.html', 'users-management.html', 'alerts.html',
+                            'map-view.html', 'users-management.html', 'alerts.html', 'admin-tools.html',
                             'dashboard.php', 'kpis-ran.php', 'kpis-core.php',
-                            'map-view.php', 'users-management.php', 'alerts.php'];
+                            'map-view.php', 'users-management.php', 'alerts.php', 'admin-tools.php'];
     const currentPage = window.location.pathname.split('/').pop();
     
     // Si on est sur une page protégée

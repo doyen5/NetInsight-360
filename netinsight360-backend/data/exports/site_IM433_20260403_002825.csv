@@ -1,0 +1,39 @@
+﻿"Site ID";Nom;Pays;Vendor;Technologie;"KPI Global (%)";Statut;"KPI Dégradant";"Valeur KPI Dégradant (%)";Date
+IM433;HANA_R;CI;Huawei;2G;99.03;good;"Succès Handover";96.00;2026-04-03
+IM433;HANA_R;CI;Huawei;3G;91.32;warning;"RRC PS SR";96.92;2026-04-03
+IM433;HANA_R;CI;Huawei;4G;57.73;critical;"HO Inter-freq";26.42;2026-04-03
+IM433;HANA_R;CI;Huawei;2G;100.00;good;"Succès Handover";98.50;2026-04-02
+IM433;HANA_R;CI;Huawei;2G;100.00;good;"SDCCH Chute";99.23;2026-04-02
+IM433;HANA_R;CI;Huawei;2G;97.91;good;"Succès Handover";94.12;2026-04-02
+IM433;HANA_R;CI;Huawei;2G;99.41;good;"Taux de chute appel";96.98;2026-04-02
+IM433;HANA_R;CI;Huawei;3G;100.00;good;"Soft HO";99.65;2026-04-02
+IM433;HANA_R;CI;Huawei;3G;100.00;good;"RRC PS SR";98.84;2026-04-02
+IM433;HANA_R;CI;Huawei;3G;95.85;good;"RRC PS SR";97.23;2026-04-02
+IM433;HANA_R;CI;Huawei;3G;95.86;good;"RRC PS SR";96.58;2026-04-02
+IM433;HANA_R;CI;Huawei;4G;92.33;warning;"ERAB SR";85.93;2026-04-02
+IM433;HANA_R;CI;Huawei;4G;61.68;critical;"ERAB SR";31.68;2026-04-02
+IM433;HANA_R;CI;Huawei;4G;97.91;good;"Session SR";97.00;2026-04-02
+IM433;HANA_R;CI;Huawei;4G;60.42;critical;"ERAB SR";28.66;2026-04-02
+IM433;HANA_R;CI;Huawei;2G;97.71;good;"Succès Handover";93.44;2026-04-01
+IM433;HANA_R;CI;Huawei;3G;91.84;warning;"RRC PS SR";97.29;2026-04-01
+IM433;HANA_R;CI;Huawei;4G;59.42;critical;"HO Inter-freq";27.78;2026-04-01
+IM433;HANA_R;CI;Huawei;2G;97.67;good;"Succès Handover";91.18;2026-03-31
+IM433;HANA_R;CI;Huawei;2G;99.84;good;"Taux de chute appel";97.56;2026-03-31
+IM433;HANA_R;CI;Huawei;3G;100.00;good;"RRC PS SR";98.64;2026-03-31
+IM433;HANA_R;CI;Huawei;3G;98.04;good;"RRC PS SR";97.86;2026-03-31
+IM433;HANA_R;CI;Huawei;3G;95.43;good;"RRC PS SR";97.34;2026-03-31
+IM433;HANA_R;CI;Huawei;4G;99.06;good;"Session SR";97.00;2026-03-31
+IM433;HANA_R;CI;Huawei;4G;79.01;critical;"ERAB SR";61.69;2026-03-31
+IM433;HANA_R;CI;Huawei;4G;70.68;critical;"ERAB SR";48.81;2026-03-31
+IM433;HANA_R;CI;Huawei;2G;100.00;good;"SDCCH Chute";98.67;2026-03-29
+IM433;HANA_R;CI;Huawei;2G;100.00;good;"Succès Handover";98.50;2026-03-29
+IM433;HANA_R;CI;Huawei;3G;100.00;good;"RRC PS SR";99.54;2026-03-29
+IM433;HANA_R;CI;Huawei;3G;100.00;good;"RRC PS SR";99.32;2026-03-29
+IM433;HANA_R;CI;Huawei;4G;98.84;good;"Session SR";97.00;2026-03-29
+IM433;HANA_R;CI;Huawei;4G;98.34;good;"Session SR";97.00;2026-03-29
+IM433;HANA_R;CI;Huawei;2G;99.37;good;"Taux de chute appel";96.15;2026-03-28
+IM433;HANA_R;CI;Huawei;3G;95.31;good;"RRC PS SR";97.54;2026-03-28
+IM433;HANA_R;CI;Huawei;4G;63.25;critical;"ERAB SR";33.19;2026-03-28
+IM433;HANA_R;CI;Huawei;2G;99.20;good;"Succès Handover";95.65;2026-03-26
+IM433;HANA_R;CI;Huawei;3G;99.81;good;"RRC PS SR";97.08;2026-03-26
+IM433;HANA_R;CI;Huawei;4G;89.40;critical;"HO Inter-freq";82.25;2026-03-26

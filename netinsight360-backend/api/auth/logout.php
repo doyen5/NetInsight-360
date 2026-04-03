@@ -61,6 +61,10 @@ if (isset($_COOKIE['remember_token'])) {
     );
 }
 
+// Sauvegarder l'identifiant avant la destruction de session
+$loggedUserId    = $_SESSION['user_id']    ?? null;
+$loggedUserEmail = $_SESSION['user_email'] ?? null;
+
 // Détruire complètement la session
 if (session_status() === PHP_SESSION_ACTIVE) {
     // Vider le tableau de session
@@ -84,17 +88,17 @@ if (session_status() === PHP_SESSION_ACTIVE) {
     session_destroy();
 }
 
-// Journaliser la déconnexion (optionnel)
-if ($pdo && isset($_SESSION['user_id'])) {
+// Journaliser la déconnexion
+if ($pdo && $loggedUserId !== null) {
     try {
         $logStmt = $pdo->prepare("
-            INSERT INTO audit_logs (user_id, action, entity_type, ip_address, user_agent, created_at)
-            VALUES (?, 'logout', 'session', ?, ?, NOW())
+            INSERT INTO audit_logs (user_id, user_email, action, entity_type, ip_address, created_at)
+            VALUES (?, ?, 'LOGOUT', 'session', ?, NOW())
         ");
         $logStmt->execute([
-            $_SESSION['user_id'] ?? null,
-            $_SERVER['REMOTE_ADDR'] ?? null,
-            $_SERVER['HTTP_USER_AGENT'] ?? null
+            $loggedUserId,
+            $loggedUserEmail,
+            $_SERVER['REMOTE_ADDR'] ?? null
         ]);
     } catch (Exception $e) {
         // Ignorer les erreurs de log

@@ -93,12 +93,38 @@ function updateAlertsList() {
     
     const paginationDiv = document.getElementById('paginationControls');
     if (paginationDiv && totalPages > 1) {
-        let html = '<nav><ul class="pagination">';
-        for (let i = 1; i <= totalPages; i++) {
-            html += `<li class="page-item ${i === alertsCurrentPage ? 'active' : ''}">
-                <button class="page-link" onclick="goToAlertsPage(${i})">${i}</button>
-            </li>`;
+        const cur = alertsCurrentPage;
+        const pages = [];
+
+        // Toujours : première page
+        pages.push(1);
+        // Ellipse gauche si la fenêtre commence après la page 3
+        if (cur - 2 > 2) pages.push('...');
+        // Fenêtre autour de la page courante
+        for (let i = Math.max(2, cur - 2); i <= Math.min(totalPages - 1, cur + 2); i++) {
+            pages.push(i);
         }
+        // Ellipse droite si la fenêtre se termine avant l'avant-dernière
+        if (cur + 2 < totalPages - 1) pages.push('...');
+        // Toujours : dernière page
+        if (totalPages > 1) pages.push(totalPages);
+
+        let html = '<nav aria-label="Pagination alertes"><ul class="pagination flex-wrap">';
+        // Bouton Précédent
+        html += `<li class="page-item ${cur === 1 ? 'disabled' : ''}">
+            <button class="page-link" onclick="goToAlertsPage(${cur - 1})" ${cur === 1 ? 'disabled' : ''}>&lsaquo;</button></li>`;
+        // Pages
+        for (const p of pages) {
+            if (p === '...') {
+                html += '<li class="page-item disabled"><span class="page-link pagination-ellipsis">…</span></li>';
+            } else {
+                html += `<li class="page-item ${p === cur ? 'active' : ''}">
+                    <button class="page-link" onclick="goToAlertsPage(${p})">${p}</button></li>`;
+            }
+        }
+        // Bouton Suivant
+        html += `<li class="page-item ${cur === totalPages ? 'disabled' : ''}">
+            <button class="page-link" onclick="goToAlertsPage(${cur + 1})" ${cur === totalPages ? 'disabled' : ''}>&rsaquo;</button></li>`;
         html += '</ul></nav>';
         paginationDiv.innerHTML = html;
     } else if (paginationDiv) {

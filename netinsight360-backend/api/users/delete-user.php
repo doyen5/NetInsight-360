@@ -41,13 +41,12 @@ try {
 
     // Audit avant suppression
     $pdo->prepare("
-        INSERT INTO audit_logs (user_id, action, entity_type, entity_id, old_value, ip_address, user_agent, created_at)
-        VALUES (?, 'delete_user', 'user', ?, ?, ?, ?, NOW())
+        INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
+        VALUES (?, 'DELETE_USER', 'user', ?, ?, ?, NOW())
     ")->execute([
         $_SESSION['user_id'], (string)$userId,
         json_encode(['name' => $user['name'], 'email' => $user['email']]),
-        $_SERVER['REMOTE_ADDR'] ?? null,
-        $_SERVER['HTTP_USER_AGENT'] ?? null
+        $_SERVER['REMOTE_ADDR'] ?? null
     ]);
 
     // Supprimer tokens remember_me associés

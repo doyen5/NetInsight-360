@@ -204,19 +204,37 @@
 /* Pagination */
 .pagination {
     justify-content: center;
-    gap: 5px;
+    gap: 4px;
+    flex-wrap: wrap;
+    row-gap: 6px;
 }
 
 .pagination .page-item .page-link {
     border-radius: 8px;
     color: #0f172a;
     cursor: pointer;
+    min-width: 36px;
+    text-align: center;
+    padding: 6px 10px;
+    font-size: 0.875rem;
 }
 
 .pagination .page-item.active .page-link {
     background: #00a3c4;
     border-color: #00a3c4;
     color: white;
+}
+
+.pagination .page-item.disabled .page-link {
+    color: #94a3b8;
+    pointer-events: none;
+}
+
+.pagination-ellipsis {
+    border: none !important;
+    background: transparent !important;
+    color: #64748b;
+    cursor: default;
 }
 
 /* Animations */

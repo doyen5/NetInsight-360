@@ -1,4 +1,15 @@
 <?php
+/**
+ * NetInsight 360 — API: Recherche d'un site par ID ou nom
+ * GET /api/sites/search-site.php?q=CI_ABIDJAN_001
+ *
+ * Paramètre GET :
+ *   q : chaîne de recherche (ID exact ou pattern LIKE sur id et name)
+ *
+ * Retourne le premier site correspondant avec ses coordonnées GPS,
+ * le pays, et le KPI dégradant du dernier jour disponible.
+ * Utilisé par la barre de recherche des pages map-view et kpis-ran.
+ */
 require_once __DIR__ . '/../cors.php';
 
 require_once __DIR__ . '/../auth/require-auth.php';
@@ -27,7 +38,7 @@ try {
         FROM sites s
         LEFT JOIN site_mapping sm ON sm.remote_id = s.id
         LEFT JOIN countries    c  ON c.country_code = s.country_code
-        LEFT JOIN kpis_ran     k  ON k.site_id = s.id AND k.kpi_date = CURDATE()
+        LEFT JOIN kpis_ran     k  ON k.site_id = s.id AND k.kpi_date = (SELECT MAX(kpi_date) FROM kpis_ran)
         WHERE s.id LIKE ? OR s.name LIKE ?
         ORDER BY
             CASE WHEN s.id = ? THEN 0 WHEN s.id LIKE ? THEN 1 ELSE 2 END,

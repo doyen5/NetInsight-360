@@ -37,12 +37,12 @@ try {
             k.worst_kpi_name,
             k.worst_kpi_value
         FROM sites s
-        INNER JOIN kpis_ran     k   ON k.site_id = s.id AND k.kpi_date = '$lastDate'
+        INNER JOIN kpis_ran     k   ON k.site_id = s.id AND k.kpi_date = ?
         LEFT  JOIN site_mapping sm  ON sm.remote_id = s.id
         LEFT  JOIN countries    c   ON c.country_code = s.country_code";
 
     $where  = [];
-    $params = [];
+    $params = [$lastDate];
     if ($country !== 'all') { $where[] = 's.country_code = ?'; $params[] = $country; }
     if ($vendor  !== 'all') { $where[] = 's.vendor = ?';       $params[] = $vendor;  }
     if ($tech    !== 'all') { $where[] = 'k.technology = ?';   $params[] = $tech;    }

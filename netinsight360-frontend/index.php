@@ -1,6 +1,7 @@
 <?php
 // index.php - Page de connexion
 require_once __DIR__ . '/../netinsight360-backend/app/helpers/AuthHelper.php';
+require_once __DIR__ . '/../netinsight360-backend/config/constants.php';
 
 // Si déjà connecté, rediriger vers le dashboard
 if (AuthHelper::isLoggedIn()) {
@@ -131,7 +132,7 @@ if (AuthHelper::isLoggedIn()) {
 
                                             <div class="help-text">
                                                 <i class="bi bi-headset"></i> Assistance :
-                                                <a href="mailto:princedesirek@gmail.com">princedesirek@gmail.com</a>
+                                                <a href="mailto:<?= htmlspecialchars(SUPPORT_EMAIL) ?>"><?= htmlspecialchars(SUPPORT_EMAIL) ?></a>
                                             </div>
                                         </form>
                                     </div>

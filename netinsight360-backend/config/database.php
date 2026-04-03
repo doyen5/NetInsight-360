@@ -34,31 +34,45 @@ class Database
         if (self::$envLoaded) {
             return;
         }
-        
-        $envFile = __DIR__ . '/../.env';
-        if (file_exists($envFile)) {
+        // Priorité: .env.local (non versionné, spécifique à l'env) puis .env
+        $candidates = [
+            __DIR__ . '/../.env.local',
+            __DIR__ . '/../.env',
+        ];
+
+        foreach ($candidates as $envFile) {
+            if (!file_exists($envFile)) {
+                continue;
+            }
+
             $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
             foreach ($lines as $line) {
                 $line = trim($line);
-                if (strpos($line, '#') === 0 || empty($line)) {
+                if (strpos($line, '#') === 0 || $line === '') {
                     continue;
                 }
-                
+
                 $parts = explode('=', $line, 2);
-                if (count($parts) === 2) {
-                    $key = trim($parts[0]);
-                    $value = trim($parts[1]);
-                    
-                    // Enlever les guillemets si présents
-                    if (preg_match('/^"(.*)"$/', $value, $matches)) {
-                        $value = $matches[1];
-                    } elseif (preg_match("/^'(.*)'$/", $value, $matches)) {
-                        $value = $matches[1];
-                    }
-                    
-                    putenv("{$key}={$value}");
-                    $_ENV[$key] = $value;
+                if (count($parts) !== 2) {
+                    continue;
                 }
+
+                $key = trim($parts[0]);
+                $value = trim($parts[1]);
+
+                // Retirer guillemets entourant la valeur si présents
+                if ((strpos($value, '"') === 0 && strrpos($value, '"') === strlen($value)-1) ||
+                    (strpos($value, "'") === 0 && strrpos($value, "'") === strlen($value)-1)) {
+                    $value = substr($value, 1, -1);
+                }
+
+                // Ne pas écraser une variable système déjà définie
+                if (getenv($key) !== false) {
+                    continue;
+                }
+
+                putenv("{$key}={$value}");
+                $_ENV[$key] = $value;
             }
         }
         

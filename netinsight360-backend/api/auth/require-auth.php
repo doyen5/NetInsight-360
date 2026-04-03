@@ -26,3 +26,20 @@ if (!isset($_SESSION['user_id'])) {
     ]);
     exit();
 }
+
+// ---- Session idle timeout ----
+// SESSION_EXPIRY_HOURS défini dans config/constants.php (défaut : 8h)
+require_once __DIR__ . '/../../config/constants.php';
+$maxIdle = defined('SESSION_EXPIRY_HOURS') ? (SESSION_EXPIRY_HOURS * 3600) : 28800;
+if (isset($_SESSION['logged_in_at']) && (time() - (int)$_SESSION['logged_in_at']) > $maxIdle) {
+    session_destroy();
+    http_response_code(401);
+    echo json_encode([
+        'success' => false,
+        'error'   => 'Session expirée. Veuillez vous reconnecter.',
+        'code'    => 'SESSION_EXPIRED'
+    ]);
+    exit();
+}
+// Rafraîchir le timer d'inactivité à chaque appel API
+$_SESSION['logged_in_at'] = time();
