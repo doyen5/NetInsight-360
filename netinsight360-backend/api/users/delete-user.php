@@ -41,10 +41,12 @@ try {
 
     // Audit avant suppression
     $pdo->prepare("
-        INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
-        VALUES (?, 'DELETE_USER', 'user', ?, ?, ?, NOW())
+        INSERT INTO audit_logs (user_id, user_email, action, entity_type, entity_id, details, ip_address, created_at)
+        VALUES (?, ?, 'DELETE_USER', 'user', ?, ?, ?, NOW())
     ")->execute([
-        $_SESSION['user_id'], (string)$userId,
+        $_SESSION['user_id'],
+        $_SESSION['user_email'] ?? null,
+        (string)$userId,
         json_encode(['name' => $user['name'], 'email' => $user['email']]),
         $_SERVER['REMOTE_ADDR'] ?? null
     ]);

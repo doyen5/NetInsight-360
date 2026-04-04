@@ -63,10 +63,12 @@ try {
 
     // Audit
     $pdo->prepare("
-        INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
-        VALUES (?, 'CREATE_USER', 'user', ?, ?, ?, NOW())
+        INSERT INTO audit_logs (user_id, user_email, action, entity_type, entity_id, details, ip_address, created_at)
+        VALUES (?, ?, 'CREATE_USER', 'user', ?, ?, ?, NOW())
     ")->execute([
-        $_SESSION['user_id'], (string)$newId,
+        $_SESSION['user_id'],
+        $_SESSION['user_email'] ?? null,
+        (string)$newId,
         json_encode(['name' => $name, 'email' => $email, 'role' => $role]),
         $_SERVER['REMOTE_ADDR'] ?? null
     ]);

@@ -30,11 +30,11 @@ try {
         SELECT
             MAX(kpi_date)                                                   AS last_date,
             MIN(kpi_date)                                                   AS first_date,
-            COUNT(DISTINCT site_id)                                         AS sites,
-            COUNT(*)                                                        AS records,
-            COUNT(DISTINCT CASE WHEN technology = '2G' THEN site_id END)   AS sites_2g,
-            COUNT(DISTINCT CASE WHEN technology = '3G' THEN site_id END)   AS sites_3g,
-            COUNT(DISTINCT CASE WHEN technology = '4G' THEN site_id END)   AS sites_4g
+            COUNT(DISTINCT site_id)                       AS sites,
+            COUNT(*)                                      AS records,
+            SUM(status = 'good')                          AS sites_good,
+            SUM(status = 'warning')                       AS sites_warning,
+            SUM(status = 'critical')                      AS sites_critical
         FROM kpis_ran
     ");
     $kpisRan = $kpisStmt->fetch(PDO::FETCH_ASSOC);
@@ -62,8 +62,17 @@ try {
     }
 
     // --- Import en cours ? (lock file < 10 min) ---
-    $lockFile  = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'netinsight_import.lock';
-    $isRunning = file_exists($lockFile) && (time() - filemtime($lockFile)) < 600;
+    // Vérifier les deux emplacements possibles (migration de sys_get_temp_dir vers logs/)
+    $lockFile      = realpath(__DIR__ . '/../../logs') . DIRECTORY_SEPARATOR . 'netinsight_import.lock';
+    $lockFileOld   = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'netinsight_import.lock';
+    $activeLock    = null;
+    foreach ([$lockFile, $lockFileOld] as $lf) {
+        if (file_exists($lf) && (time() - filemtime($lf)) < 600) {
+            $activeLock = $lf;
+            break;
+        }
+    }
+    $isRunning = ($activeLock !== null);
 
     // --- Dernière activité d'import dans audit_logs ---
     $lastAuditStmt = $pdo->query("

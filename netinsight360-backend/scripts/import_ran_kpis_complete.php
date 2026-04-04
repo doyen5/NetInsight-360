@@ -177,6 +177,10 @@ class RanKpiCompleteImporter
         echo "KPIs 4G importés: " . $this->stats['4G']['imported'] . "\n";
         echo "Alertes créées: " . $this->stats['alerts_created'] . "\n";
         echo "========================================\n";
+
+        // Supprimer le lock file créé par run-import.php
+        $lockFilePath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR . 'netinsight_import.lock';
+        @unlink($lockFilePath);
     }
     
     /**

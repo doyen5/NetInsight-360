@@ -30,7 +30,11 @@ let _auditPage    = 1;
 let _auditFilters = {};
 
 // Timer de polling utilisé pour surveiller la fin d'un import en cours
-let _pollTimer    = null;
+let _pollTimer       = null;
+
+// Indique que le polling a expiré (2 min) sans confirmation de fin d'import.
+// Empêche loadImportStatus() de redésactiver le bouton via le setInterval.
+let _pollingExpired  = false;
 
 /* ============================================================
    POINT D'ENTRÉE
@@ -119,7 +123,7 @@ async function loadImportStatus() {
                 ${buildStatCard('Dernier import', ran.last_date || '—', 'bi-calendar-check')}
                 ${buildStatCard('Sites RAN',      ran.sites    ?? '—', 'bi-wifi')}
                 ${buildStatCard('Enregistrements', ran.records ?? '—', 'bi-database')}
-                ${buildStatCard('2G / 3G / 4G',   `${ran['2g']??0} / ${ran['3g']??0} / ${ran['4g']??0}`, 'bi-bar-chart')}
+                ${buildStatCard('Bon / Alerte / Critique', `${ran.sites_good??0} / ${ran.sites_warning??0} / ${ran.sites_critical??0}`, 'bi-bar-chart-line')}
             </div>`;
 
         // Log
@@ -141,7 +145,9 @@ async function loadImportStatus() {
         }
 
         // Si import en cours → mettre à jour state du bouton
-        setImportRunning(d.is_running);
+        // (sauf si le polling JS a déjà expiré : on laisse le bouton actif pour retenter)
+        if (!d.is_running) { _pollingExpired = false; }
+        setImportRunning(d.is_running && !_pollingExpired);
 
     } catch (e) {
         area.innerHTML = `<div class="text-danger"><i class="bi bi-wifi-off"></i> Impossible de joindre l'API</div>`;
@@ -166,6 +172,7 @@ async function loadImportStatus() {
 async function triggerImport() {
     const msg = document.getElementById('importMsg');
     msg.innerHTML = '';
+    _pollingExpired = false;
     setImportRunning(true);
     msg.innerHTML = '<span class="text-primary"><span class="spinner-border spinner-border-sm me-1"></span>Démarrage de l\'import...</span>';
 
@@ -182,10 +189,16 @@ async function triggerImport() {
                 const statusRes = await API.getImportStatus();
                 if (!statusRes.data?.is_running || tries >= 24) {
                     clearInterval(_pollTimer);
-                    setImportRunning(false);
-                    if (tries >= 24) {
+                    if (tries >= 24 && statusRes.data?.is_running) {
+                        // Import toujours en cours après 2 min : on libère le bouton
+                        // mais on empêche le setInterval(30s) de le re-bloquer
+                        _pollingExpired = true;
                         msg.innerHTML = '<span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Durée maximale atteinte. Vérifiez les logs.</span>';
+                    } else {
+                        _pollingExpired = false;
+                        msg.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Import terminé avec succès.</span>';
                     }
+                    setImportRunning(false);
                 }
             }, 5000);
         } else {
@@ -259,21 +272,24 @@ async function loadAuditLogs(page, filters) {
             return;
         }
 
-        // Peupler filtre action (une seule fois ou mise à jour)
-        populateActionFilter(res.actions || []);
+        // L'API enveloppe les données dans res.data
+        const d = res.data || {};
 
-        if (!res.logs || res.logs.length === 0) {
+        // Peupler filtre action (une seule fois ou mise à jour)
+        populateActionFilter(d.actions || []);
+
+        if (!d.logs || d.logs.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Aucun log trouvé.</td></tr>';
             pageInfo.textContent = '';
             pageBtns.innerHTML   = '';
             return;
         }
 
-        tbody.innerHTML = res.logs.map(renderAuditRow).join('');
+        tbody.innerHTML = d.logs.map(renderAuditRow).join('');
 
         // Pagination
-        const total = res.total || 0;
-        const pages = res.pages || 1;
+        const total = d.total || 0;
+        const pages = d.pages || 1;
         pageInfo.textContent = `${total} entrée${total > 1 ? 's' : ''} — Page ${page} / ${pages}`;
         renderPagination(pageBtns, page, pages);
 

@@ -36,14 +36,30 @@ if (!$scriptPath || !is_file($scriptPath)) {
 }
 
 // --- Anti-double exécution ---
-$lockFile  = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'netinsight_import.lock';
+// Chemin fixe dans logs/ pour que le script CLI puisse aussi le supprimer
+$lockFile  = realpath(__DIR__ . '/../../logs') . DIRECTORY_SEPARATOR . 'netinsight_import.lock';
 if (file_exists($lockFile) && (time() - filemtime($lockFile)) < 600) {
     echo json_encode(['success' => false, 'error' => 'Un import est déjà en cours. Réessayez dans quelques minutes.']);
     exit;
 }
 
-// --- Chemins ---
-$phpBin  = PHP_BINARY;
+// --- Résolution du binaire PHP CLI ---
+// Sous Apache/mod_php, PHP_BINARY renvoie httpd.exe (le process Apache lui-même).
+// On cherche php.exe dans cet ordre :
+//   1) PHP_BINDIR/php.exe  (dossier du module PHP WAMP)
+//   2) C:\PHP\php.exe       (chemin standard de ce serveur)
+//   3) 'php'                (fallback : PATH)
+function resolvePhpBin(): string {
+    $candidates = [
+        PHP_BINDIR . DIRECTORY_SEPARATOR . 'php.exe',
+        'C:\\PHP\\php.exe',
+    ];
+    foreach ($candidates as $c) {
+        if (is_file($c)) return $c;
+    }
+    return 'php'; // fallback PATH
+}
+$phpBin  = resolvePhpBin();
 $logFile = realpath(__DIR__ . '/../../logs') . DIRECTORY_SEPARATOR . 'import_run.log';
 
 // Créer le dossier logs si nescessaire
@@ -53,12 +69,18 @@ if (!is_dir(dirname($logFile))) {
 
 // --- Lancement en arrière-plan ---
 if (PHP_OS_FAMILY === 'Windows') {
-    // Windows : start /B pour ne pas bloquer
-    $cmd = sprintf('start "" /B "%s" "%s" > "%s" 2>&1', $phpBin, $scriptPath, $logFile);
+    // Double cmd nécessaire sous Apache/Windows (contexte SERVICE) :
+    //   - popen() appelle déjà  cmd /c <commande>
+    //   - start /B  détache le process fils du process Apache
+    //   - le cmd interne gère la redirection stdout+stderr vers le log
+    // Sans ce double cmd, la redirection > s'applique à start (sortie vide),
+    // pas à PHP → log vide, script jamais exécuté correctement.
+    $inner = sprintf('"%s" "%s" >> "%s" 2>&1', $phpBin, $scriptPath, $logFile);
+    $cmd   = 'start /B cmd /c "' . $inner . '"';
     pclose(popen($cmd, 'r'));
 } else {
     // Linux/Mac
-    $cmd = sprintf('"%s" "%s" > "%s" 2>&1 &', $phpBin, $scriptPath, $logFile);
+    $cmd = sprintf('"%s" "%s" >> "%s" 2>&1 &', $phpBin, $scriptPath, $logFile);
     exec($cmd);
 }
 
