@@ -29,6 +29,9 @@ try {
     $siteId  = trim($_GET['site_id'] ?? '');
     $date    = date('d/m/Y H:i');
     $dateFile = date('Ymd_His');
+    // Support export PDF par période: start_date et end_date (YYYY-MM-DD)
+    $startDate = $_GET['start_date'] ?? null;
+    $endDate   = $_GET['end_date']   ?? null;
 
     // ── Mode fiche site unique ────────────────────────────────────────────────
     if (!empty($siteId)) {
@@ -226,9 +229,16 @@ HTML;
 
     $maxDate = $pdo->query("SELECT MAX(kpi_date) FROM kpis_ran")->fetchColumn() ?: date('Y-m-d');
 
-    // Conditions de filtrage ($maxDate passé en paramètre, jamais interpolé)
-    $conds  = ["k.kpi_date = ?", "k.kpi_global > 0"];
-    $params = [$maxDate];
+    // Conditions de filtrage (possibilité d'utiliser start/end date)
+    if ($startDate && $endDate) {
+      $conds  = ["k.kpi_date BETWEEN ? AND ?", "k.kpi_global > 0"];
+      $params = [$startDate, $endDate];
+      $periodLabel = sprintf("Période : %s → %s", htmlspecialchars($startDate), htmlspecialchars($endDate));
+    } else {
+      $conds  = ["k.kpi_date = ?", "k.kpi_global > 0"];
+      $params = [$maxDate];
+      $periodLabel = sprintf("Données au %s", htmlspecialchars($maxDate));
+    }
     if ($country !== 'all') { $conds[] = "s.country_code = ?"; $params[] = $country; }
     if ($domain  !== 'all') { $conds[] = "s.domain = ?";       $params[] = $domain;  }
     if ($tech    !== 'all') { $conds[] = "k.technology = ?";   $params[] = $tech;    }
@@ -317,6 +327,8 @@ HTML;
     if ($country !== 'all') $filterLabel .= ' — ' . ($countries[$country] ?? $country);
     if ($domain  !== 'all') $filterLabel .= ' — ' . $domain;
     if ($tech    !== 'all') $filterLabel .= ' — ' . $tech;
+    // Ajouter l'information de période explicite dans le label
+    $filterLabel .= ' — ' . $periodLabel;
 
     // Tableau pires sites
     $rowsHtml = '';

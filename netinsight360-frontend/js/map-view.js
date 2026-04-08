@@ -484,13 +484,23 @@ async function showFullSiteDetails(siteId) {
         try {
             const trends = await API.getKpiTrends(siteId, 'kpi_global', 14, site.technology);
             if (trends.success && trends.data) {
+                const defaultOptions = {
+                    scales: { y: { min: 0, max: 100, ticks: { callback: v => v + '%' } } },
+                    plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}%` } } }
+                };
+
+                if (trends.data.used_hour) {
+                    defaultOptions.scales.x = { ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } };
+                    defaultOptions.plugins.tooltip.callbacks.title = function(items) {
+                        if (!items || items.length === 0) return '';
+                        return items.map(it => it.label).join(' - ');
+                    };
+                }
+
                 chartManager.createLineChart('trend5DaysChart', {
                     labels: trends.data.labels,
                     datasets: [{ label: `${site.name} — KPI Global (%)`, data: trends.data.values, borderColor: API.COLORS.status.bad, backgroundColor: 'rgba(239,68,68,0.1)', fill: true }]
-                }, {
-                    scales: { y: { min: 0, max: 100, ticks: { callback: v => v + '%' } } },
-                    plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}%` } } }
-                });
+                }, defaultOptions);
             }
         } catch (trendErr) {
             console.warn('[MapView] Tendance non disponible:', trendErr);

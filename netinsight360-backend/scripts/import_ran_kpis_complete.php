@@ -21,6 +21,7 @@ $basePath = dirname(__DIR__);
 $csvFile = $basePath . '/data/sites_coordinates.csv';
 
 require_once $basePath . '/config/database.php';
+require_once $basePath . '/app/helpers/AuditHelper.php';
 
 /**
  * Classe principale d'import
@@ -181,6 +182,35 @@ class RanKpiCompleteImporter
         // Supprimer le lock file créé par run-import.php
         $lockFilePath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR . 'netinsight_import.lock';
         @unlink($lockFilePath);
+
+        // --- Marquer la fin de l'import dans l'audit et créer un petit fichier marker
+        try {
+            $details = json_encode([
+                'date' => date('Y-m-d'),
+                'time' => date('H:i:s'),
+                'summary' => [
+                    '2G_imported' => $this->stats['2G']['imported'],
+                    '3G_imported' => $this->stats['3G']['imported'],
+                    '4G_imported' => $this->stats['4G']['imported'],
+                    'sites_updated' => $this->stats['sites_updated'],
+                    'sites_inserted' => $this->stats['sites_inserted'],
+                    'alerts_created' => $this->stats['alerts_created']
+                ]
+            ]);
+            // AuditHelper::log accepte PDO et détails — user null pour script CLI
+            AuditHelper::log($this->localDb, 'IMPORT_FINISHED', null, null, 'kpis_ran', null, $details);
+        } catch (Exception $e) {
+            echo "[AVERTISSEMENT] Impossible d'ecrire l'audit IMPORT_FINISHED: " . $e->getMessage() . "\n";
+        }
+
+        // Écrire un fichier marker court dans logs/ pour détection rapide côté API
+        try {
+            $marker = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR . 'import_finished.json';
+            $payload = [ 'finished_at' => date('Y-m-d H:i:s'), 'summary' => [ '2G' => $this->stats['2G']['imported'], '3G' => $this->stats['3G']['imported'], '4G' => $this->stats['4G']['imported'] ] ];
+            @file_put_contents($marker, json_encode($payload, JSON_PRETTY_PRINT));
+        } catch (Exception $e) {
+            // non bloquant
+        }
     }
     
     /**

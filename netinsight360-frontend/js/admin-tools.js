@@ -120,7 +120,10 @@ async function loadImportStatus() {
         area.innerHTML = `
             <div class="d-flex align-items-center gap-2 mb-3">${runningBadge}</div>
             <div class="row g-2">
-                ${buildStatCard('Dernier import', ran.last_date || '—', 'bi-calendar-check')}
+                // Affiche la date ET l'heure du dernier import.
+                // On utilise formatDate() pour forcer l'affichage heure:minute:seconde
+                // (backend peut renvoyer uniquement la date ou un ISO datetime).
+                ${buildStatCard('Dernier import', formatDate(ran.last_date) || '—', 'bi-calendar-check')}
                 ${buildStatCard('Sites RAN',      ran.sites    ?? '—', 'bi-wifi')}
                 ${buildStatCard('Enregistrements', ran.records ?? '—', 'bi-database')}
                 ${buildStatCard('Bon / Alerte / Critique', `${ran.sites_good??0} / ${ran.sites_warning??0} / ${ran.sites_critical??0}`, 'bi-bar-chart-line')}
@@ -148,6 +151,17 @@ async function loadImportStatus() {
         // (sauf si le polling JS a déjà expiré : on laisse le bouton actif pour retenter)
         if (!d.is_running) { _pollingExpired = false; }
         setImportRunning(d.is_running && !_pollingExpired);
+        
+        // Si un import vient de se terminer récemment, signale la UI Kpis RAN
+        // pour afficher automatiquement le mode "Top by tech" après import.
+        // On utilise sessionStorage comme canal de communication entre pages.
+        if (d.just_finished) {
+            try {
+                sessionStorage.setItem('showTopByTechAfterImport', '1');
+                // Message informatif pour l'administrateur
+                msg.innerHTML = '<span class="text-info"><i class="bi bi-info-circle me-1"></i>Import terminé récemment — la vue KPIs RAN proposera automatiquement les pires sites par techno.</span>';
+            } catch (_) {}
+        }
 
     } catch (e) {
         area.innerHTML = `<div class="text-danger"><i class="bi bi-wifi-off"></i> Impossible de joindre l'API</div>`;

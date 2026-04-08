@@ -15,6 +15,7 @@ try {
     $pdo        = Database::getLocalConnection();
     $siteId     = $_GET['site_id']     ?? '';
     $kpiName    = $_GET['kpi_name']    ?? 'RNA';
+    $requestedKpi = $kpiName;
     $technology = $_GET['technology']  ?? null;
     $days       = max(5, min(30, intval($_GET['days'] ?? 7)));
 
@@ -43,19 +44,30 @@ try {
         exit;
     }
 
-    // Récupérer les N dates réelles disponibles pour ce site
-    // On filtre par technologie si fournie, afin d'éviter des dates sans données pour cette techno
+    // Récupérer les N timestamps réels (date + heure quand disponible) pour ce site
+    // On filtre par technologie si fournie, afin d'éviter des points sans données pour cette techno
     $techFilter = $technology ? 'AND technology = ?' : '';
-    $stmtDates  = $pdo->prepare("
-        SELECT DISTINCT kpi_date
-        FROM kpis_ran
-        WHERE site_id = ? $techFilter
-        ORDER BY kpi_date DESC
-        LIMIT ?
-    ");
+    $stmtDates  = $pdo->prepare(
+        "SELECT DISTINCT kpi_date, kpi_hour
+         FROM kpis_ran
+         WHERE site_id = ? $techFilter
+         ORDER BY kpi_date DESC, kpi_hour DESC
+         LIMIT ?"
+    );
     $dateParams = $technology ? [$siteId, $technology, $days] : [$siteId, $days];
     $stmtDates->execute($dateParams);
-    $dates = array_reverse($stmtDates->fetchAll(PDO::FETCH_COLUMN));
+    $rawDates = $stmtDates->fetchAll(PDO::FETCH_ASSOC);
+    // Construire une liste chronologique (ancienne -> récente) de timestamps
+    $dates = [];
+    $useHour = false;
+    foreach (array_reverse($rawDates) as $r) {
+        if ($r['kpi_hour'] !== null && $r['kpi_hour'] !== '') {
+            $useHour = true;
+            $dates[] = $r['kpi_date'] . ' ' . str_pad($r['kpi_hour'], 2, '0', STR_PAD_LEFT) . ':00:00';
+        } else {
+            $dates[] = $r['kpi_date'];
+        }
+    }
 
     // Vérifier si la colonne demandée a réellement des données pour ce site/technologie.
     // Dans certains cas, l'import ne remplit que kpi_global + worst_kpi_name/value
@@ -79,22 +91,45 @@ try {
     $values = [];
 
     foreach ($dates as $date) {
-        $labels[] = date('d/m', strtotime($date));
+        if ($useHour && strpos($date, ' ') !== false) {
+            $labels[] = date('d/m H:i', strtotime($date));
 
-        $stmt = $pdo->prepare("
-            SELECT ROUND(AVG(`$kpiName`), 2) AS val
-            FROM kpis_ran
-            WHERE site_id = ? AND kpi_date = ? $techFilter
-        ");
-        $params = $technology ? [$siteId, $date, $technology] : [$siteId, $date];
-        $stmt->execute($params);
-        $row      = $stmt->fetch(PDO::FETCH_ASSOC);
-        $values[] = $row['val'] !== null ? floatval($row['val']) : null;
+            $stmt = $pdo->prepare(
+                "SELECT ROUND(AVG(`$kpiName`), 2) AS val
+                 FROM kpis_ran
+                 WHERE site_id = ? AND kpi_date = ? AND kpi_hour = ? $techFilter"
+            );
+            // extraire date et hour
+            [$dPart, $tPart] = explode(' ', $date);
+            $hour = intval(explode(':', $tPart)[0]);
+            $params = $technology ? [$siteId, $dPart, $hour, $technology] : [$siteId, $dPart, $hour];
+            $stmt->execute($params);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            $values[] = $row['val'] !== null ? floatval($row['val']) : null;
+        } else {
+            $labels[] = date('d/m', strtotime($date));
+
+            $stmt = $pdo->prepare(
+                "SELECT ROUND(AVG(`$kpiName`), 2) AS val
+                 FROM kpis_ran
+                 WHERE site_id = ? AND kpi_date = ? $techFilter"
+            );
+            $params = $technology ? [$siteId, $date, $technology] : [$siteId, $date];
+            $stmt->execute($params);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            $values[] = $row['val'] !== null ? floatval($row['val']) : null;
+        }
     }
 
     echo json_encode([
         'success' => true,
-        'data'    => ['labels' => $labels, 'values' => $values, 'kpi_name' => $kpiName, 'used_fallback' => $kpiName === 'kpi_global']
+        'data'    => [
+            'labels' => $labels,
+            'values' => $values,
+            'kpi_name' => $kpiName,
+            'used_fallback' => ($requestedKpi !== $kpiName),
+            'used_hour' => $useHour,
+        ]
     ]);
 
 } catch (Exception $e) {

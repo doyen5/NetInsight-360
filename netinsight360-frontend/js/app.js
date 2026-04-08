@@ -29,6 +29,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         // Initialiser la date/heure
         initDateTime();
+            // Initialiser la recherche globale (barre présente dans l'entête)
+            setupGlobalSearch();
     }
     
     // Animation réseau de fond (uniquement sur la page de connexion)
@@ -331,4 +333,65 @@ async function updateUserInterface() {
     }
     
     console.log(`[App] Interface mise à jour pour: ${user.name} (${user.role})`);
+}
+
+/**
+ * Recherche globale client
+ * - Debounce local
+ * - Utilise l'endpoint API.searchSite(q)
+ * - Affiche les résultats dans #globalSearchResults
+ * Comportement minimal : redirige vers la page map-view.php?site_id=ID
+ * (La page cible peut lire le paramètre et afficher le modal/zoom).
+ */
+function setupGlobalSearch() {
+    const input = document.getElementById('globalSearch');
+    const resultsEl = document.getElementById('globalSearchResults');
+    if (!input || !resultsEl) return;
+
+    let timer = null;
+    input.addEventListener('input', () => {
+        const q = input.value.trim();
+        clearTimeout(timer);
+        if (q.length < 2) { resultsEl.style.display = 'none'; resultsEl.innerHTML = ''; return; }
+        timer = setTimeout(async () => {
+            try {
+                const res = await API.searchSite(q);
+                if (!res || !res.success || !Array.isArray(res.data) || res.data.length === 0) {
+                    resultsEl.innerHTML = '<div style="padding:8px;color:#64748b">Aucun résultat</div>';
+                    resultsEl.style.display = 'block';
+                    return;
+                }
+                // Construire la liste de résultats (nom, pays, type)
+                resultsEl.innerHTML = res.data.map(item => {
+                    const title = item.name || item.id || '—';
+                    const sub   = item.country_name ? ` — ${item.country_name}` : '';
+                    const type  = item.type ? `<small class="text-muted"> ${item.type}</small>` : '';
+                    return `<a href="#" data-id="${item.id}" class="global-search-item d-block px-3 py-2 border-bottom text-dark" style="text-decoration:none">`+
+                           `<div><strong>${escapeHtml(title)}</strong>${sub}${type}</div></a>`;
+                }).join('');
+                // Click handler : navigation vers map-view avec site_id
+                resultsEl.querySelectorAll('.global-search-item').forEach(a => {
+                    a.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const id = a.dataset.id;
+                        if (!id) return;
+                        // Redirection : la page map-view.php peut gérer le param site_id
+                        window.location.href = `map-view.php?site_id=${encodeURIComponent(id)}`;
+                    });
+                });
+                resultsEl.style.display = 'block';
+            } catch (err) {
+                resultsEl.innerHTML = '<div style="padding:8px;color:#ef4444">Erreur recherche</div>';
+                resultsEl.style.display = 'block';
+                console.error('[Search] erreur', err);
+            }
+        }, 300);
+    });
+
+    // Fermer la liste si clic en dehors
+    document.addEventListener('click', (ev) => {
+        if (!resultsEl.contains(ev.target) && ev.target !== input) {
+            resultsEl.style.display = 'none';
+        }
+    });
 }

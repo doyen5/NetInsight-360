@@ -59,6 +59,47 @@ async function initKpisRan() {
     
     // Initialiser les rapports
     initRanReports();
+
+    // Si la page a été ouverte juste après un import (flag mis par admin-tools),
+    // activer automatiquement l'option "Top by tech" pour aider l'opérateur.
+    try {
+        const flag = sessionStorage.getItem('showTopByTechAfterImport');
+        const cb = document.getElementById('topByTechCheckbox');
+        const sel = document.getElementById('topByTechNSelect');
+        // Charger préférence utilisateur (localStorage) si présente
+        let userPrefN = null;
+        try {
+            const currentUser = sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser');
+            if (currentUser) {
+                const u = JSON.parse(currentUser);
+                userPrefN = localStorage.getItem('pref_topByTech_n_' + (u.email || u.name || 'guest'));
+            }
+        } catch (_) { userPrefN = null; }
+        if (userPrefN && sel) sel.value = userPrefN;
+
+        if (flag === '1') {
+            if (cb) cb.checked = true;
+            // Forcer un rechargement des marqueurs dans ce mode
+            await loadRanMapMarkers();
+            // Supprimer le flag pour éviter répétition
+            sessionStorage.removeItem('showTopByTechAfterImport');
+        }
+
+        // Sauvegarde de préférence : quand l'utilisateur change le select, on stocke par user
+        if (sel) {
+            sel.addEventListener('change', () => {
+                try {
+                    const currentUser = sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser');
+                    let keyUser = 'guest';
+                    if (currentUser) { const u = JSON.parse(currentUser); keyUser = (u.email || u.name || 'guest'); }
+                    localStorage.setItem('pref_topByTech_n_' + keyUser, sel.value);
+                } catch (e) { console.warn('[KPIs RAN] impossible de sauver préférence:', e); }
+            });
+        }
+
+    } catch (e) {
+        console.warn('[KPIs RAN] impossible de lire flag/session/localStorage:', e);
+    }
 }
 
 /**
@@ -86,6 +127,55 @@ async function loadRanMapMarkers() {
     ranMarkers = [];
     
     try {
+        // Si l'option 'topByTechCheckbox' est cochée, on demande au backend
+        // les X pires sites par technologie (utile à afficher juste après un import).
+        const topByTech = document.getElementById('topByTechCheckbox')?.checked;
+        if (topByTech) {
+            // Appel API dédié retournant { date, top_n, per_tech: { '2G':[...], ... } }
+                // Déterminer top_n : choisir la valeur du select si présente, sinon 10
+                let topN = 10;
+                try {
+                    const sel = document.getElementById('topByTechNSelect');
+                    if (sel) topN = parseInt(sel.value) || 10;
+                } catch (_) { topN = 10; }
+                const res = await API.getTopWorstSitesByTech({ ...ranFilters, domain: 'RAN', top_n: topN });
+            if (!res.success || !res.data) return;
+            // Fusionner les listes par techno pour afficher sur la carte
+            const combined = [];
+            Object.keys(res.data.per_tech || {}).forEach(tech => {
+                (res.data.per_tech[tech] || []).forEach(s => { s._tech_group = tech; combined.push(s); });
+            });
+
+            // Créer les marqueurs
+            combined.forEach(site => {
+                if (!site.latitude || !site.longitude || site.latitude == 0) return;
+                const tc = API.techColor(site.technology || site._tech_group) || '#6c757d';
+                const icon = L.divIcon({
+                    html: `<div style="background:${tc}; width:14px; height:14px; border-radius:50%; border:2px solid white;"></div>`,
+                    iconSize: [14, 14]
+                });
+                const marker = L.marker([site.latitude, site.longitude], { icon }).addTo(ranMap);
+                const worstLine = site.worst_kpi_name
+                    ? `<br><b>KPI dégradant:</b> ${site.worst_kpi_name} (${site.worst_kpi_value}%)`
+                    : '';
+                marker.bindPopup(`
+                    <b>${site.name}</b><br>
+                    <b>ID:</b> ${site.id}<br>
+                    <b>Pays:</b> ${site.country_name || site.country_code}<br>
+                    <b>Vendor:</b> ${site.vendor} | <span class="badge-tech">${site.technology}</span><br>
+                    <b>KPI global:</b> ${site.kpi_global}%${worstLine}<br>
+                    <small class="text-muted">Tech group: ${site._tech_group}</small><br>
+                    <button class="btn btn-sm btn-primary mt-2" onclick="showRanSiteDetails('${site.id}')">Voir détails</button>
+                `);
+                ranMarkers.push(marker);
+            });
+
+            // Mettre à jour le badge avec le nombre affiché
+            API.updateMapCountBadge({ count: combined.length, total_count: combined.length });
+            return;
+        }
+
+        // Mode normal : récupérer les marqueurs standards (tous les sites selon filtre)
         const result = await API.getMapMarkers({ ...ranFilters, domain: 'RAN' });
         if (!result.success || !result.data) return;
         
@@ -521,18 +611,9 @@ async function showRanSiteDetails(siteId) {
                 const trendColor = API.statusColor(site.status);
                 // Si les colonnes KPI individuelles sont vides en DB, l'API bascule sur kpi_global
                 const usedLabel = trends.data.used_fallback ? 'KPI Global' : kpiDisplay;
-                chartManager.createLineChart('trend5DaysChart', {
-                    labels: trends.data.labels,
-                    datasets: [{
-                        label: `${site.name} — ${usedLabel} (%)`,
-                        data: trends.data.values,
-                        borderColor: trendColor,
-                        backgroundColor: trendColor + '33',
-                        fill: true
-                    }]
-                }, {
-                    // Forcer l'axe Y en 0-100% pour éviter l'auto-scale par défaut de Chart.js
-                    // (sans ça, des valeurs toutes à 0 ou proches produisent un axe 0–1)
+
+                // Options par défaut pour le graphique
+                const chartOptions = {
                     scales: {
                         y: {
                             min: 0,
@@ -544,7 +625,30 @@ async function showRanSiteDetails(siteId) {
                         legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
                         tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}%` } }
                     }
-                });
+                };
+
+                // Si l'API signale qu'on utilise des timestamps heure (kpi_hour),
+                // afficher l'heure dans les labels et ajuster les tooltips/axe X.
+                if (trends.data.used_hour) {
+                    chartOptions.scales.x = {
+                        ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 }
+                    };
+                    chartOptions.plugins.tooltip.callbacks.title = function(items) {
+                        if (!items || items.length === 0) return '';
+                        return items.map(it => it.label).join(' - ');
+                    };
+                }
+
+                chartManager.createLineChart('trend5DaysChart', {
+                    labels: trends.data.labels,
+                    datasets: [{
+                        label: `${site.name} — ${usedLabel} (%)`,
+                        data: trends.data.values,
+                        borderColor: trendColor,
+                        backgroundColor: trendColor + '33',
+                        fill: true
+                    }]
+                }, chartOptions);
             }
         } catch (trendErr) {
             console.warn('[KPIs RAN] Tendance non disponible:', trendErr);

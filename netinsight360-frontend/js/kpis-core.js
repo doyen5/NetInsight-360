@@ -367,6 +367,14 @@ async function showCoreSiteDetails(siteId) {
         
         const trends = await API.getKpiTrends(siteId, 'packet_loss', 5);
         if (trends.success && trends.data) {
+            const options = {
+                scales: { y: { ticks: { callback: v => v + '%' } } },
+                plugins: { legend: { position: 'bottom' } }
+            };
+            if (trends.data.used_hour) {
+                options.scales.x = { ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } };
+                options.plugins.tooltip = { callbacks: { title: items => (items || []).map(i => i.label).join(' - '), label: ctx => ` ${ctx.parsed.y}%` } };
+            }
             chartManager.createLineChart('trend5DaysChart', {
                 labels: trends.data.labels,
                 datasets: [{
@@ -375,7 +383,7 @@ async function showCoreSiteDetails(siteId) {
                     borderColor: API.COLORS.status.bad,
                     fill: true
                 }]
-            });
+            }, options);
         }
         
         const modal = new bootstrap.Modal(document.getElementById('siteDetailsModal'));

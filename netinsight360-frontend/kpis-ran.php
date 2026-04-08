@@ -117,6 +117,17 @@ $userRole = AuthHelper::getUserRole();
             <div class="filter-group"><label><i class="bi bi-flag"></i> Pays</label><select id="filterCountry"><option value="all">Tous les pays</option><option value="CI">🇨🇮 Côte d'Ivoire</option><option value="NE">🇳🇪 Niger</option><option value="BJ">🇧🇯 Bénin</option><option value="TG">🇹🇬 Togo</option></select></div>
             <div class="filter-group"><label><i class="bi bi-building"></i> Vendor</label><select id="filterVendor"><option value="all">Tous</option><option value="Huawei">Huawei</option><option value="Ericsson">Ericsson</option></select></div>
             <div class="filter-group"><label><i class="bi bi-signal"></i> Technologie</label><select id="filterTech"><option value="all">Toutes</option><option value="2G">2G</option><option value="3G">3G</option><option value="4G">4G</option></select></div>
+            <!-- Option pour n'afficher que les X pires sites par technologie (utile après import) -->
+            <div class="filter-group" style="display:flex;align-items:center;gap:8px">
+                <input type="checkbox" id="topByTechCheckbox">
+                <label for="topByTechCheckbox" style="margin:0">Afficher top</label>
+                <select id="topByTechNSelect" class="form-select form-select-sm" style="width:90px">
+                    <option value="5">5 pires</option>
+                    <option value="10" selected>10 pires</option>
+                    <option value="20">20 pires</option>
+                </select>
+                <label style="margin:0">par techno</label>
+            </div>
             <button class="btn btn-primary btn-sm" id="applyFilters"><i class="bi bi-funnel"></i> Appliquer</button>
             <button class="btn btn-secondary btn-sm" id="resetFilters"><i class="bi bi-arrow-repeat"></i> Réinitialiser</button>
         </div>

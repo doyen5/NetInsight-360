@@ -96,6 +96,17 @@ class API {
         return this.request(`/sites/get-top-worst-sites.php${suffix}`);
     }
     
+    /**
+     * Récupère les X pires sites groupés par technologie.
+     * Retour attendu: { success:true, data: { date, top_n, per_tech: { '2G':[...], '3G':[...], ... } } }
+     * Params acceptés : country, vendor, domain, top_n
+     */
+    static async getTopWorstSitesByTech(filters = {}) {
+        const params = new URLSearchParams(filters).toString();
+        const suffix = params ? `?${params}` : '';
+        return this.request(`/sites/get-top-worst-sites-by-tech.php${suffix}`);
+    }
+    
     // ============================================
     // KPIs
     // ============================================
@@ -363,6 +374,11 @@ API.COLORS = {
         flat: '#94a3b8',
     },
     brand: '#00a3c4',
+    // Couleurs par vendor — ajout demandé : Huawei = rouge, Ericsson = bleu ciel
+    vendor: {
+        'Huawei':    '#ef4444',
+        'Ericsson':  '#7dd3fc'
+    }
 };
 
 /** Retourne la couleur hex correspondant au statut d'un site. */
@@ -370,6 +386,9 @@ API.statusColor = (status) => API.COLORS.status[status] ?? API.COLORS.status.unk
 
 /** Retourne la couleur hex correspondant à une technologie. */
 API.techColor = (tech) => API.COLORS.tech[tech] ?? '#94a3b8';
+
+/** Retourne la couleur hex correspondant à un vendor (si connue). */
+API.vendorColor = (vendor) => API.COLORS.vendor[vendor] ?? '#94a3b8';
 
 // Exporter pour utilisation globale
 window.API = API;

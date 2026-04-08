@@ -14,7 +14,10 @@ try {
     $siteId  = trim($_GET['site_id'] ?? '');
 
     // Date du dernier import (jamais CURDATE, l'import tourne la nuit)
+    // Support de l'export sur plage de dates : start_date et end_date (YYYY-MM-DD)
     $lastDate = $pdo->query("SELECT MAX(kpi_date) FROM kpis_ran")->fetchColumn() ?: date('Y-m-d');
+    $startDate = $_GET['start_date'] ?? null;
+    $endDate   = $_GET['end_date']   ?? null;
 
     if (!empty($siteId)) {
         // ── Mode fiche site unique ──────────────────────────────────────────
@@ -32,8 +35,14 @@ try {
         $filename = 'site_' . preg_replace('/[^a-z0-9_-]/i', '_', $siteId) . '_' . date('Ymd_His') . '.csv';
     } else {
         // ── Mode export filtré ──────────────────────────────────────────────
-        $conditions = ["k.kpi_date = ?", "k.kpi_global > 0"];
-        $params     = [$lastDate];
+        if ($startDate && $endDate) {
+            // Export sur intervalle de dates
+            $conditions = ["k.kpi_date BETWEEN ? AND ?", "k.kpi_global > 0"];
+            $params     = [$startDate, $endDate];
+        } else {
+            $conditions = ["k.kpi_date = ?", "k.kpi_global > 0"];
+            $params     = [$lastDate];
+        }
         if ($domain  !== 'all') { $conditions[] = "s.domain = ?";       $params[] = $domain; }
         if ($tech    !== 'all') { $conditions[] = "k.technology = ?";   $params[] = $tech; }
         if ($country !== 'all') { $conditions[] = "s.country_code = ?"; $params[] = $country; }
@@ -41,14 +50,14 @@ try {
         $where = implode(' AND ', $conditions);
 
         $stmt = $pdo->prepare("
-            SELECT s.id, s.name, s.country_code, s.vendor, k.technology,
-                   k.kpi_global, k.status, k.worst_kpi_name, k.worst_kpi_value, k.kpi_date
-            FROM sites s
-            INNER JOIN kpis_ran k ON k.site_id = s.id
-            WHERE $where
-            ORDER BY k.kpi_global ASC
-            LIMIT 500
-        ");
+        SELECT s.id, s.name, s.country_code, s.vendor, k.technology,
+           k.kpi_global, k.status, k.worst_kpi_name, k.worst_kpi_value, k.kpi_date
+        FROM sites s
+        INNER JOIN kpis_ran k ON k.site_id = s.id
+        WHERE $where
+        ORDER BY k.kpi_global ASC
+        LIMIT 500
+    ");
         $stmt->execute($params);
         $data     = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $filename = $type . '_' . date('Ymd_His') . '.csv';

@@ -71,6 +71,11 @@ if ($userRole !== 'ADMIN') {
         <div class="header-bar">
             <div class="welcome-message"><i class="bi bi-person-circle"></i> Bienvenue, <span id="userName">Chargement...</span> 👋</div>
             <div class="header-right">
+                <!-- Barre de recherche globale : accessible sur toutes les pages (sites, KPI, pays...) -->
+                <div style="position:relative;margin-right:12px;">
+                    <input id="globalSearch" class="form-control form-control-sm" placeholder="Recherche (sites, KPI, pays...)" style="width:320px;" autocomplete="off">
+                    <div id="globalSearchResults" style="position:absolute;top:36px;left:0;right:0;z-index:1500;background:#fff;border:1px solid #e6eef6;border-radius:6px;display:none;max-height:280px;overflow:auto;"></div>
+                </div>
                 <div class="date-time" id="currentDateTime"><i class="bi bi-calendar3"></i> <span>Chargement...</span></div>
                 <div class="user-info-header">
                     <div class="user-avatar" id="userAvatar">AD</div>

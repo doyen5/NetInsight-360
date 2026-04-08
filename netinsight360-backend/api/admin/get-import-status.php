@@ -61,6 +61,30 @@ try {
         $lastRunLog = implode("\n", array_slice($lines, -50));
     }
 
+    // --- Date/heure du dernier import (approx.) ---
+    // On utilise le timestamp du fichier de log utilisé (si présent) comme
+    // indication de la fin de l'exécution. Ce n'est pas une preuve absolue
+    // mais permet d'indiquer heure + minute du dernier import sans modifier
+    // le script d'import. Si aucun fichier de log, on tombe back sur la
+    // dernière entrée d'audit IMPORT_TRIGGERED (si disponible).
+    $lastImportTimestamp = null;
+    // Priorité : marker file écrit par le script d'import (import_finished.json)
+    $markerFile = realpath(__DIR__ . '/../../logs') . DIRECTORY_SEPARATOR . 'import_finished.json';
+    if ($markerFile && file_exists($markerFile)) {
+        $lastImportTimestamp = filemtime($markerFile);
+    } elseif ($logSource && file_exists($logSource)) {
+        // Ancien comportement : timestamp du log d'exécution
+        $lastImportTimestamp = filemtime($logSource);
+    } else {
+        // Fallback : chercher la dernière entrée IMPORT_TRIGGERED dans audit_logs
+        $row = $pdo->query("SELECT MAX(created_at) AS ts FROM audit_logs WHERE action = 'IMPORT_TRIGGERED'")->fetch(PDO::FETCH_ASSOC);
+        if ($row && $row['ts']) {
+            $lastImportTimestamp = strtotime($row['ts']);
+        }
+    }
+
+    $lastImportDatetime = $lastImportTimestamp ? date('Y-m-d H:i:s', $lastImportTimestamp) : null;
+
     // --- Import en cours ? (lock file < 10 min) ---
     // Vérifier les deux emplacements possibles (migration de sys_get_temp_dir vers logs/)
     $lockFile      = realpath(__DIR__ . '/../../logs') . DIRECTORY_SEPARATOR . 'netinsight_import.lock';
@@ -73,6 +97,24 @@ try {
         }
     }
     $isRunning = ($activeLock !== null);
+
+    // --- Déterminer si l'import vient de se terminer récemment ---
+    // On considère "just_finished" vrai si l'import n'est pas en cours et que
+    // le timestamp du dernier import est dans les dernières N secondes.
+    $justFinished = false;
+    if (!$isRunning && $lastImportTimestamp) {
+        $justFinished = (time() - $lastImportTimestamp) < 180; // 3 minutes
+    }
+
+    // Supprimer le marker file import_finished.json après consommation si il est
+    // récent afin d'éviter une réutilisation multiple. On ne supprime que si
+    // le marker existe et si sa date est dans la fenêtre récente (5 minutes).
+    if ($markerFile && file_exists($markerFile) && $lastImportTimestamp) {
+        $age = time() - $lastImportTimestamp;
+        if ($age < 300) { // 5 minutes
+            try { @unlink($markerFile); } catch (Exception $e) { /* non bloquant */ }
+        }
+    }
 
     // --- Dernière activité d'import dans audit_logs ---
     $lastAuditStmt = $pdo->query("
@@ -94,6 +136,10 @@ try {
             'last_run_log'     => $lastRunLog,
             'is_running'       => $isRunning,
             'last_audit'       => $lastImportAudit,
+            // Ajout de métadonnées pour l'UI : datetime du dernier import et
+            // un flag indiquant qu'il vient de se terminer.
+            'last_import_datetime' => $lastImportDatetime,
+            'just_finished'        => $justFinished,
         ]
     ]);
 
