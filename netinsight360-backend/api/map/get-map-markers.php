@@ -78,19 +78,25 @@ try {
     $stmt->execute($params);
     $sites = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // --- Limiter à 20 sites par technologie pour éviter la surcharge de la carte ---
-    // Sélectionne les 20 pires (kpi_global le plus bas) par technologie
-    $limitPerTech    = 20;
-    $totalBeforeLimit = count($sites); // total AVANT la limite (pour le badge frontend)
-    $byTech = [];
-    foreach ($sites as $site) {
-        $t = $site['technology'] ?? 'N/A';
-        if (!isset($byTech[$t])) $byTech[$t] = [];
-        if (count($byTech[$t]) < $limitPerTech) {
-            $byTech[$t][] = $site;
+    // --- Option: limiter à 20 sites par technologie pour éviter la surcharge de la carte ---
+    // Par défaut on retourne tous les marqueurs (comportement historique). La limitation
+    // par techno est active uniquement si `top_by_tech=1` est passée en paramètre.
+    $totalBeforeLimit = count($sites); // total AVANT toute limitation (pour le badge frontend)
+    $limited = false;
+    $topByTech = ($_GET['top_by_tech'] ?? '0') === '1';
+    if ($topByTech) {
+        $limitPerTech = 20;
+        $byTech = [];
+        foreach ($sites as $site) {
+            $t = $site['technology'] ?? 'N/A';
+            if (!isset($byTech[$t])) $byTech[$t] = [];
+            if (count($byTech[$t]) < $limitPerTech) {
+                $byTech[$t][] = $site;
+            }
         }
+        $sites = array_merge(...array_values($byTech));
+        $limited = true;
     }
-    $sites = array_merge(...array_values($byTech));
 
     // --- Enrichissement : nom du pays ---
     $countries = [];
@@ -113,7 +119,8 @@ try {
         'data'               => $sites,
         'count'              => count($sites),
         'total_count'        => $totalBeforeLimit,
-        'limit_per_tech'     => 20,
+        'limit_per_tech'     => $topByTech ? $limitPerTech : null,
+        'limited_by_top_by_tech' => $limited,
     ]);
 
 } catch (Exception $e) {

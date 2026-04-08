@@ -65,7 +65,14 @@ async function loadFullMapMarkers() {
     fullMarkers = [];
     
     try {
-        const result = await API.getMapMarkers(fullFilters);
+        // Si une option "Top by Tech" existe sur la page, transmettre le flag
+        const queryFilters = { ...fullFilters };
+        try {
+            const topCb = document.getElementById('topByTechCheckbox');
+            if (topCb && topCb.checked) queryFilters.top_by_tech = '1';
+        } catch (e) { /* ignore */ }
+
+        const result = await API.getMapMarkers(queryFilters);
         if (!result.success || !result.data) return;
         
         const sites = result.data;

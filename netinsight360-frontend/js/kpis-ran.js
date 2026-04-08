@@ -176,7 +176,14 @@ async function loadRanMapMarkers() {
         }
 
         // Mode normal : récupérer les marqueurs standards (tous les sites selon filtre)
-        const result = await API.getMapMarkers({ ...ranFilters, domain: 'RAN' });
+        // Construire les filtres de requête et transmettre top_by_tech si la checkbox est présente
+        const queryFilters = { ...ranFilters, domain: 'RAN' };
+        try {
+            const topCb = document.getElementById('topByTechCheckbox');
+            if (topCb && topCb.checked) queryFilters.top_by_tech = '1';
+        } catch (e) { /* ignore */ }
+
+        const result = await API.getMapMarkers(queryFilters);
         if (!result.success || !result.data) return;
         
         result.data.forEach(site => {

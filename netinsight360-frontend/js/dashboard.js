@@ -134,7 +134,14 @@ async function loadMapMarkers(filters = {}) {
     dashboardMarkers = [];
     
     try {
-        const result = await API.getMapMarkers(filters);
+        // Transmettre top_by_tech=1 si l'option est présente et cochée
+        const queryFilters = { ...filters };
+        try {
+            const topCb = document.getElementById('topByTechCheckbox');
+            if (topCb && topCb.checked) queryFilters.top_by_tech = '1';
+        } catch (e) { /* ignore */ }
+
+        const result = await API.getMapMarkers(queryFilters);
         if (!result.success || !result.data) return;
         
         result.data.forEach(site => {
