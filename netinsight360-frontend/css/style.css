@@ -12,20 +12,19 @@
 body {
     font-family: 'Inter', sans-serif;
     min-height: 100vh;
-    background: linear-gradient(135deg, #0a0f1c 0%, #0a1a2f 50%, #0f172a 100%);
+    /* Image de fond réseau + dégradé de superposition */
+    background-image: linear-gradient(135deg, rgba(10,15,28,0.66), rgba(10,26,47,0.36)), url("../assets/img/bg-network.jpg");
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
     position: relative;
     overflow-x: hidden;
 }
 
 /* Animation réseau de fond */
 canvas#networkCanvas {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 0;
-    pointer-events: none;
+    /* Masqué : on remplace la pluie animée par une image statique réseau */
+    display: none;
 }
 
 /* Container principal */
