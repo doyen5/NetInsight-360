@@ -39,6 +39,7 @@ async function initMapView() {
     await loadFullCharts();
 
     initFullFilters();
+    initFullSearch();
     initFullReports();
 }
 
@@ -108,7 +109,7 @@ async function loadFullMapMarkers() {
             marker.bindPopup(`
                 <b>${site.name}</b> <span style="font-size:0.8em;background:#e0e7ff;padding:1px 5px;border-radius:4px">${site.technology}</span><br>
                 <b>Pays:</b> ${site.country_name}<br>
-                <b>Vendor:</b> ${site.vendor}<br>
+                <b>Vendor:</b> <span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:3px;vertical-align:middle"></span>${site.vendor}<br>
                 <b>KPI Global:</b> ${site.kpi_global}%<br>
                 ${worstLine}
                 <button class="btn btn-sm btn-primary mt-2" onclick="showFullSiteDetails('${site.id}')">Voir détails</button>
@@ -175,7 +176,7 @@ function renderSitesTable() {
             <td><strong>${escapeHtml(site.id)}</strong></td>
             <td>${escapeHtml(site.name)}</td>
             <td><i class="bi bi-flag"></i> ${escapeHtml(site.country_name ?? site.country_code)}</td>
-            <td>${escapeHtml(site.vendor)}</td>
+            <td><span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:4px;vertical-align:middle"></span>${escapeHtml(site.vendor)}</td>
             <td><span class="badge-tech">${escapeHtml(site.technology)}</span></td>
             <td>${escapeHtml(site.domain)}</td>
             <td><strong>${site.kpi_global}%</strong></td>
@@ -293,6 +294,8 @@ function initFullFilters() {
                 if (el) el.value = 'all';
             });
             fullFilters = { country: 'all', vendor: 'all', tech: 'all', domain: 'all', status: 'all' };
+            const searchInput = document.getElementById('searchSite');
+            if (searchInput) searchInput.value = '';
             fullCurrentPage = 1;
             await Promise.all([
                 loadFullMapMarkers(),
@@ -409,6 +412,37 @@ function centerOnCountry(countryName) {
     if (coords && fullMap) {
         fullMap.flyTo([coords[0], coords[1]], coords[2]);
     }
+}
+
+/**
+ * Initialise la recherche de site
+ */
+function initFullSearch() {
+    const searchBtn = document.getElementById('searchBtn');
+    const searchInput = document.getElementById('searchSite');
+    if (!searchBtn || !searchInput) return;
+
+    const performSearch = async () => {
+        const query = searchInput.value.trim();
+        if (!query) return;
+        try {
+            const result = await API.searchSite(query);
+            if (result.success && result.data) {
+                const site = result.data;
+                if (fullMap && site.latitude && site.longitude) {
+                    fullMap.flyTo([site.latitude, site.longitude], 13);
+                }
+                showFullSiteDetails(site.id);
+            } else {
+                alert(`Aucun site trouvé pour : ${query}`);
+            }
+        } catch (err) {
+            console.error('[Map View] Erreur recherche:', err);
+        }
+    };
+
+    searchBtn.addEventListener('click', performSearch);
+    searchInput.addEventListener('keypress', e => { if (e.key === 'Enter') performSearch(); });
 }
 
 /**

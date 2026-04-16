@@ -26,6 +26,7 @@ async function initKpisCore() {
     await loadCoreWorstSitesTable();
     await loadCoreCharts();
     initCoreFilters();
+    initCoreSearch();
     initCoreReports();
 }
 
@@ -134,7 +135,7 @@ async function loadCoreWorstSitesTable() {
                 <td><strong>${escapeHtml(site.id)}</strong></td>
                 <td>${escapeHtml(site.name)}</td>
                 <td><i class="bi bi-flag"></i> ${escapeHtml(site.country_name)}</td>
-                <td>${site.vendor}</td>
+                <td><span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:4px;vertical-align:middle"></span>${escapeHtml(site.vendor)}</td>
                 <td><span class="${site.packet_loss > 1 ? 'packetloss-high' : (site.packet_loss > 0.5 ? 'packetloss-medium' : 'packetloss-low')}">${site.packet_loss}%</span></td>
                 <td>${site.latency} ms</td>
                 <td>${site.jitter} ms</td>
@@ -182,7 +183,7 @@ async function loadCoreCharts() {
         if (byCountry) {
             chartManager.createBarChart('latencyCountryChart', {
                 labels: byCountry.map(c => c.name),
-                datasets: [{ label: 'Latence (ms)', data: byCountry.map(c => c.latency), backgroundColor: API.COLORS.tech['4G'] }]
+                datasets: [{ label: 'Packet Loss (%)', data: byCountry.map(c => c.packet_loss), backgroundColor: API.COLORS.tech['4G'] }]
             });
         }
         
@@ -190,7 +191,7 @@ async function loadCoreCharts() {
         if (byVendor) {
             chartManager.createBarChart('vendorPacketLossChart', {
                 labels: ['Huawei', 'Ericsson'],
-                datasets: [{ label: 'Packet Loss (%)', data: [byVendor.huawei || 0, byVendor.ericsson || 0], backgroundColor: [API.COLORS.tech['4G'], API.COLORS.tech['3G']] }]
+                datasets: [{ label: 'Packet Loss (%)', data: [byVendor.huawei || 0, byVendor.ericsson || 0], backgroundColor: [API.COLORS.vendor['Huawei'], API.COLORS.vendor['Ericsson']] }]
             });
         }
         
@@ -198,7 +199,7 @@ async function loadCoreCharts() {
         if (distribution) {
             chartManager.createPieChart('vendorChart', {
                 labels: ['Huawei', 'Ericsson'],
-                datasets: [{ data: [distribution.huawei || 0, distribution.ericsson || 0], backgroundColor: [API.COLORS.tech['4G'], API.COLORS.tech['3G']] }]
+                datasets: [{ data: [distribution.huawei || 0, distribution.ericsson || 0], backgroundColor: [API.COLORS.vendor['Huawei'], API.COLORS.vendor['Ericsson']] }]
             });
             
             chartManager.createBarChart('countryChart', {
@@ -247,6 +248,8 @@ function initCoreFilters() {
                 if (el) el.value = 'all';
             });
             coreFilters = { country: 'all', vendor: 'all' };
+            const searchInput = document.getElementById('searchSite');
+            if (searchInput) searchInput.value = '';
             coreCurrentPage = 1;
             await loadCoreStats();
             await loadCoreWorstSitesTable();
@@ -289,6 +292,37 @@ async function showCoreCountryBorder(countryCode) {
     } catch (err) {
         console.warn('[KPIs CORE] Frontières pays non disponibles:', err);
     }
+}
+
+/**
+ * Initialise la recherche de site
+ */
+function initCoreSearch() {
+    const searchBtn = document.getElementById('searchBtn');
+    const searchInput = document.getElementById('searchSite');
+    if (!searchBtn || !searchInput) return;
+
+    const performSearch = async () => {
+        const query = searchInput.value.trim();
+        if (!query) return;
+        try {
+            const result = await API.searchSite(query);
+            if (result.success && result.data) {
+                const site = result.data;
+                if (coreMap && site.latitude && site.longitude) {
+                    coreMap.flyTo([site.latitude, site.longitude], 13);
+                }
+                showCoreSiteDetails(site.id);
+            } else {
+                alert(`Aucun site trouvé pour : ${query}`);
+            }
+        } catch (err) {
+            console.error('[KPIs CORE] Erreur recherche:', err);
+        }
+    };
+
+    searchBtn.addEventListener('click', performSearch);
+    searchInput.addEventListener('keypress', e => { if (e.key === 'Enter') performSearch(); });
 }
 
 /**
@@ -352,7 +386,7 @@ async function showCoreSiteDetails(siteId) {
                 <tr><td><strong>ID Site</strong></td><td>${escapeHtml(site.id)}</td> </tr>
                 <tr><td><strong>Nom</strong></td><td>${escapeHtml(site.name)}</td> </tr>
                 <tr><td><strong>Pays</strong></td><td>${escapeHtml(site.country_name)}</td> </tr>
-                <tr><td><strong>Vendor</strong></td><td>${escapeHtml(site.vendor)}</td> </tr>
+                <tr><td><strong>Vendor</strong></td><td><span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:4px;vertical-align:middle"></span>${escapeHtml(site.vendor)}</td> </tr>
              </table>
         `;
         

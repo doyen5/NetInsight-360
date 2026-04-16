@@ -35,22 +35,74 @@ try {
             $values[] = floatval($row['avg_val']);
         }
     } else {
-        // RNA (et tout autre KPI RAN) : agrégation depuis kpis_ran sur les N derniers jours avec données
+        // RNA par technologie (2G/3G/4G) avec date + heure
         $stmt = $pdo->prepare("
-            SELECT kpi_date AS d, ROUND(AVG(kpi_global), 2) AS avg_val
+            SELECT kpi_date, kpi_hour, technology,
+                   ROUND(AVG(kpi_global), 2) AS avg_val
             FROM kpis_ran
             WHERE kpi_date >= DATE_SUB((SELECT MAX(kpi_date) FROM kpis_ran), INTERVAL ? DAY)
               AND kpi_global > 0
-            GROUP BY kpi_date
-            ORDER BY kpi_date ASC
-            LIMIT ?
+              AND technology IN ('2G', '3G', '4G')
+            GROUP BY kpi_date, kpi_hour, technology
+            ORDER BY kpi_date ASC, kpi_hour ASC, technology ASC
         ");
-        $stmt->execute([$days, $days]);
+        $stmt->execute([$days]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($rows as $row) {
-            $labels[] = date('d/m', strtotime($row['d']));
-            $values[] = floatval($row['avg_val']);
+
+        // Construire la liste ordonnée des timestamps uniques (clé = date|heure)
+        $timestamps = [];
+        foreach ($rows as $r) {
+            $key = $r['kpi_date'] . '|' . ($r['kpi_hour'] ?? '');
+            if (!isset($timestamps[$key])) {
+                $timestamps[$key] = ['date' => $r['kpi_date'], 'hour' => $r['kpi_hour']];
+            }
         }
+
+        // Construire les labels courts (axe X) et longs (tooltip)
+        $labelMap     = [];
+        $fullLabelMap = [];
+        foreach ($timestamps as $key => $ts) {
+            $h = (string)($ts['hour'] ?? '');
+            $fullDate = date('d/m/Y', strtotime($ts['date']));
+            if ($h !== '') {
+                $hPad = str_pad($h, 2, '0', STR_PAD_LEFT);
+                $labelMap[$key]     = date('d/m', strtotime($ts['date'])) . ' ' . $hPad . ':00';
+                $fullLabelMap[$key] = $fullDate . ' ' . $hPad . ':00';
+            } else {
+                $labelMap[$key]     = date('d/m', strtotime($ts['date']));
+                $fullLabelMap[$key] = $fullDate . ' — heure inconnue';
+            }
+        }
+
+        // Indexer les valeurs par (timestamp_key => technologie)
+        $dataByKey = [];
+        foreach ($rows as $r) {
+            $key = $r['kpi_date'] . '|' . ($r['kpi_hour'] ?? '');
+            $dataByKey[$key][$r['technology']] = (float)$r['avg_val'];
+        }
+
+        // Construire les tableaux par technologie (null si absent pour ce créneau)
+        $data2G = $data3G = $data4G = [];
+        $fullLabels = [];
+        foreach ($timestamps as $key => $ts) {
+            $labels[]     = $labelMap[$key];
+            $fullLabels[] = $fullLabelMap[$key];
+            $data2G[] = $dataByKey[$key]['2G'] ?? null;
+            $data3G[] = $dataByKey[$key]['3G'] ?? null;
+            $data4G[] = $dataByKey[$key]['4G'] ?? null;
+        }
+
+        echo json_encode([
+            'success' => true,
+            'data'    => [
+                'labels'     => $labels,
+                'fullLabels' => $fullLabels,
+                '2G'         => $data2G,
+                '3G'         => $data3G,
+                '4G'         => $data4G,
+            ]
+        ]);
+        exit;
     }
 
     echo json_encode([

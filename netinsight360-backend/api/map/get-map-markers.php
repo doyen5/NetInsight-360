@@ -65,13 +65,20 @@ try {
     if ($vendor  !== 'all') { $sql .= " AND s.vendor = ?";       $params[] = $vendor;  }
     if ($tech    !== 'all') { $sql .= " AND k.technology = ?";   $params[] = $tech;    }
     if ($domain  !== 'all') { $sql .= " AND s.domain = ?";       $params[] = $domain;  }
-    if ($status  !== 'all') { $sql .= " AND k.status = ?";       $params[] = $status;  }
+    // 'status' est un alias CASE dans le SELECT — non filtrable dans WHERE.
+    // On valide via whitelist puis on filtre dans HAVING après calcul.
+    $statusHaving = '';
+    $validStatuses = ['good', 'warning', 'critical'];
+    if ($status !== 'all' && in_array($status, $validStatuses, true)) {
+        $statusHaving = " AND status = '" . $status . "'";
+    }
 
     // Exclure les sites sans coordonnées valides
     // Exclut les coordonnées nulles/zéro et hors des limites de l'Afrique
     $sql .= " HAVING latitude IS NOT NULL AND latitude != 0 AND longitude != 0"
           . " AND latitude BETWEEN -5.0 AND 25.0"
-          . " AND longitude BETWEEN -18.0 AND 30.0";
+          . " AND longitude BETWEEN -18.0 AND 30.0"
+          . $statusHaving;
     $sql .= " ORDER BY kpi_global ASC LIMIT 2000";
 
     $stmt = $pdo->prepare($sql);

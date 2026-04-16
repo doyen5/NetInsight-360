@@ -62,7 +62,7 @@ function updateUsersTable() {
     if (!tbody) return;
     
     if (paginated.length === 0) {
-        tbody.innerHTML = '米<td colspan="8" class="text-center">Aucun utilisateur trouvé</td>米';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center">Aucun utilisateur trouvé</td></tr>';
         return;
     }
     

@@ -120,9 +120,6 @@ async function loadImportStatus() {
         area.innerHTML = `
             <div class="d-flex align-items-center gap-2 mb-3">${runningBadge}</div>
             <div class="row g-2">
-                // Affiche la date ET l'heure du dernier import.
-                // On utilise formatDate() pour forcer l'affichage heure:minute:seconde
-                // (backend peut renvoyer uniquement la date ou un ISO datetime).
                 ${buildStatCard('Dernier import', formatDate(ran.last_date) || '—', 'bi-calendar-check')}
                 ${buildStatCard('Sites RAN',      ran.sites    ?? '—', 'bi-wifi')}
                 ${buildStatCard('Enregistrements', ran.records ?? '—', 'bi-database')}
@@ -435,8 +432,14 @@ function colorizeLog(text) {
 
 function formatDate(str) {
     if (!str) return '—';
+    // Si la valeur est une date pure (YYYY-MM-DD sans heure), on n'affiche pas l'heure
+    // pour éviter le "00:00:00" parasite injecté par le navigateur via new Date()
+    const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(str.trim());
     const d = new Date(str.replace(' ', 'T'));
     if (isNaN(d)) return str;
+    if (isDateOnly) {
+        return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
+    }
     return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' })
          + ' ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
 }

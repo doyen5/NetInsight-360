@@ -9,7 +9,11 @@
 ::   3. Enregistre la date, le résultat et les erreurs dans un fichier log
 :: ============================================================
 
-SET PHP_EXE=C:\PHP\php.exe
+:: Détecter le binaire PHP : cherche dans WAMP en priorité, puis C:\PHP, puis PATH
+SET PHP_EXE=php
+FOR /D %%d IN ("C:\wamp64\bin\php\php*") DO SET PHP_EXE=%%d\php.exe
+IF NOT EXIST "%PHP_EXE%" SET PHP_EXE=C:\PHP\php.exe
+IF NOT EXIST "%PHP_EXE%" SET PHP_EXE=php
 SET SCRIPT=C:\wamp64\www\NetInsight 360\netinsight360-backend\scripts\import_ran_kpis_complete.php
 SET LOG_DIR=C:\wamp64\www\NetInsight 360\netinsight360-backend\logs
 SET LOG_FILE=%LOG_DIR%\import_cron.log

@@ -8,6 +8,12 @@ AuthHelper::requireLogin();
 // Récupérer les infos utilisateur
 $user = AuthHelper::getUser();
 $userRole = AuthHelper::getUserRole();
+
+// Les CUSTOMER n'ont pas accès aux alertes
+if ($userRole === 'CUSTOMER') {
+    header('Location: dashboard.php');
+    exit;
+}
 ?>
 
 <!DOCTYPE html>
@@ -159,7 +165,7 @@ $userRole = AuthHelper::getUserRole();
             <a href="users-management.php" class="nav-link admin-only" data-section="users-management">
                 <i class="bi bi-people"></i> Gestion Users
             </a>
-            <a href="alerts.php" class="nav-link active" data-section="alerts">
+            <a href="alerts.php" class="nav-link active viewer-restricted" data-section="alerts">
                 <i class="bi bi-bell"></i> Alertes
             </a>
             <a href="admin-tools.php" class="nav-link admin-only"><i class="bi bi-tools"></i> Outils Admin</a>

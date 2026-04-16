@@ -63,19 +63,19 @@ try {
     $cStmt = $pdo->prepare("
         SELECT
             COALESCE(c.country_name, s.country_code) AS name,
-            ROUND(AVG(k.packet_loss), 2)              AS latency,
+            ROUND(AVG(k.packet_loss), 2)              AS packet_loss,
             ROUND(AVG(k.kpi_global),  2)              AS kpi_global
         FROM sites s
         INNER JOIN kpis_core k  ON k.site_id        = s.id
         LEFT  JOIN countries c  ON c.country_code   = s.country_code
         WHERE $where
-        GROUP BY s.country_code, c.country_name ORDER BY latency DESC
+        GROUP BY s.country_code, c.country_name ORDER BY packet_loss DESC
     ");
     $cStmt->execute($params);
     $byCountry = $cStmt->fetchAll(PDO::FETCH_ASSOC);
     foreach ($byCountry as &$row) {
-        $row['latency']    = (float)$row['latency'];
-        $row['kpi_global'] = (float)$row['kpi_global'];
+        $row['packet_loss'] = (float)$row['packet_loss'];
+        $row['kpi_global']  = (float)$row['kpi_global'];
     }
     unset($row);
 

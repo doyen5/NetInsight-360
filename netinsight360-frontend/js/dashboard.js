@@ -164,7 +164,7 @@ async function loadMapMarkers(filters = {}) {
             marker.bindPopup(`
                 <b>${site.name}</b> <span style="font-size:0.8em;background:#e0e7ff;padding:1px 5px;border-radius:4px">${site.technology}</span><br>
                 <b>Pays:</b> ${site.country_name}<br>
-                <b>Vendor:</b> ${site.vendor}<br>
+                <b>Vendor:</b> <span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:3px;vertical-align:middle"></span>${site.vendor}<br>
                 <b>KPI Global:</b> ${site.kpi_global}%<br>
                 ${worstLine}
                 <button class="btn btn-sm btn-primary mt-2" onclick="showSiteDetails('${site.id}')">Voir détails</button>
@@ -218,7 +218,7 @@ async function loadTopWorstSites(filters = {}) {
                     <div>
                         <span class="site-name">${escapeHtml(site.name)}</span>
                         <span style="font-size:0.75em;background:#e0e7ff;padding:1px 5px;border-radius:10px;margin-left:4px">${escapeHtml(site.technology)}</span><br>
-                        <small>${site.country_name} | ${site.vendor}</small>
+                        <small>${site.country_name} | <span style="width:8px;height:8px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:2px;vertical-align:middle"></span>${escapeHtml(site.vendor)}</small>
                     </div>
                     <div><span class="badge-good">${site.kpi_global}%</span></div>
                 </div>
@@ -238,7 +238,7 @@ async function loadTopWorstSites(filters = {}) {
                     <div>
                         <span class="site-name">${escapeHtml(site.name)}</span>
                         <span style="font-size:0.75em;background:#fee2e2;padding:1px 5px;border-radius:10px;margin-left:4px">${escapeHtml(site.technology)}</span><br>
-                        <small>${site.country_name} | ${site.vendor}</small>
+                        <small>${site.country_name} | <span style="width:8px;height:8px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:2px;vertical-align:middle"></span>${escapeHtml(site.vendor)}</small>
                         ${worstLine}
                     </div>
                     <div><span class="${site.status === 'critical' ? 'badge-critical' : 'badge-warning'}">${site.kpi_global}%</span></div>
@@ -257,15 +257,85 @@ async function loadDashboardCharts() {
     try {
         const trends = await API.getGlobalTrends('RNA');
         if (trends.success) {
+            // Calcul dynamique de l'axe Y : min arrondi à la dizaine inf. - 2, max 100
+            const allVals = [
+                ...(trends.data['2G'] || []),
+                ...(trends.data['3G'] || []),
+                ...(trends.data['4G'] || [])
+            ].filter(v => v !== null && v !== undefined);
+            const yMin = allVals.length ? Math.max(0, Math.floor((Math.min(...allVals) - 2) / 5) * 5) : 0;
+            const fullLabels = trends.data.fullLabels || trends.data.labels;
+
             chartManager.createLineChart('ranTrendChart', {
                 labels: trends.data.labels,
-                datasets: [{
-                    label: 'RNA (%)',
-                    data: trends.data.values,
-                    borderColor: '#00a3c4',
-                    fill: true,
-                    tension: 0.4
-                }]
+                datasets: [
+                    {
+                        label: '2G',
+                        data: trends.data['2G'],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59,130,246,0.10)',
+                        fill: false,
+                        tension: 0.3,
+                        borderWidth: 2.5,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        borderDash: [],
+                        spanGaps: true
+                    },
+                    {
+                        label: '3G',
+                        data: trends.data['3G'],
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34,197,94,0.10)',
+                        fill: false,
+                        tension: 0.3,
+                        borderWidth: 2.5,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        borderDash: [6, 3],
+                        spanGaps: true
+                    },
+                    {
+                        label: '4G',
+                        data: trends.data['4G'],
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239,68,68,0.10)',
+                        fill: false,
+                        tension: 0.3,
+                        borderWidth: 2.5,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        borderDash: [2, 4],
+                        spanGaps: true
+                    }
+                ]
+            }, {
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { usePointStyle: true, padding: 18 }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            title: items => items.length ? fullLabels[items[0].dataIndex] : '',
+                            label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y !== null ? ctx.parsed.y.toFixed(2) + ' %' : 'N/A'}`
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { maxRotation: 45, minRotation: 30 }
+                    },
+                    y: {
+                        min: yMin,
+                        max: 100,
+                        title: { display: true, text: 'RNA (%)' },
+                        ticks: { callback: v => v + ' %' }
+                    }
+                },
+                interaction: { mode: 'index', intersect: false }
             });
         }
         
@@ -510,7 +580,7 @@ async function showSiteDetails(siteId) {
                 <tr><td><strong>ID Site</strong></td><td>${escapeHtml(site.id)}</td></tr>
                 <tr><td><strong>Nom</strong></td><td>${escapeHtml(site.name)}</td></tr>
                 <tr><td><strong>Pays</strong></td><td>${escapeHtml(site.country_name)}</td></tr>
-                <tr><td><strong>Vendor</strong></td><td>${escapeHtml(site.vendor)}</td></tr>
+                <tr><td><strong>Vendor</strong></td><td><span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:4px;vertical-align:middle"></span>${escapeHtml(site.vendor)}</td></tr>
                 <tr><td><strong>Technologie</strong></td><td>${escapeHtml(site.technology)}</td></tr>
                 <tr><td><strong>Domaine</strong></td><td>${escapeHtml(site.domain)}</td></tr>
             </table>

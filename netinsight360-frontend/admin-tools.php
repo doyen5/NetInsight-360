@@ -62,7 +62,7 @@ if ($userRole !== 'ADMIN') {
             <a href="kpis-core.php"        class="nav-link"><i class="bi bi-hdd-stack"></i> KPIs CORE</a>
             <a href="map-view.php"         class="nav-link"><i class="bi bi-map"></i> Cartographie</a>
             <a href="users-management.php" class="nav-link admin-only"><i class="bi bi-people"></i> Gestion Users</a>
-            <a href="alerts.php"           class="nav-link"><i class="bi bi-bell"></i> Alertes</a>
+            <a href="alerts.php"           class="nav-link viewer-restricted"><i class="bi bi-bell"></i> Alertes</a>
             <a href="admin-tools.php"      class="nav-link active admin-only"><i class="bi bi-tools"></i> Outils Admin</a>
         </nav>
     </div>

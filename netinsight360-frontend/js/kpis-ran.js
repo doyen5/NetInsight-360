@@ -57,8 +57,8 @@ async function initKpisRan() {
     // Initialiser les filtres
     initRanFilters();
     
-    // Initialiser les rapports
-    initRanReports();
+    // Initialiser la recherche
+    initRanSearch();
 
     // Si la page a été ouverte juste après un import (flag mis par admin-tools),
     // activer automatiquement l'option "Top by tech" pour aider l'opérateur.
@@ -162,7 +162,7 @@ async function loadRanMapMarkers() {
                     <b>${site.name}</b><br>
                     <b>ID:</b> ${site.id}<br>
                     <b>Pays:</b> ${site.country_name || site.country_code}<br>
-                    <b>Vendor:</b> ${site.vendor} | <span class="badge-tech">${site.technology}</span><br>
+                    <b>Vendor:</b> <span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:3px;vertical-align:middle"></span>${site.vendor} | <span class="badge-tech">${site.technology}</span><br>
                     <b>KPI global:</b> ${site.kpi_global}%${worstLine}<br>
                     <small class="text-muted">Tech group: ${site._tech_group}</small><br>
                     <button class="btn btn-sm btn-primary mt-2" onclick="showRanSiteDetails('${site.id}')">Voir détails</button>
@@ -202,7 +202,7 @@ async function loadRanMapMarkers() {
                 <b>${site.name}</b><br>
                 <b>ID:</b> ${site.id}<br>
                 <b>Pays:</b> ${site.country_name || site.country_code}<br>
-                <b>Vendor:</b> ${site.vendor} | <span class="badge-tech">${site.technology}</span><br>
+                    <b>Vendor:</b> <span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:3px;vertical-align:middle"></span>${site.vendor} | <span class="badge-tech">${site.technology}</span><br>
                 <b>KPI global:</b> ${site.kpi_global}%${worstLine}<br>
                 <button class="btn btn-sm btn-primary mt-2" onclick="showRanSiteDetails('${site.id}')">Voir détails</button>
             `);
@@ -270,7 +270,7 @@ async function loadWorstSitesTable() {
                 <td>${escapeHtml(site.name)}</td>
                 <td><i class="bi bi-flag"></i> ${escapeHtml(site.country_name)}</td>
                 <td><span class="badge-tech">${site.technology}</span></td>
-                <td>${site.vendor}</td>
+                <td><span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:4px;vertical-align:middle"></span>${site.vendor}</td>
                 <td>${worstLabel}</td>
                 <td><span class="status-badge status-${site.status}">${site.status === 'good' ? '✓ OK' : (site.status === 'warning' ? '⚠️ Alerte' : '🔴 Critique')}</span></td>
                 <td><button class="btn-details" onclick="showRanSiteDetails('${site.id}')"><i class="bi bi-eye-fill"></i></button></td>
@@ -346,7 +346,7 @@ async function loadRanCharts() {
         if (distribution) {
             chartManager.createPieChart('vendorChart', {
                 labels: ['Huawei', 'Ericsson'],
-                datasets: [{ data: [distribution.huawei || 0, distribution.ericsson || 0], backgroundColor: [API.COLORS.tech['4G'], API.COLORS.tech['3G']] }]
+                datasets: [{ data: [distribution.huawei || 0, distribution.ericsson || 0], backgroundColor: [API.COLORS.vendor['Huawei'], API.COLORS.vendor['Ericsson']] }]
             });
             
             chartManager.createPieChart('techChart', {
@@ -396,6 +396,8 @@ function initRanFilters() {
                 if (el) el.value = 'all';
             });
             ranFilters = { country: 'all', vendor: 'all', tech: 'all' };
+            const searchInput = document.getElementById('searchSite');
+            if (searchInput) searchInput.value = '';
             ranCurrentPage = 1;
             await loadRanStats();
             await loadWorstSitesTable();
@@ -448,6 +450,37 @@ async function showRanCountryBorder(countryCode) {
     } catch (err) {
         console.warn('[KPIs RAN] Frontières pays non disponibles:', err);
     }
+}
+
+/**
+ * Initialise la recherche de site
+ */
+function initRanSearch() {
+    const searchBtn = document.getElementById('searchBtn');
+    const searchInput = document.getElementById('searchSite');
+    if (!searchBtn || !searchInput) return;
+
+    const performSearch = async () => {
+        const query = searchInput.value.trim();
+        if (!query) return;
+        try {
+            const result = await API.searchSite(query);
+            if (result.success && result.data) {
+                const site = result.data;
+                if (ranMap && site.latitude && site.longitude) {
+                    ranMap.flyTo([site.latitude, site.longitude], 13);
+                }
+                showRanSiteDetails(site.id);
+            } else {
+                alert(`Aucun site trouvé pour : ${query}`);
+            }
+        } catch (err) {
+            console.error('[KPIs RAN] Erreur recherche:', err);
+        }
+    };
+
+    searchBtn.addEventListener('click', performSearch);
+    searchInput.addEventListener('keypress', e => { if (e.key === 'Enter') performSearch(); });
 }
 
 /**

@@ -213,38 +213,6 @@ function getCurrentUser() {
 }
 
 /**
- * Met à jour l'interface utilisateur (nom, avatar, rôle)
- * @returns {Promise<void>}
- */
-async function updateUserInterface() {
-    const user = getCurrentUser();
-    if (!user) return;
-    
-    // Mettre à jour le nom dans le message de bienvenue
-    const userNameEl = document.getElementById('userName');
-    const headerUserNameEl = document.getElementById('headerUserName');
-    if (userNameEl) userNameEl.innerText = user.name;
-    if (headerUserNameEl) headerUserNameEl.innerText = user.name;
-    
-    // Générer les initiales pour l'avatar
-    const initials = user.name.split(' ').map(n => n[0]).join('').toUpperCase();
-    const userAvatarEl = document.getElementById('userAvatar');
-    if (userAvatarEl) userAvatarEl.innerText = initials;
-    
-    // Afficher le rôle de l'utilisateur
-    const roleMap = {
-        'ADMIN': 'Administrateur',
-        'FO_ANALYSTE': 'Agent Analyste',
-        'CUSTOMER': 'Agent Visualiseur'
-    };
-    const headerUserRoleEl = document.getElementById('headerUserRole');
-    if (headerUserRoleEl) headerUserRoleEl.innerText = roleMap[user.role] || 'Utilisateur';
-    
-    // Appliquer les restrictions selon le rôle
-    applyRoleRestrictions(user.role);
-}
-
-/**
  * Applique les restrictions d'affichage selon le rôle de l'utilisateur
  * @param {string} role - Rôle de l'utilisateur (ADMIN, FO_ANALYSTE, CUSTOMER)
  */
@@ -393,7 +361,6 @@ window.initLogoutHandler = initLogoutHandler;
 window.checkAuthentication = checkAuthentication;
 window.checkAuthenticationWithTimeout = checkAuthenticationWithTimeout;
 window.getCurrentUser = getCurrentUser;
-window.updateUserInterface = updateUserInterface;
 window.applyRoleRestrictions = applyRoleRestrictions;
 window.showToast = showToast;
 window.escapeHtml = escapeHtml;
