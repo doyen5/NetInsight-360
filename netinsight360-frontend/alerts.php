@@ -370,8 +370,18 @@ if ($userRole === 'CUSTOMER') {
                 </div>
                 <div class="modal-body">
                     <div id="alertDetailsContent"></div>
+                    <div class="mt-3">
+                        <label for="alertActionComment" class="form-label fw-semibold">Commentaire opérateur (optionnel)</label>
+                        <textarea id="alertActionComment" class="form-control" rows="2" placeholder="Ex: escalade vers N2, attente intervention terrain..."></textarea>
+                    </div>
                 </div>
                 <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-primary" id="acknowledgeAlertBtn">
+                        <i class="bi bi-person-check"></i> Prendre en charge
+                    </button>
+                    <button type="button" class="btn btn-outline-warning" id="escalateAlertBtn">
+                        <i class="bi bi-arrow-up-circle"></i> Escalader
+                    </button>
                     <button type="button" class="btn btn-success" id="resolveAlertBtn">
                         <i class="bi bi-check-circle"></i> Marquer comme résolue
                     </button>

@@ -36,6 +36,10 @@ let _pollTimer       = null;
 // Empêche loadImportStatus() de redésactiver le bouton via le setInterval.
 let _pollingExpired  = false;
 
+// Mode d'import déclenché depuis l'UI (global, 2G, 3G, 4G)
+// Utilisé pour afficher un indicateur visuel sur le bouton exact lancé.
+let _activeImportMode = null;
+
 /* ============================================================
    POINT D'ENTRÉE
    Appelé dans admin-tools.php via : initAdminTools()
@@ -56,6 +60,10 @@ function initAdminTools() {
     document.getElementById('refreshStatusBtn').addEventListener('click', loadImportStatus);
     // Bouton « Lancer l'import » → déclenche un import manuel
     document.getElementById('runImportBtn').addEventListener('click', triggerImport);
+    // Boutons import par techno
+    document.getElementById('runImport2GBtn')?.addEventListener('click', () => triggerTechImport('2G'));
+    document.getElementById('runImport3GBtn')?.addEventListener('click', () => triggerTechImport('3G'));
+    document.getElementById('runImport4GBtn')?.addEventListener('click', () => triggerTechImport('4G'));
 
     // --- Section Audit ---
     // Charge la première page des logs d'audit sans filtre
@@ -106,8 +114,10 @@ async function loadImportStatus() {
     try {
         const res = await API.getImportStatus();
         if (!res.success) {
-            area.innerHTML = `<div class="text-danger"><i class="bi bi-exclamation-circle"></i> ${res.message || 'Erreur API'}</div>`;
-            return;
+            area.innerHTML = `<div class="text-danger"><i class="bi bi-exclamation-circle"></i> ${res.message || res.error || 'Erreur API'}</div>`;
+            // En cas d'échec du statut, on évite de laisser l'UI verrouillée indéfiniment.
+            setImportRunning(false);
+            return { ok: false, isRunning: false };
         }
         const d = res.data;
 
@@ -139,7 +149,7 @@ async function loadImportStatus() {
                 <div class="d-flex justify-content-between border-bottom py-1">
                     <span>${a.user_email || 'Système'}</span>
                     <span class="text-muted">${formatDate(a.created_at)}</span>
-                    <span class="badge audit-badge audit-IMPORT_TRIGGERED">Import</span>
+                    <span class="badge audit-badge audit-IMPORT_TRIGGERED">${(a.details || '').match(/\b(2G|3G|4G)\b/i)?.[1]?.toUpperCase() || 'GLOBAL'}</span>
                 </div>`).join('');
         } else {
             auditList.innerHTML = '<span class="text-muted">Aucun import manuel récent</span>';
@@ -161,8 +171,12 @@ async function loadImportStatus() {
             } catch (_) {}
         }
 
+        return { ok: true, isRunning: Boolean(d.is_running) };
+
     } catch (e) {
         area.innerHTML = `<div class="text-danger"><i class="bi bi-wifi-off"></i> Impossible de joindre l'API</div>`;
+        setImportRunning(false);
+        return { ok: false, isRunning: false };
     }
 }
 
@@ -182,44 +196,122 @@ async function loadImportStatus() {
  *  4) En cas d'erreur API, réactive le bouton et affiche un message d'erreur.
  */
 async function triggerImport() {
+    await triggerImportInternal('global');
+}
+
+/**
+ * triggerTechImport(tech)
+ *
+ * Déclenche un import ciblé par technologie (2G/3G/4G) en réutilisant
+ * le même mécanisme de lock/polling que l'import global.
+ */
+async function triggerTechImport(tech) {
+    await triggerImportInternal(tech);
+}
+
+/**
+ * triggerImportInternal(mode)
+ *
+ * Centralise la logique pour tous les imports (global ou techno):
+ * - anti-double clic: tous les boutons d'import sont désactivés
+ * - polling de fin d'exécution
+ * - message explicite de l'opération en cours
+ */
+async function triggerImportInternal(mode) {
     const msg = document.getElementById('importMsg');
     msg.innerHTML = '';
     _pollingExpired = false;
+    _activeImportMode = mode;
+    setImportButtonBusy(mode, true);
     setImportRunning(true);
-    msg.innerHTML = '<span class="text-primary"><span class="spinner-border spinner-border-sm me-1"></span>Démarrage de l\'import...</span>';
+    const modeLabel = mode === 'global' ? 'global' : mode;
+    msg.innerHTML = `<span class="text-primary"><span class="spinner-border spinner-border-sm me-1"></span>Démarrage de l'import ${modeLabel}...</span>`;
 
     try {
-        const res = await API.runImport();
+        const res = mode === 'global' ? await API.runImport() : await API.runImportByTech(mode);
         if (res.success) {
-            msg.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Import lancé en arrière-plan.</span>';
+            const successLabel = mode === 'global' ? 'global' : mode;
+            msg.innerHTML = `<span class="text-success"><i class="bi bi-check-circle me-1"></i>Import ${successLabel} lancé en arrière-plan.</span>`;
             // Polling toutes les 5 s pendant 2 min
             clearInterval(_pollTimer);
             let tries = 0;
             _pollTimer = setInterval(async () => {
                 tries++;
-                await loadImportStatus();
-                const statusRes = await API.getImportStatus();
-                if (!statusRes.data?.is_running || tries >= 24) {
+                const status = await loadImportStatus();
+                // Un seul appel statut par tick. Si l'API échoue, on réessaie jusqu'au timeout.
+                if ((status && status.ok && !status.isRunning) || tries >= 24) {
                     clearInterval(_pollTimer);
-                    if (tries >= 24 && statusRes.data?.is_running) {
+                    if (tries >= 24 && status?.isRunning) {
                         // Import toujours en cours après 2 min : on libère le bouton
                         // mais on empêche le setInterval(30s) de le re-bloquer
                         _pollingExpired = true;
-                        msg.innerHTML = '<span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Durée maximale atteinte. Vérifiez les logs.</span>';
+                        msg.innerHTML = `<span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Import ${modeLabel}: durée maximale atteinte. Vérifiez les logs.</span>`;
+                    } else if (tries >= 24 && (!status || !status.ok)) {
+                        _pollingExpired = false;
+                        msg.innerHTML = `<span class="text-danger"><i class="bi bi-wifi-off me-1"></i>Import ${modeLabel}: statut indisponible, vérifiez les logs puis actualisez.</span>`;
                     } else {
                         _pollingExpired = false;
-                        msg.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Import terminé avec succès.</span>';
+                        msg.innerHTML = `<span class="text-success"><i class="bi bi-check-circle me-1"></i>Import ${modeLabel} terminé avec succès.</span>`;
                     }
+                    setImportButtonBusy(mode, false);
+                    _activeImportMode = null;
                     setImportRunning(false);
                 }
             }, 5000);
         } else {
+            setImportButtonBusy(mode, false);
+            _activeImportMode = null;
             setImportRunning(false);
-            msg.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle me-1"></i>${res.message || 'Erreur inconnue'}</span>`;
+            msg.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle me-1"></i>${res.message || res.error || 'Erreur inconnue'}</span>`;
         }
     } catch (e) {
+        setImportButtonBusy(mode, false);
+        _activeImportMode = null;
         setImportRunning(false);
         msg.innerHTML = '<span class="text-danger"><i class="bi bi-wifi-off me-1"></i>Erreur API</span>';
+    }
+}
+
+/**
+ * getImportButtonId(mode)
+ *
+ * Retourne l'id DOM du bouton associé au mode d'import.
+ * @param {'global'|'2G'|'3G'|'4G'} mode
+ * @returns {string|null}
+ */
+function getImportButtonId(mode) {
+    const map = {
+        global: 'runImportBtn',
+        '2G': 'runImport2GBtn',
+        '3G': 'runImport3GBtn',
+        '4G': 'runImport4GBtn'
+    };
+    return map[mode] || null;
+}
+
+/**
+ * setImportButtonBusy(mode, busy)
+ *
+ * Met en évidence le bouton déclenché avec un spinner « En cours... »
+ * puis restaure exactement son contenu initial à la fin.
+ */
+function setImportButtonBusy(mode, busy) {
+    const buttonId = getImportButtonId(mode);
+    if (!buttonId) return;
+    const btn = document.getElementById(buttonId);
+    if (!btn) return;
+
+    if (busy) {
+        if (!btn.dataset.originalHtml) btn.dataset.originalHtml = btn.innerHTML;
+        const label = mode === 'global' ? 'Global' : mode;
+        btn.classList.add('active');
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>${label} en cours...`;
+    } else {
+        if (btn.dataset.originalHtml) {
+            btn.innerHTML = btn.dataset.originalHtml;
+            delete btn.dataset.originalHtml;
+        }
+        btn.classList.remove('active');
     }
 }
 
@@ -233,7 +325,18 @@ async function triggerImport() {
  * @param {boolean} running - true si un import est en cours
  */
 function setImportRunning(running) {
-    document.getElementById('runImportBtn').disabled = running;
+    // Bonne pratique: on verrouille tous les boutons d'import pour éviter
+    // les chevauchements d'exécution (global + techno en même temps).
+    const btnIds = ['runImportBtn', 'runImport2GBtn', 'runImport3GBtn', 'runImport4GBtn'];
+    btnIds.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.disabled = running;
+    });
+    // Nettoyage défensif : si aucun import n'est actif, on retire l'état visuel ciblé.
+    if (!running && _activeImportMode) {
+        setImportButtonBusy(_activeImportMode, false);
+        _activeImportMode = null;
+    }
     document.getElementById('importSpinner').classList.toggle('show', running);
 }
 
@@ -321,7 +424,6 @@ async function loadAuditLogs(page, filters) {
  * @returns {string} - HTML de la ligne <tr>
  */
 function renderAuditRow(log) {
-    const actionClass = `audit-${log.action}` in document.styleSheets ? `audit-${log.action}` : 'audit-other';
     const badgeClass  = ['IMPORT_TRIGGERED','CREATE_USER','UPDATE_USER','DELETE_USER'].includes(log.action)
                         ? `audit-${log.action}`
                         : 'audit-other';

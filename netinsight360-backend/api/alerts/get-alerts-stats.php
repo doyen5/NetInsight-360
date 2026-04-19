@@ -14,9 +14,9 @@ try {
     // --- Compteurs globaux ---
     $counts = $pdo->query("
         SELECT
-            SUM(status IN ('active','acknowledged'))             AS active,
-            SUM(status = 'active'   AND alert_type = 'critical') AS critical,
-            SUM(status = 'active'   AND alert_type = 'warning')  AS warning,
+                SUM(status IN ('active','acknowledged','escalated'))                         AS active,
+                SUM(status IN ('active','acknowledged','escalated') AND alert_type = 'critical') AS critical,
+                SUM(status IN ('active','acknowledged','escalated') AND alert_type = 'warning')  AS warning,
             SUM(status = 'resolved' AND DATE(resolved_at) = CURDATE()) AS resolved_today
         FROM alerts
     ")->fetch(PDO::FETCH_ASSOC);
@@ -29,7 +29,7 @@ try {
         FROM alerts a
         LEFT JOIN sites     s ON s.id            = a.site_id
         LEFT JOIN countries c ON c.country_code  = s.country_code
-        WHERE a.status = 'active'
+            WHERE a.status IN ('active','acknowledged','escalated')
         GROUP BY s.country_code, c.country_name
         ORDER BY count DESC LIMIT 10
     ")->fetchAll(PDO::FETCH_ASSOC);
@@ -57,7 +57,7 @@ try {
         SELECT COALESCE(s.domain,'RAN') AS dom, COUNT(*) AS cnt
         FROM alerts a
         LEFT JOIN sites s ON s.id = a.site_id
-        WHERE a.status = 'active'
+            WHERE a.status IN ('active','acknowledged','escalated')
         GROUP BY s.domain
     ")->fetchAll(PDO::FETCH_ASSOC);
     $byDomain = ['ran' => 0, 'core' => 0];
@@ -71,7 +71,7 @@ try {
         SELECT COALESCE(s.name, a.site_id) AS name, COUNT(*) AS alert_count
         FROM alerts a
         LEFT JOIN sites s ON s.id = a.site_id
-        WHERE a.status = 'active'
+            WHERE a.status IN ('active','acknowledged','escalated')
         GROUP BY a.site_id, s.name
         ORDER BY alert_count DESC LIMIT 5
     ")->fetchAll(PDO::FETCH_ASSOC);

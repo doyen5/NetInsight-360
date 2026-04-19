@@ -21,6 +21,28 @@ if ($userRole !== 'ADMIN') {
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <style>
+        /* Header de page: fond clair pour garantir la lisibilité */
+        .page-header {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            padding: 20px 25px;
+            border-radius: 20px;
+            margin-bottom: 25px;
+        }
+        .page-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 8px;
+        }
+        .page-header h2 i {
+            color: #00a3c4;
+            margin-right: 10px;
+        }
+        .page-header p {
+            color: #64748b !important;
+            margin-bottom: 0;
+        }
+
         .log-box { background:#0f172a; color:#94a3b8; font-family:monospace; font-size:0.78rem; padding:14px; border-radius:8px; max-height:320px; overflow-y:auto; white-space:pre-wrap; word-break:break-all; }
         .log-box .log-ok      { color:#10b981; }
         .log-box .log-err     { color:#ef4444; }
@@ -36,6 +58,18 @@ if ($userRole !== 'ADMIN') {
         .audit-other             { background:#f1f5f9; color:#475569; }
         .running-spinner         { display:none; }
         .running-spinner.show    { display:inline-block; }
+        .import-actions { display:flex; flex-wrap:nowrap; gap:6px; overflow-x:hidden; }
+        .import-actions .btn {
+            white-space: nowrap;
+            padding: 0.28rem 0.48rem;
+            font-size: 0.84rem;
+            line-height: 1.2;
+        }
+        .import-actions .btn i { margin-right: 0.2rem !important; }
+        #runImportBtn {
+            padding: 0.26rem 0.44rem;
+            font-size: 0.82rem;
+        }
         .logout-confirm-modal { position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);z-index:2000;display:none;align-items:center;justify-content:center; }
         .logout-confirm-modal.show { display:flex; }
         .logout-confirm-card { background:#fff;border-radius:24px;padding:30px;max-width:400px;width:90%;text-align:center;box-shadow:0 25px 50px rgba(0,0,0,.3); }
@@ -114,9 +148,18 @@ if ($userRole !== 'ADMIN') {
 
                     <hr class="my-3">
 
-                    <div class="d-flex align-items-center gap-3">
+                    <div class="import-actions align-items-center">
                         <button class="btn btn-primary" id="runImportBtn">
                             <i class="bi bi-play-circle"></i> Lancer l'import maintenant
+                        </button>
+                        <button class="btn btn-outline-success" id="runImport2GBtn">
+                            <i class="bi bi-broadcast"></i> Import 2G
+                        </button>
+                        <button class="btn btn-outline-warning" id="runImport3GBtn">
+                            <i class="bi bi-broadcast-pin"></i> Import 3G
+                        </button>
+                        <button class="btn btn-outline-info" id="runImport4GBtn">
+                            <i class="bi bi-diagram-3"></i> Import 4G
                         </button>
                         <span class="running-spinner" id="importSpinner">
                             <span class="spinner-border spinner-border-sm text-primary me-1"></span>

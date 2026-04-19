@@ -142,6 +142,38 @@
     color: #854d0e;
 }
 
+.badge-acknowledged {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.alert-status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.alert-status-chip.active {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.alert-status-chip.acknowledged {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.alert-status-chip.escalated {
+    background: #ffedd5;
+    color: #c2410c;
+}
+
 /* Bouton de résolution */
 .resolve-btn {
     background: none;
@@ -160,6 +192,76 @@
 
 .resolve-btn i {
     font-size: 1.2rem;
+}
+
+.ack-btn {
+    background: none;
+    border: none;
+    color: #2563eb;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 40px;
+    transition: all 0.2s;
+}
+
+.ack-btn:hover {
+    background: #dbeafe;
+    transform: scale(1.05);
+}
+
+.ack-btn i {
+    font-size: 1.2rem;
+}
+
+.escalate-btn {
+    background: none;
+    border: none;
+    color: #d97706;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 40px;
+    transition: all 0.2s;
+}
+
+.escalate-btn:hover {
+    background: #ffedd5;
+    transform: scale(1.05);
+}
+
+.escalate-btn i {
+    font-size: 1.2rem;
+}
+
+.alert-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.history-timeline {
+    margin-top: 14px;
+    border-top: 1px dashed #cbd5e1;
+    padding-top: 10px;
+}
+
+.history-item {
+    padding: 7px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.history-item:last-child {
+    border-bottom: none;
+}
+
+.history-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #334155;
+}
+
+.history-meta {
+    font-size: 0.75rem;
+    color: #64748b;
 }
 
 /* Animation pour nouvelle alerte */

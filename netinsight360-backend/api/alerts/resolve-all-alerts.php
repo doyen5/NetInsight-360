@@ -12,13 +12,30 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 require_once __DIR__ . '/../auth/require-auth.php';
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/_workflow-schema.php';
+
+// Sécurité: la résolution en masse est limitée aux rôles opérationnels.
+if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], ['ADMIN', 'FO_ANALYSTE'], true)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Accès refusé']);
+    exit();
+}
 
 try {
     $pdo  = Database::getLocalConnection();
+    ensureAlertsWorkflowSchema($pdo);
+
+    // Historiser les alertes ciblées par l'opération de masse.
+    $hist = $pdo->prepare("\n        INSERT INTO alert_history (alert_id, action_type, action_by, action_note)
+        SELECT id, 'resolved_all', ?, 'Résolution en masse'
+        FROM alerts
+           WHERE status IN ('active', 'acknowledged', 'escalated')
+    ");
+    $hist->execute([$_SESSION['user_id']]);
     $stmt = $pdo->prepare("
         UPDATE alerts
         SET status = 'resolved', resolved_at = NOW(), resolved_by = ?
-        WHERE status IN ('active', 'acknowledged')
+           WHERE status IN ('active', 'acknowledged', 'escalated')
     ");
     $stmt->execute([$_SESSION['user_id']]);
 

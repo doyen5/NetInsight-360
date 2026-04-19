@@ -38,10 +38,31 @@ class API {
         
         try {
             const response = await fetch(url, config);
-            const data = await response.json();
+            const rawText = await response.text();
+            const contentType = response.headers.get('content-type') || '';
+            let data = null;
+
+            // Le backend doit répondre en JSON. Si ce n'est pas le cas,
+            // on renvoie une erreur explicite plutôt qu'un échec de parsing opaque.
+            if (contentType.includes('application/json')) {
+                data = rawText ? JSON.parse(rawText) : {};
+            } else {
+                try {
+                    data = rawText ? JSON.parse(rawText) : {};
+                } catch (_) {
+                    data = {
+                        success: false,
+                        error: rawText ? `Réponse API non JSON: ${rawText.slice(0, 180)}` : 'Réponse API vide ou invalide'
+                    };
+                }
+            }
             
             if (!response.ok) {
                 throw new Error(data.error || `Erreur HTTP ${response.status}`);
+            }
+
+            if (typeof data !== 'object' || data === null) {
+                throw new Error('Format de réponse API invalide');
             }
             
             return data;
@@ -147,10 +168,24 @@ class API {
         return this.request(`/alerts/get-alerts.php${suffix}`);
     }
     
-    static async resolveAlert(alertId) {
+    static async resolveAlert(alertId, note = '') {
         return this.request('/alerts/resolve-alert.php', {
             method: 'POST',
-            body: { alert_id: alertId }
+            body: { alert_id: alertId, note }
+        });
+    }
+
+    static async acknowledgeAlert(alertId, note = '') {
+        return this.request('/alerts/acknowledge-alert.php', {
+            method: 'POST',
+            body: { alert_id: alertId, note }
+        });
+    }
+
+    static async escalateAlert(alertId, note = '') {
+        return this.request('/alerts/escalate-alert.php', {
+            method: 'POST',
+            body: { alert_id: alertId, note }
         });
     }
     
@@ -162,6 +197,10 @@ class API {
     
     static async getAlertsStats() {
         return this.request('/alerts/get-alerts-stats.php');
+    }
+
+    static async getAlertHistory(alertId) {
+        return this.request(`/alerts/get-alert-history.php?alert_id=${encodeURIComponent(alertId)}`);
     }
     
     // ============================================
@@ -311,6 +350,13 @@ class API {
 
     static async runImport() {
         return this.request('/admin/run-import.php', { method: 'POST' });
+    }
+
+    static async runImportByTech(tech) {
+        return this.request('/admin/run-import-tech.php', {
+            method: 'POST',
+            body: { tech }
+        });
     }
 
     // ============================================
