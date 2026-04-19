@@ -22,6 +22,7 @@ if ($userRole !== 'ADMIN') {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/users-management.css">
     <style>
         .role-badge { padding: 3px 10px; border-radius: 20px; font-size: 0.78em; font-weight: 600; }
         .role-admin    { background: #fee2e2; color: #dc2626; }

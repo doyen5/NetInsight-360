@@ -374,15 +374,34 @@ async function confirmDeleteUser() {
  */
 function exportUsers() {
     const filtered = filterUsers();
-    let csv = "ID,Nom,Email,Rôle,Statut,Date création,Dernière connexion\n";
-    
+    const escapeCsv = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const rows = [];
+
+    rows.push(['ID', 'Nom', 'Email', 'Rôle', 'Statut', 'Date création', 'Dernière connexion']);
+
     filtered.forEach(user => {
-        const roleLabel = user.role === 'ADMIN' ? 'Administrateur' : 
-                         (user.role === 'FO_ANALYSTE' ? 'Agent Analyste' : 'Agent Visualiseur');
-        csv += `"${user.id}","${user.name}","${user.email}","${roleLabel}","${user.status}","${user.created_at || ''}","${user.last_login || ''}"\n`;
+        const roleLabel = user.role === 'ADMIN'
+            ? 'Administrateur'
+            : (user.role === 'FO_ANALYSTE' ? 'Agent Analyste' : 'Agent Visualiseur');
+
+        rows.push([
+            user.id,
+            user.name,
+            user.email,
+            roleLabel,
+            user.status,
+            user.created_at || '',
+            user.last_login || ''
+        ]);
     });
-    
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+
+    const csvBody = rows
+        .map((row) => row.map(escapeCsv).join(','))
+        .join('\r\n');
+
+    // BOM UTF-8 pour que Microsoft Excel détecte correctement les accents.
+    const utf8Bom = '\uFEFF';
+    const blob = new Blob([utf8Bom + csvBody], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.href = url;
