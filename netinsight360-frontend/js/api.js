@@ -304,6 +304,10 @@ class API {
     static async getCountryBounds(countryCode) {
         return this.request(`/map/get-country-bounds.php?country=${countryCode}`);
     }
+
+    static async getCountryBorder(countryCode) {
+        return this.request(`/map/get-country-border.php?cc=${encodeURIComponent(countryCode)}`);
+    }
     
     // ============================================
     // FILTRES
@@ -366,9 +370,10 @@ class API {
     /**
      * Met à jour le badge "X affichés / Y total" dans l'en-tête de la carte.
      * @param {object} result - Réponse de getMapMarkers (doit contenir count et total_count)
-     * @param {string} mapElementId - ID de l'élément map Leaflet (défaut: 'map')
+    * @param {string} mapElementId - ID de l'élément map Leaflet (défaut: 'map')
+    * @param {string} limitContext - Libellé explicatif du mode de limitation affiché
      */
-    static updateMapCountBadge(result, mapElementId = 'map') {
+    static updateMapCountBadge(result, mapElementId = 'map', limitContext = 'filtrage serveur') {
         const mapEl = document.getElementById(mapElementId);
         if (!mapEl) return;
         const cardTitle = mapEl.closest('.stat-card')?.querySelector('h6, h5');
@@ -387,7 +392,7 @@ class API {
 
         if (displayed < total) {
             badge.className = 'map-count-badge badge bg-warning text-dark ms-2';
-            badge.title     = `Affichage limité à 20 sites par technologie (pires KPI). ${total - displayed} sites masqués.`;
+            badge.title     = `Affichage partiel (${limitContext}). ${total - displayed} sites masqués.`;
             badge.textContent = `${displayed} / ${total} sites`;
         } else {
             badge.className = 'map-count-badge badge bg-success ms-2';

@@ -8,6 +8,10 @@ AuthHelper::requireLogin();
 // Récupérer les infos utilisateur
 $user = AuthHelper::getUser();
 $userRole = AuthHelper::getUserRole();
+
+$kpisRanCssVersion = @filemtime(__DIR__ . '/css/kpis-ran.css') ?: time();
+$apiJsVersion = @filemtime(__DIR__ . '/js/api.js') ?: time();
+$kpisRanJsVersion = @filemtime(__DIR__ . '/js/kpis-ran.js') ?: time();
 ?>
 
 <!DOCTYPE html>
@@ -31,7 +35,7 @@ $userRole = AuthHelper::getUserRole();
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
-    <link rel="stylesheet" href="css/kpis-ran.css">
+    <link rel="stylesheet" href="css/kpis-ran.css?v=<?= $kpisRanCssVersion ?>">
     
     <style>
         .logout-confirm-modal {
@@ -81,9 +85,6 @@ $userRole = AuthHelper::getUserRole();
             <a href="kpis-ran.php" class="nav-link active"><i class="bi bi-wifi"></i> KPIs RAN</a>
             <a href="kpis-core.php" class="nav-link"><i class="bi bi-hdd-stack"></i> KPIs CORE</a>
             <a href="map-view.php" class="nav-link"><i class="bi bi-map"></i> Cartographie</a>
-            <!--<a href="users-management.php" class="nav-link" data-section="users-management" id="navUsersManagement">
-                <i class="bi bi-people"></i> Gestion Users
-            </a>-->
             <a href="users-management.php" class="nav-link admin-only" data-section="users-management">
                 <i class="bi bi-people"></i> Gestion Users
             </a>
@@ -143,7 +144,7 @@ $userRole = AuthHelper::getUserRole();
         <div class="stat-card mb-4"><h6><i class="bi bi-map"></i> Carte des sites RAN</h6><div id="map" style="height: 450px;"></div></div>
 
         <div class="row g-4 mb-4">
-            <div class="col-md-12"><div class="stat-card"><div class="d-flex justify-content-between align-items-center mb-3"><h6><i class="bi bi-exclamation-triangle-fill text-danger"></i> Pires sites - Analyse détaillée</h6><div class="btn-group viewer-restricted"><button class="btn btn-sm btn-outline-danger" id="exportWorstSites"><i class="bi bi-file-earmark-pdf"></i> Exporter PDF</button><button class="btn btn-sm btn-outline-success" id="shareWorstSites"><i class="bi bi-whatsapp"></i> Partager</button></div></div><div class="table-responsive"><table class="table table-hover" id="worstSitesTable"><thead class="table-light"><tr><th>#</th><th>Site ID</th><th>Nom du site</th><th>Pays</th><th>Technologie</th><th>Vendor</th><th>KPI Dégradant</th><th>Status</th><th>Actions</th></tr></thead><tbody id="worstSitesList"><tr><td colspan="9" class="text-center">Chargement des données...</td></tr></tbody></table></div><div class="mt-3" id="paginationControls"></div></div></div>
+            <div class="col-md-12"><div class="stat-card"><div class="d-flex justify-content-between align-items-center mb-3"><h6><i class="bi bi-exclamation-triangle-fill text-danger"></i> Pires sites - Analyse détaillée</h6><div class="btn-group viewer-restricted"><div class="dropdown-pdf-wrapper"><button class="btn btn-sm btn-outline-danger" id="exportWorstSites"><i class="bi bi-file-earmark-pdf"></i> Exporter PDF</button><div class="pdf-export-menu" id="kpisRanWorstPdfMenu"><div class="pdf-option" data-export-kind="worst" data-period="day"><i class="bi bi-calendar-day"></i> Par jour</div><div class="pdf-option" data-export-kind="worst" data-period="week"><i class="bi bi-calendar-week"></i> Par semaine</div><div class="pdf-option" data-export-kind="worst" data-period="month"><i class="bi bi-calendar-month"></i> Par mois</div></div></div><button class="btn btn-sm btn-outline-success" id="shareWorstSites"><i class="bi bi-whatsapp"></i> Partager</button></div></div><div class="small mb-2" id="worstSitesActionMsg" aria-live="polite"></div><div class="table-responsive"><table class="table table-hover" id="worstSitesTable"><thead class="table-light"><tr><th>#</th><th>Site ID</th><th>Nom du site</th><th>Pays</th><th>Technologie</th><th>Vendor</th><th>KPI Dégradant</th><th>Status</th><th>Actions</th></tr></thead><tbody id="worstSitesList"><tr><td colspan="9" class="text-center">Chargement des données...</td></tr></tbody></table></div><div class="mt-3" id="paginationControls"></div></div></div>
         </div>
 
         <div class="row g-4">
@@ -158,7 +159,7 @@ $userRole = AuthHelper::getUserRole();
             <div class="col-md-4"><div class="stat-card"><h6><i class="bi bi-flag"></i> Répartition par pays</h6><canvas id="countryChart" height="200"></canvas></div></div>
         </div>
 
-        <div class="row mt-4 viewer-restricted"><div class="col-12"><div class="stat-card"><h6><i class="bi bi-file-text"></i> Rapports et Analyses KPIs RAN</h6><div class="report-buttons"><button class="btn btn-whatsapp" id="shareWhatsApp"><i class="bi bi-whatsapp"></i> Partager sur WhatsApp</button><button class="btn btn-success" id="exportExcel"><i class="bi bi-file-earmark-excel"></i> Exporter Excel</button><button class="btn btn-danger" id="exportPdf"><i class="bi bi-file-earmark-pdf"></i> Exporter PDF</button><button class="btn btn-info" id="weeklyComparison"><i class="bi bi-graph-up"></i> Comparaison Hebdomadaire</button></div></div></div></div>
+        <div class="row mt-4 viewer-restricted"><div class="col-12"><div class="stat-card"><h6><i class="bi bi-file-text"></i> Rapports et Analyses KPIs RAN</h6><div class="report-buttons"><button class="btn btn-whatsapp" id="shareWhatsApp"><i class="bi bi-whatsapp"></i> Partager sur WhatsApp</button><button class="btn btn-success" id="exportExcel"><i class="bi bi-file-earmark-excel"></i> Exporter Excel</button><div class="dropdown-pdf-wrapper"><button class="btn btn-danger" id="exportPdf"><i class="bi bi-file-earmark-pdf"></i> Exporter PDF</button><div class="pdf-export-menu" id="kpisRanMainPdfMenu"><div class="pdf-option" data-export-kind="main" data-period="day"><i class="bi bi-calendar-day"></i> Par jour</div><div class="pdf-option" data-export-kind="main" data-period="week"><i class="bi bi-calendar-week"></i> Par semaine</div><div class="pdf-option" data-export-kind="main" data-period="month"><i class="bi bi-calendar-month"></i> Par mois</div></div></div><button class="btn btn-info" id="weeklyComparison"><i class="bi bi-graph-up"></i> Comparaison Hebdomadaire</button></div><div class="small mt-2" id="reportActionMsg" aria-live="polite"></div></div></div></div>
     </div>
 
     <!-- Modals -->
@@ -168,10 +169,10 @@ $userRole = AuthHelper::getUserRole();
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="js/api.js?v=2"></script>
+    <script src="js/api.js?v=<?= $apiJsVersion ?>"></script>
     <script src="js/logout.js?v=2"></script>
     <script src="js/app.js?v=2"></script>
     <script src="js/charts.js?v=2"></script>
-    <script src="js/kpis-ran.js?v=6"></script>
+    <script src="js/kpis-ran.js?v=<?= $kpisRanJsVersion ?>"></script>
 </body>
 </html>

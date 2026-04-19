@@ -34,6 +34,35 @@ let ranFilters = { country: 'all', vendor: 'all', tech: 'all' };
 let ranCountryBorderLayer = null; // Couche Leaflet GeoJSON des frontières du pays sélectionné
 let ranCurrentPage = 1;
 let ranItemsPerPage = 10;
+let ranKpisCacheKey = '';
+let ranKpisCacheData = null;
+
+/**
+ * Construit une clé de cache stable pour la combinaison de filtres RAN.
+ */
+function buildRanKpisCacheKey() {
+    return JSON.stringify(ranFilters || {});
+}
+
+/**
+ * Récupère les KPIs RAN avec un cache local page-level.
+ *
+ * Objectif: éviter deux appels backend identiques lors d'un même rafraîchissement
+ * (stats + charts) et améliorer la réactivité de la page.
+ */
+async function fetchRanKpisPayload(forceRefresh = false) {
+    const key = buildRanKpisCacheKey();
+    if (!forceRefresh && ranKpisCacheData && ranKpisCacheKey === key) {
+        return { success: true, data: ranKpisCacheData };
+    }
+
+    const result = await API.getRanKpis(ranFilters);
+    if (result?.success && result.data) {
+        ranKpisCacheData = result.data;
+        ranKpisCacheKey = key;
+    }
+    return result;
+}
 
 /**
  * Initialise la page KPIs RAN
@@ -49,16 +78,20 @@ async function initKpisRan() {
     // Initialiser la carte
     initRanMap();
     
-    // Charger les données
-    await loadRanStats();
-    await loadWorstSitesTable();
-    await loadRanCharts();
+    // Charger les blocs principaux en parallèle pour réduire le temps d'attente initial.
+    await Promise.all([
+        loadRanStats(),
+        loadWorstSitesTable(),
+        loadRanCharts(),
+    ]);
     
     // Initialiser les filtres
     initRanFilters();
     
     // Initialiser la recherche
     initRanSearch();
+    // Initialiser les boutons rapports/export (même logique que map-view)
+    initRanReports();
 
     // Si la page a été ouverte juste après un import (flag mis par admin-tools),
     // activer automatiquement l'option "Top by tech" pour aider l'opérateur.
@@ -150,28 +183,29 @@ async function loadRanMapMarkers() {
             combined.forEach(site => {
                 if (!site.latitude || !site.longitude || site.latitude == 0) return;
                 const tc = API.techColor(site.technology || site._tech_group) || '#6c757d';
+                const safeSiteId = escapeJsSingleQuoted(site.id);
                 const icon = L.divIcon({
                     html: `<div style="background:${tc}; width:14px; height:14px; border-radius:50%; border:2px solid white;"></div>`,
                     iconSize: [14, 14]
                 });
                 const marker = L.marker([site.latitude, site.longitude], { icon }).addTo(ranMap);
                 const worstLine = site.worst_kpi_name
-                    ? `<br><b>KPI dégradant:</b> ${site.worst_kpi_name} (${site.worst_kpi_value}%)`
+                    ? `<br><b>KPI dégradant:</b> ${escapeHtml(site.worst_kpi_name)} (${site.worst_kpi_value}%)`
                     : '';
                 marker.bindPopup(`
-                    <b>${site.name}</b><br>
-                    <b>ID:</b> ${site.id}<br>
-                    <b>Pays:</b> ${site.country_name || site.country_code}<br>
-                    <b>Vendor:</b> <span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:3px;vertical-align:middle"></span>${site.vendor} | <span class="badge-tech">${site.technology}</span><br>
+                    <b>${escapeHtml(site.name)}</b><br>
+                    <b>ID:</b> ${escapeHtml(site.id)}<br>
+                    <b>Pays:</b> ${escapeHtml(site.country_name || site.country_code)}<br>
+                    <b>Vendor:</b> <span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:3px;vertical-align:middle"></span>${escapeHtml(site.vendor)} | <span class="badge-tech">${escapeHtml(site.technology || site._tech_group || 'N/A')}</span><br>
                     <b>KPI global:</b> ${site.kpi_global}%${worstLine}<br>
-                    <small class="text-muted">Tech group: ${site._tech_group}</small><br>
-                    <button class="btn btn-sm btn-primary mt-2" onclick="showRanSiteDetails('${site.id}')">Voir détails</button>
+                    <small class="text-muted">Tech group: ${escapeHtml(site._tech_group || 'N/A')}</small><br>
+                    <button class="btn btn-sm btn-primary mt-2" onclick="showRanSiteDetails('${safeSiteId}')">Voir détails</button>
                 `);
                 ranMarkers.push(marker);
             });
 
             // Mettre à jour le badge avec le nombre affiché
-            API.updateMapCountBadge({ count: combined.length, total_count: combined.length });
+            API.updateMapCountBadge({ count: combined.length, total_count: combined.length }, 'map', `${topN} pires par techno`);
             return;
         }
 
@@ -188,6 +222,7 @@ async function loadRanMapMarkers() {
         
         result.data.forEach(site => {
             if (!site.latitude || !site.longitude || site.latitude == 0) return;
+            const safeSiteId = escapeJsSingleQuoted(site.id);
             const color = API.statusColor(site.status);
             const icon = L.divIcon({
                 html: `<div style="background:${color}; width:12px; height:12px; border-radius:50%; border:2px solid white;"></div>`,
@@ -196,15 +231,15 @@ async function loadRanMapMarkers() {
             
             const marker = L.marker([site.latitude, site.longitude], { icon }).addTo(ranMap);
             const worstLine = site.worst_kpi_name
-                ? `<br><b>KPI dégradant:</b> ${site.worst_kpi_name} (${site.worst_kpi_value}%)`
+                ? `<br><b>KPI dégradant:</b> ${escapeHtml(site.worst_kpi_name)} (${site.worst_kpi_value}%)`
                 : '';
             marker.bindPopup(`
-                <b>${site.name}</b><br>
-                <b>ID:</b> ${site.id}<br>
-                <b>Pays:</b> ${site.country_name || site.country_code}<br>
-                    <b>Vendor:</b> <span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:3px;vertical-align:middle"></span>${site.vendor} | <span class="badge-tech">${site.technology}</span><br>
+                <b>${escapeHtml(site.name)}</b><br>
+                <b>ID:</b> ${escapeHtml(site.id)}<br>
+                <b>Pays:</b> ${escapeHtml(site.country_name || site.country_code)}<br>
+                    <b>Vendor:</b> <span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:3px;vertical-align:middle"></span>${escapeHtml(site.vendor)} | <span class="badge-tech">${escapeHtml(site.technology)}</span><br>
                 <b>KPI global:</b> ${site.kpi_global}%${worstLine}<br>
-                <button class="btn btn-sm btn-primary mt-2" onclick="showRanSiteDetails('${site.id}')">Voir détails</button>
+                <button class="btn btn-sm btn-primary mt-2" onclick="showRanSiteDetails('${safeSiteId}')">Voir détails</button>
             `);
             ranMarkers.push(marker);
         });
@@ -220,7 +255,7 @@ async function loadRanMapMarkers() {
  */
 async function loadRanStats() {
     try {
-        const result = await API.getRanKpis(ranFilters);
+        const result = await fetchRanKpisPayload();
         if (!result.success) return;
         
         const stats = result.data.stats;
@@ -244,10 +279,32 @@ async function loadRanStats() {
  */
 async function loadWorstSitesTable() {
     try {
-        const result = await API.getTopWorstSites({ ...ranFilters, domain: 'RAN' });
-        if (!result.success) return;
-        
-        const worst = result.data.worst || [];
+        const topByTech = document.getElementById('topByTechCheckbox')?.checked;
+        let worst = [];
+
+        if (topByTech) {
+            // Cohérence avec la carte: en mode top-by-tech, le tableau utilise
+            // la même source dédiée par techno.
+            let topN = 10;
+            const topSelect = document.getElementById('topByTechNSelect');
+            if (topSelect) topN = parseInt(topSelect.value, 10) || 10;
+
+            const byTechRes = await API.getTopWorstSitesByTech({ ...ranFilters, domain: 'RAN', top_n: topN });
+            if (!byTechRes.success || !byTechRes.data) return;
+
+            Object.entries(byTechRes.data.per_tech || {}).forEach(([techGroup, rows]) => {
+                (rows || []).forEach(row => {
+                    worst.push({ ...row, _tech_group: techGroup });
+                });
+            });
+        } else {
+            const result = await API.getTopWorstSites({ ...ranFilters, domain: 'RAN' });
+            if (!result.success) return;
+            worst = result.data.worst || [];
+        }
+
+        worst.sort((a, b) => (parseFloat(a.kpi_global) || 0) - (parseFloat(b.kpi_global) || 0));
+
         const totalPages = Math.ceil(worst.length / ranItemsPerPage);
         const start = (ranCurrentPage - 1) * ranItemsPerPage;
         const paginated = worst.slice(start, start + ranItemsPerPage);
@@ -301,7 +358,7 @@ async function loadWorstSitesTable() {
  */
 async function loadRanCharts() {
     try {
-        const result = await API.getRanKpis(ranFilters);
+        const result = await fetchRanKpisPayload();
         if (!result.success) return;
         
         const kpis = result.data.kpis;
@@ -378,11 +435,17 @@ function initRanFilters() {
                 vendor: document.getElementById('filterVendor')?.value || 'all',
                 tech: document.getElementById('filterTech')?.value || 'all'
             };
+            // Invalider le cache KPIs après changement de filtres.
+            ranKpisCacheData = null;
+            ranKpisCacheKey = '';
             ranCurrentPage = 1;
-            await loadRanStats();
-            await loadWorstSitesTable();
-            await loadRanCharts();
-            await loadRanMapMarkers();
+            // Même stratégie que map-view: chargement parallèle des blocs indépendants.
+            await Promise.all([
+                loadRanStats(),
+                loadWorstSitesTable(),
+                loadRanCharts(),
+                loadRanMapMarkers(),
+            ]);
             // Afficher les frontières GeoJSON du pays sélectionné
             await showRanCountryBorder(ranFilters.country);
         });
@@ -396,15 +459,39 @@ function initRanFilters() {
                 if (el) el.value = 'all';
             });
             ranFilters = { country: 'all', vendor: 'all', tech: 'all' };
+            ranKpisCacheData = null;
+            ranKpisCacheKey = '';
             const searchInput = document.getElementById('searchSite');
             if (searchInput) searchInput.value = '';
             ranCurrentPage = 1;
-            await loadRanStats();
-            await loadWorstSitesTable();
-            await loadRanCharts();
-            await loadRanMapMarkers();
+            await Promise.all([
+                loadRanStats(),
+                loadWorstSitesTable(),
+                loadRanCharts(),
+                loadRanMapMarkers(),
+            ]);
             // Supprimer la couche frontières et revenir à la vue globale
             await showRanCountryBorder('all');
+        });
+    }
+
+    const topByTechCheckbox = document.getElementById('topByTechCheckbox');
+    const topByTechNSelect = document.getElementById('topByTechNSelect');
+
+    // Rechargement immédiat du tableau/carte quand l'utilisateur active/désactive
+    // le mode top-by-tech, sans attendre un clic sur "Appliquer".
+    if (topByTechCheckbox) {
+        topByTechCheckbox.addEventListener('change', async () => {
+            ranCurrentPage = 1;
+            await Promise.all([loadWorstSitesTable(), loadRanMapMarkers()]);
+        });
+    }
+
+    if (topByTechNSelect) {
+        topByTechNSelect.addEventListener('change', async () => {
+            if (!topByTechCheckbox?.checked) return;
+            ranCurrentPage = 1;
+            await Promise.all([loadWorstSitesTable(), loadRanMapMarkers()]);
         });
     }
 }
@@ -430,9 +517,9 @@ async function showRanCountryBorder(countryCode) {
     }
 
     try {
-        const res = await fetch(`../netinsight360-backend/api/map/get-country-border.php?cc=${encodeURIComponent(countryCode)}`);
-        if (!res.ok) return;
-        const geojson = await res.json();
+        // Utiliser le client API centralisé pour homogénéiser la gestion des erreurs.
+        const geojson = await API.getCountryBorder(countryCode);
+        if (!geojson || !geojson.type) return;
 
         // Ajouter la couche GeoJSON avec bordure visible et léger fond translucide
         ranCountryBorderLayer = L.geoJSON(geojson, {
@@ -484,28 +571,218 @@ function initRanSearch() {
 }
 
 /**
+ * Affiche un message d'action non bloquant (succès/info/erreur) dans la page.
+ * Évite les alert() et harmonise l'expérience avec les autres pages.
+ */
+function setActionMessage(targetId, type, text) {
+    const el = document.getElementById(targetId);
+    if (!el) return;
+    if (!text) {
+        el.innerHTML = '';
+        return;
+    }
+    const cssByType = {
+        success: 'text-success',
+        info: 'text-info',
+        warning: 'text-warning',
+        error: 'text-danger'
+    };
+    const iconByType = {
+        success: 'bi-check-circle',
+        info: 'bi-info-circle',
+        warning: 'bi-exclamation-triangle',
+        error: 'bi-x-circle'
+    };
+    const cls = cssByType[type] || 'text-info';
+    const icon = iconByType[type] || 'bi-info-circle';
+    el.innerHTML = `<span class="${cls}"><i class="bi ${icon} me-1"></i>${escapeHtml(text)}</span>`;
+}
+
+/**
+ * Convertit une période logique (jour/semaine/mois) en bornes de dates.
+ */
+function getPeriodDateRange(period) {
+    const now = new Date();
+    const endDate = now.toISOString().split('T')[0];
+    let startDate = endDate;
+
+    if (period === 'week') {
+        const weekAgo = new Date(now);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        startDate = weekAgo.toISOString().split('T')[0];
+    } else if (period === 'month') {
+        const monthAgo = new Date(now);
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+        startDate = monthAgo.toISOString().split('T')[0];
+    }
+
+    return { startDate, endDate };
+}
+
+/**
+ * Met à jour le libellé du bouton PDF avec la période sélectionnée.
+ * Le libellé persiste entre les exports pour rendre le contexte explicite.
+ */
+function setPdfPeriodButtonLabel(btn, period) {
+    if (!btn) return;
+
+    if (!btn.dataset.defaultHtml) {
+        btn.dataset.defaultHtml = btn.innerHTML;
+    }
+
+    const periodLabel = period === 'week' ? 'Semaine' : (period === 'month' ? 'Mois' : 'Jour');
+    btn.dataset.selectedPeriod = period;
+    btn.innerHTML = `<i class="bi bi-file-earmark-pdf"></i> Exporter PDF - ${periodLabel}`;
+}
+
+/**
+ * Exécute une action liée à un bouton avec:
+ * - verrou anti double-clic
+ * - spinner sur le bouton actif
+ * - restauration fiable du libellé initial
+ */
+async function runButtonAction(btn, runningLabel, action) {
+    if (!btn || btn.dataset.busy === '1') return false;
+
+    // On fige temporairement la largeur du bouton pour éviter les sauts
+    // visuels quand le libellé change pendant l'état loading.
+    const buttonWidth = Math.ceil(btn.getBoundingClientRect().width);
+    btn.dataset.busy = '1';
+    btn.dataset.originalHtml = btn.innerHTML;
+    btn.dataset.originalMinWidth = btn.style.minWidth || '';
+    btn.style.minWidth = `${buttonWidth}px`;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>${runningLabel}`;
+
+    try {
+        await action();
+        return true;
+    } finally {
+        btn.disabled = false;
+        if (btn.dataset.originalHtml) {
+            btn.innerHTML = btn.dataset.originalHtml;
+            delete btn.dataset.originalHtml;
+        }
+        btn.style.minWidth = btn.dataset.originalMinWidth || '';
+        delete btn.dataset.originalMinWidth;
+        delete btn.dataset.busy;
+    }
+}
+
+/**
  * Initialise les rapports
  */
 function initRanReports() {
-    // Boutons tableau "Pires sites - Analyse détaillée"
     const exportWorstBtn = document.getElementById('exportWorstSites');
-    if (exportWorstBtn) {
-        exportWorstBtn.addEventListener('click', async () => {
-            try {
-                const result = await API.exportPdf({ type: 'worst_sites', domain: 'RAN', ...ranFilters });
-                if (result.success && result.url) window.open(result.url, '_blank');
-            } catch (error) { console.error('[KPIs RAN] Erreur export PDF:', error); }
+    const exportPdfBtn = document.getElementById('exportPdf');
+    const worstPdfMenu = document.getElementById('kpisRanWorstPdfMenu');
+    const mainPdfMenu = document.getElementById('kpisRanMainPdfMenu');
+
+    const closeAllPdfMenus = () => {
+        [worstPdfMenu, mainPdfMenu].forEach(menu => menu?.classList.remove('show'));
+    };
+
+    const togglePdfMenu = (menu) => {
+        if (!menu) return;
+        const shouldShow = !menu.classList.contains('show');
+        closeAllPdfMenus();
+        if (shouldShow) menu.classList.add('show');
+    };
+
+    // Même comportement que map-view: clic sur le bouton PDF => choix de période.
+    if (exportWorstBtn && worstPdfMenu) {
+        exportWorstBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            togglePdfMenu(worstPdfMenu);
         });
     }
 
+    if (exportPdfBtn && mainPdfMenu) {
+        exportPdfBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            togglePdfMenu(mainPdfMenu);
+        });
+    }
+
+    // Fermer les menus si clic en dehors.
+    document.addEventListener('click', (e) => {
+        const clickedInside = e.target.closest('.dropdown-pdf-wrapper');
+        if (!clickedInside) closeAllPdfMenus();
+    });
+
+    // Gestion des options de période pour les deux menus PDF.
+    document.querySelectorAll('#kpisRanWorstPdfMenu .pdf-option, #kpisRanMainPdfMenu .pdf-option').forEach(option => {
+        option.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const period = option.getAttribute('data-period') || 'day';
+            const exportKind = option.getAttribute('data-export-kind') || 'main';
+            const periodLabel = period === 'week' ? 'semaine' : (period === 'month' ? 'mois' : 'jour');
+            const { startDate, endDate } = getPeriodDateRange(period);
+
+            closeAllPdfMenus();
+
+            const isWorst = exportKind === 'worst';
+            const btn = isWorst ? exportWorstBtn : exportPdfBtn;
+            const messageTarget = isWorst ? 'worstSitesActionMsg' : 'reportActionMsg';
+            const exportType = isWorst ? 'worst_sites' : 'ran';
+
+            // Afficher immédiatement la période choisie dans le bouton concerné.
+            setPdfPeriodButtonLabel(btn, period);
+
+            await runButtonAction(btn, 'Export PDF...', async () => {
+                setActionMessage(messageTarget, 'info', `Génération du PDF (${periodLabel}) en cours...`);
+                try {
+                    const result = await API.exportPdf({
+                        type: exportType,
+                        domain: 'RAN',
+                        start_date: startDate,
+                        end_date: endDate,
+                        ...ranFilters,
+                    });
+
+                    if (result.success && result.url) {
+                        const w = window.open(result.url, '_blank');
+                        if (!w) {
+                            setActionMessage(messageTarget, 'warning', 'Pop-up bloquée: autorisez les pop-ups pour ouvrir le PDF.');
+                            return;
+                        }
+                        setActionMessage(messageTarget, 'success', `Export PDF (${periodLabel}) généré avec succès.`);
+                    } else {
+                        setActionMessage(messageTarget, 'error', result?.message || result?.error || 'Échec de génération du PDF.');
+                    }
+                } catch (error) {
+                    console.error('[KPIs RAN] Erreur export PDF période:', error);
+                    setActionMessage(messageTarget, 'error', 'Erreur pendant l\'export PDF.');
+                }
+            });
+        });
+    });
+
+    // Boutons tableau "Pires sites - Analyse détaillée"
     const shareWorstBtn = document.getElementById('shareWorstSites');
     if (shareWorstBtn) {
         shareWorstBtn.addEventListener('click', async () => {
-            try {
-                const result = await API.generateWhatsAppReport({ domain: 'RAN', ...ranFilters });
-                if (result.success && result.report)
-                    window.open(`https://wa.me/?text=${encodeURIComponent(result.report)}`, '_blank');
-            } catch (error) { console.error('[KPIs RAN] Erreur partage:', error); }
+            await runButtonAction(shareWorstBtn, 'Partage...', async () => {
+                setActionMessage('worstSitesActionMsg', 'info', 'Préparation du message WhatsApp...');
+                try {
+                    const result = await API.generateWhatsAppReport({ domain: 'RAN', ...ranFilters });
+                    if (result.success && result.report) {
+                        const w = window.open(`https://wa.me/?text=${encodeURIComponent(result.report)}`, '_blank');
+                        if (!w) {
+                            setActionMessage('worstSitesActionMsg', 'warning', 'Pop-up bloquée: autorisez les pop-ups pour ouvrir WhatsApp.');
+                            return;
+                        }
+                        setActionMessage('worstSitesActionMsg', 'success', 'Message WhatsApp prêt à être envoyé.');
+                    } else {
+                        setActionMessage('worstSitesActionMsg', 'error', result?.message || result?.error || 'Impossible de préparer le partage.');
+                    }
+                } catch (error) {
+                    console.error('[KPIs RAN] Erreur partage:', error);
+                    setActionMessage('worstSitesActionMsg', 'error', 'Erreur pendant la préparation du partage.');
+                }
+            });
         });
     }
 
@@ -513,50 +790,87 @@ function initRanReports() {
     const shareAllBtn = document.getElementById('shareWhatsApp');
     if (shareAllBtn) {
         shareAllBtn.addEventListener('click', async () => {
-            try {
-                const result = await API.generateWhatsAppReport({ domain: 'RAN', ...ranFilters });
-                if (result.success && result.report)
-                    window.open(`https://wa.me/?text=${encodeURIComponent(result.report)}`, '_blank');
-            } catch (error) { console.error('[KPIs RAN] Erreur partage WhatsApp:', error); }
+            await runButtonAction(shareAllBtn, 'Partage...', async () => {
+                setActionMessage('reportActionMsg', 'info', 'Préparation du rapport WhatsApp...');
+                try {
+                    const result = await API.generateWhatsAppReport({ domain: 'RAN', ...ranFilters });
+                    if (result.success && result.report) {
+                        const w = window.open(`https://wa.me/?text=${encodeURIComponent(result.report)}`, '_blank');
+                        if (!w) {
+                            setActionMessage('reportActionMsg', 'warning', 'Pop-up bloquée: autorisez les pop-ups pour ouvrir WhatsApp.');
+                            return;
+                        }
+                        setActionMessage('reportActionMsg', 'success', 'Rapport WhatsApp prêt à être envoyé.');
+                    } else {
+                        setActionMessage('reportActionMsg', 'error', result?.message || result?.error || 'Impossible de préparer le rapport WhatsApp.');
+                    }
+                } catch (error) {
+                    console.error('[KPIs RAN] Erreur partage WhatsApp:', error);
+                    setActionMessage('reportActionMsg', 'error', 'Erreur pendant la préparation du partage WhatsApp.');
+                }
+            });
         });
     }
 
     const weeklyBtn = document.getElementById('weeklyComparison');
     if (weeklyBtn) {
         weeklyBtn.addEventListener('click', async () => {
-            try {
-                const result = await API.getWeeklyComparison();
-                if (result.success) {
-                    const ctx = document.getElementById('comparisonChart')?.getContext('2d');
-                    if (ctx) { const old = Chart.getChart('comparisonChart'); if (old) old.destroy(); new Chart(ctx, { type: 'bar', data: result.data }); }
-                    const lessons = document.getElementById('comparisonLessons');
-                    if (lessons) lessons.innerHTML = result.lessons || '';
-                    bootstrap.Modal.getOrCreateInstance(document.getElementById('comparisonModal')).show();
+            await runButtonAction(weeklyBtn, 'Analyse...', async () => {
+                setActionMessage('reportActionMsg', 'info', 'Calcul de la comparaison hebdomadaire...');
+                try {
+                    const result = await API.getWeeklyComparison();
+                    if (result.success) {
+                        const ctx = document.getElementById('comparisonChart')?.getContext('2d');
+                        if (ctx) { const old = Chart.getChart('comparisonChart'); if (old) old.destroy(); new Chart(ctx, { type: 'bar', data: result.data }); }
+                        const lessons = document.getElementById('comparisonLessons');
+                        if (lessons) lessons.innerHTML = result.lessons || '';
+                        bootstrap.Modal.getOrCreateInstance(document.getElementById('comparisonModal')).show();
+                        setActionMessage('reportActionMsg', 'success', 'Comparaison hebdomadaire générée.');
+                    } else {
+                        setActionMessage('reportActionMsg', 'error', result?.message || result?.error || 'Comparaison indisponible.');
+                    }
+                } catch (error) {
+                    console.error('[KPIs RAN] Erreur comparaison:', error);
+                    setActionMessage('reportActionMsg', 'error', 'Erreur pendant la comparaison hebdomadaire.');
                 }
-            } catch (error) { console.error('[KPIs RAN] Erreur comparaison:', error); }
-        });
-    }
-
-    const exportPdfBtn = document.getElementById('exportPdf');
-    if (exportPdfBtn) {
-        exportPdfBtn.addEventListener('click', async () => {
-            try {
-                const result = await API.exportPdf({ type: 'ran', domain: 'RAN', ...ranFilters });
-                if (result.success && result.url) window.open(result.url, '_blank');
-            } catch (error) { console.error('[KPIs RAN] Erreur export PDF:', error); }
+            });
         });
     }
 
     const exportExcelBtn = document.getElementById('exportExcel');
     if (exportExcelBtn) {
         exportExcelBtn.addEventListener('click', async () => {
-            try {
-                const result = await API.exportExcel('worst_sites', { domain: 'RAN', ...ranFilters });
-                if (result.success && result.url) window.open(result.url, '_blank');
-                else alert('Export Excel généré dans le dossier exports.');
-            } catch (error) { console.error('[KPIs RAN] Erreur export Excel:', error); }
+            await runButtonAction(exportExcelBtn, 'Export Excel...', async () => {
+                setActionMessage('reportActionMsg', 'info', 'Génération du fichier Excel en cours...');
+                try {
+                    const result = await API.exportExcel('worst_sites', { domain: 'RAN', ...ranFilters });
+                    if (result.success && result.url) {
+                        const w = window.open(result.url, '_blank');
+                        if (!w) {
+                            setActionMessage('reportActionMsg', 'warning', 'Pop-up bloquée: autorisez les pop-ups pour ouvrir le fichier Excel.');
+                            return;
+                        }
+                        setActionMessage('reportActionMsg', 'success', 'Export Excel généré avec succès.');
+                    } else if (result.success) {
+                        setActionMessage('reportActionMsg', 'info', 'Export Excel généré (vérifiez le dossier exports).');
+                    } else {
+                        setActionMessage('reportActionMsg', 'error', result?.message || result?.error || 'Échec de génération du fichier Excel.');
+                    }
+                } catch (error) {
+                    console.error('[KPIs RAN] Erreur export Excel:', error);
+                    setActionMessage('reportActionMsg', 'error', 'Erreur pendant l\'export Excel.');
+                }
+            });
         });
     }
+}
+
+/**
+ * Protège une valeur injectée dans un attribut JS de type quote simple.
+ */
+function escapeJsSingleQuoted(value) {
+    if (value === null || value === undefined) return '';
+    return String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
 /**

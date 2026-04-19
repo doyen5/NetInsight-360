@@ -21,10 +21,28 @@ try {
     $tech    = $_GET['tech']    ?? 'all';
     $domain  = $_GET['domain']  ?? 'all';
 
-    // Construction des filtres — utilise la dernière date importée (pas forcément aujourd'hui)
-    $conditions = ["k.kpi_date = (SELECT MAX(kpi_date) FROM kpis_ran)"];
-    $params     = [];
+    // Déterminer d'abord la dernière date KPI pertinente pour les filtres demandés.
+    // Cela évite les faux "vides" quand la dernière date globale n'existe pas encore
+    // pour un pays/vendor/tech spécifique.
+    $dateConditions = [];
+    $dateParams = [];
+    if ($country !== 'all') { $dateConditions[] = "s.country_code = ?"; $dateParams[] = $country; }
+    if ($vendor  !== 'all') { $dateConditions[] = "s.vendor = ?";       $dateParams[] = $vendor;  }
+    if ($tech    !== 'all') { $dateConditions[] = "k.technology = ?";   $dateParams[] = $tech;    }
+    if ($domain  !== 'all') { $dateConditions[] = "s.domain = ?";       $dateParams[] = $domain;  }
 
+    $dateWhere = $dateConditions ? ('WHERE ' . implode(' AND ', $dateConditions)) : '';
+    $lastDateStmt = $pdo->prepare("SELECT MAX(k.kpi_date) AS max_date FROM sites s INNER JOIN kpis_ran k ON k.site_id = s.id $dateWhere");
+    $lastDateStmt->execute($dateParams);
+    $filteredLastDate = $lastDateStmt->fetchColumn();
+
+    if (!$filteredLastDate) {
+        // Fallback de sécurité: dernière date globale si aucun enregistrement filtré.
+        $filteredLastDate = $pdo->query("SELECT MAX(kpi_date) FROM kpis_ran")->fetchColumn();
+    }
+
+    $conditions = ["k.kpi_date = ?"];
+    $params = [$filteredLastDate];
     if ($country !== 'all') { $conditions[] = "s.country_code = ?"; $params[] = $country; }
     if ($vendor  !== 'all') { $conditions[] = "s.vendor = ?";       $params[] = $vendor;  }
     if ($tech    !== 'all') { $conditions[] = "k.technology = ?";   $params[] = $tech;    }
@@ -109,10 +127,8 @@ try {
     $countryStmt->execute($params);
     $distribution['countries'] = $countryStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Récupérer la dernière date des KPIs (date de la dernière importation)
-    $dateStmt = $pdo->query("SELECT MAX(kpi_date) AS last_kpi_date FROM kpis_ran");
-    $dateRow = $dateStmt->fetch(PDO::FETCH_ASSOC);
-    $lastKpiDate = $dateRow['last_kpi_date'] ?? null;
+    // Dernière date KPI réellement utilisée pour les agrégations de cette réponse.
+    $lastKpiDate = $filteredLastDate ?: null;
 
     echo json_encode([
         'success' => true,

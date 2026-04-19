@@ -17,8 +17,10 @@ try {
     $country = $_GET['country'] ?? 'all';
     $vendor  = $_GET['vendor']  ?? 'all';
     $domain  = $_GET['domain']  ?? 'all';
+    $tech    = $_GET['tech']    ?? 'all';
     $topN    = intval($_GET['top_n'] ?? 10);
     if ($topN <= 0) $topN = 10;
+    if ($topN > 50) $topN = 50;
 
     // Dernière date disponible
     $lastDate = $pdo->query("SELECT MAX(kpi_date) FROM kpis_ran")->fetchColumn() ?: date('Y-m-d');
@@ -27,6 +29,12 @@ try {
     $techStmt = $pdo->prepare("SELECT DISTINCT technology FROM kpis_ran WHERE kpi_date = ? ORDER BY technology");
     $techStmt->execute([$lastDate]);
     $techs = $techStmt->fetchAll(PDO::FETCH_COLUMN);
+
+    if ($tech !== 'all') {
+        $techs = array_values(array_filter($techs, function($t) use ($tech) {
+            return strtoupper((string)$t) === strtoupper((string)$tech);
+        }));
+    }
 
     $result = [ 'date' => $lastDate, 'top_n' => $topN, 'per_tech' => [] ];
 

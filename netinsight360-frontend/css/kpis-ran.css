@@ -98,6 +98,63 @@
     color: #006994;
 }
 
+/* Menu déroulant PDF — même logique visuelle que map-view */
+.dropdown-pdf-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.pdf-export-menu {
+    display: none;
+    position: absolute;
+    bottom: 110%;
+    left: 0;
+    background: white;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    min-width: 180px;
+    animation: slideUpMenu 0.2s ease-out;
+}
+
+.pdf-export-menu.show {
+    display: block;
+}
+
+@keyframes slideUpMenu {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.pdf-option {
+    padding: 12px 16px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s, color 0.2s;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.pdf-option:last-child {
+    border-bottom: none;
+}
+
+.pdf-option:hover {
+    background-color: #f8fafc;
+    color: #ef4444;
+    font-weight: 500;
+}
+
 /* Pagination */
 .pagination {
     justify-content: center;
