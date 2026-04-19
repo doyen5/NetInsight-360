@@ -33,6 +33,163 @@ try {
     $startDate = $_GET['start_date'] ?? null;
     $endDate   = $_GET['end_date']   ?? null;
 
+    // ══════════════════════════════════════════════════════════════════════
+    // ── Gestion du type "map_report" — Rapport synthétique cartographique ──
+    // ══════════════════════════════════════════════════════════════════════
+    if ($type === 'map_report') {
+        // Récupérer les stats des sites visibles avec les filtres appliqués
+        $sqlStats = "SELECT
+            COUNT(DISTINCT s.id) as total_sites,
+            COUNT(DISTINCT CASE WHEN k.kpi_global >= 95 THEN s.id END) as good_count,
+            COUNT(DISTINCT CASE WHEN k.kpi_global >= 90 AND k.kpi_global < 95 THEN s.id END) as warning_count,
+            COUNT(DISTINCT CASE WHEN k.kpi_global < 90 THEN s.id END) as critical_count,
+            ROUND(AVG(k.kpi_global), 2) as avg_kpi,
+            MAX(k.kpi_date) as max_date
+        FROM sites s
+        INNER JOIN (
+            SELECT k1.* FROM kpis_ran k1
+            INNER JOIN (SELECT site_id, technology, MAX(kpi_date) as max_date FROM kpis_ran GROUP BY site_id, technology) k2
+            ON k1.site_id = k2.site_id AND k1.technology = k2.technology AND k1.kpi_date = k2.max_date
+        ) k ON k.site_id = s.id
+        WHERE 1=1";
+        $statsParams = [];
+        if ($country !== 'all') { $sqlStats .= " AND s.country_code = ?"; $statsParams[] = $country; }
+        if ($tech !== 'all')     { $sqlStats .= " AND k.technology = ?"; $statsParams[] = $tech; }
+        if ($domain !== 'all')   { $sqlStats .= " AND s.domain = ?"; $statsParams[] = $domain; }
+        
+        $stStats = $pdo->prepare($sqlStats);
+        $stStats->execute($statsParams);
+        $stats = $stStats->fetch(PDO::FETCH_ASSOC);
+        
+        // Distribution par technologie
+        $sqlTech = "SELECT k.technology, COUNT(DISTINCT s.id) as count
+        FROM sites s
+        INNER JOIN (
+            SELECT k1.* FROM kpis_ran k1
+            INNER JOIN (SELECT site_id, technology, MAX(kpi_date) as max_date FROM kpis_ran GROUP BY site_id, technology) k2
+            ON k1.site_id = k2.site_id AND k1.technology = k2.technology AND k1.kpi_date = k2.max_date
+        ) k ON k.site_id = s.id
+        WHERE 1=1";
+        $techParams = [];
+        if ($country !== 'all') { $sqlTech .= " AND s.country_code = ?"; $techParams[] = $country; }
+        if ($domain !== 'all')   { $sqlTech .= " AND s.domain = ?"; $techParams[] = $domain; }
+        $sqlTech .= " GROUP BY k.technology";
+        
+        $stTech = $pdo->prepare($sqlTech);
+        $stTech->execute($techParams);
+        $techRows = $stTech->fetchAll(PDO::FETCH_ASSOC);
+        $techDist = ['2G' => 0, '3G' => 0, '4G' => 0];
+        foreach ($techRows as $row) {
+            $techDist[$row['technology']] = (int)$row['count'];
+        }
+        
+        $filterLabel = '';
+        if ($country !== 'all' || $tech !== 'all' || $domain !== 'all') {
+            $parts = [];
+            if ($country !== 'all') $parts[] = "Pays: $country";
+            if ($tech !== 'all') $parts[] = "Tech: $tech";
+            if ($domain !== 'all') $parts[] = "Domaine: $domain";
+            $filterLabel = ' — ' . implode(' | ', $parts);
+        }
+        
+        $totalSites = $stats['total_sites'] ?? 0;
+        $goodCount  = $stats['good_count'] ?? 0;
+        $warningCount = $stats['warning_count'] ?? 0;
+        $criticalCount = $stats['critical_count'] ?? 0;
+        $avgKpi = $stats['avg_kpi'] ?? 0;
+        $maxDate = $stats['max_date'] ?? 'N/A';
+        
+        $html = <<<HTML
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Rapport Cartographique</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #1e293b; background: #fff; }
+  .page { max-width: 900px; margin: 0 auto; padding: 20px 30px; }
+  .header { background: linear-gradient(135deg, #0c1a3d 0%, #00a3c4 100%); color: white; padding: 25px 30px; border-radius: 10px; margin-bottom: 25px; }
+  .header h1 { font-size: 1.5em; font-weight: 800; }
+  .header .date { font-size: 0.85em; opacity: 0.85; margin-top: 4px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 25px; }
+  .stat-card { background: #f8fafc; border-left: 4px solid #00a3c4; border-radius: 8px; padding: 14px; text-align: center; }
+  .stat-card .label { font-size: 0.8em; color: #64748b; font-weight: 600; }
+  .stat-card .value { font-size: 1.8em; font-weight: 800; margin: 4px 0; }
+  .stat-card.good { border-left-color: #10b981; }
+  .stat-card.good .value { color: #10b981; }
+  .stat-card.warning { border-left-color: #f59e0b; }
+  .stat-card.warning .value { color: #f59e0b; }
+  .stat-card.critical { border-left-color: #ef4444; }
+  .stat-card.critical .value { color: #ef4444; }
+  .tech-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 25px; }
+  .tech-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; text-align: center; }
+  .tech-card .tech { font-size: 0.9em; font-weight: 700; color: #475569; margin-bottom: 4px; }
+  .tech-card .count { font-size: 1.6em; font-weight: 800; color: #00a3c4; }
+  .footer { margin-top: 25px; text-align: center; font-size: 0.78em; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 12px; }
+  @media print { body { font-size: 9pt; } .page { padding: 10px 15px; } @page { margin: 15mm; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <h1>📡 Rapport Cartographique</h1>
+    <div class="date">NetInsight 360 — {$date}</div>
+  </div>
+  
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="label">Sites totaux</div>
+      <div class="value">{$totalSites}</div>
+    </div>
+    <div class="stat-card good">
+      <div class="label">En bon état</div>
+      <div class="value">{$goodCount}</div>
+    </div>
+    <div class="stat-card warning">
+      <div class="label">En alerte</div>
+      <div class="value">{$warningCount}</div>
+    </div>
+    <div class="stat-card critical">
+      <div class="label">Critiques</div>
+      <div class="value">{$criticalCount}</div>
+    </div>
+  </div>
+  
+  <h2 style="font-size:0.95em;margin:18px 0 12px;color:#1e293b;font-weight:700;">Distribution par technologie</h2>
+  <div class="tech-grid">
+    <div class="tech-card">
+      <div class="tech">2G</div>
+      <div class="count">{$techDist['2G']}</div>
+    </div>
+    <div class="tech-card">
+      <div class="tech">3G</div>
+      <div class="count">{$techDist['3G']}</div>
+    </div>
+    <div class="tech-card">
+      <div class="tech">4G</div>
+      <div class="count">{$techDist['4G']}</div>
+    </div>
+  </div>
+  
+  <div style="background:#f1f5f9;padding:12px 14px;border-radius:8px;font-size:0.85em;color:#475569;">
+    <strong>KPI Global moyen:</strong> {$avgKpi}% | <strong>Données du:</strong> {$maxDate}{$filterLabel}
+  </div>
+  
+  <div class="footer">
+    Rapport généré automatiquement par NetInsight 360
+  </div>
+</div>
+</body>
+</html>
+HTML;
+        
+        header('Content-Type: text/html; charset=utf-8');
+        header('Content-Disposition: inline; filename="rapport_cartographique_' . $dateFile . '.html"');
+        echo $html;
+        exit;
+    }
+
     // ── Mode fiche site unique ────────────────────────────────────────────────
     if (!empty($siteId)) {
         $stSite = $pdo->prepare("

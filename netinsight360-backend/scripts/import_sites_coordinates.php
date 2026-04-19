@@ -4,13 +4,14 @@
  * Version corrigée - Gère les espaces dans l'en-tête
  */
 
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
 // Chemin corrigé
 $csvFilePath = __DIR__ . '/../data/sites_coordinates.csv';
 
 require_once __DIR__ . '/../config/database.php';
+
+Database::bootstrapEnvironment();
+error_reporting(E_ALL);
+ini_set('display_errors', strtolower((string) getenv('APP_ENV')) === 'production' ? '0' : '1');
 
 echo "\n========================================\n";
 echo "IMPORT DES COORDONNÉES DES SITES\n";

@@ -1,4 +1,7 @@
 node_modules/
 .env
+.env.local
+**/.env.local
 vendor/
 *.log
+netinsight360-backend/logs/*.json

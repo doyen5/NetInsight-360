@@ -5,7 +5,7 @@
  * Usage : php scripts/add_missing_indexes.php
  */
 
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/maintenance/_bootstrap.php';
 
 $pdo = Database::getLocalConnection();
 

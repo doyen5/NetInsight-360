@@ -4,7 +4,7 @@
  * Ajoute user_email et details si absents.
  * Usage : php scripts/migrate_audit_logs.php
  */
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/maintenance/_bootstrap.php';
 $pdo = Database::getLocalConnection();
 
 $existing = [];

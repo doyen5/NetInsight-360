@@ -4,7 +4,7 @@
  *
  * Paramètres GET :
  *   site_id  : identifiant du site
- *   kpi_name : nom de la colonne KPI (ex: RNA, CSSR, ERAB_SR)
+ *   kpi_name : nom du KPI (ex: "RAB CS SR", "RRC CS SR", "Taux de chute appel" — non sensible à la casse)
  *   days     : nombre de jours (5-30, défaut 7)
  */
 require_once __DIR__ . '/../cors.php';
@@ -14,8 +14,7 @@ require_once __DIR__ . '/../../config/database.php';
 try {
     $pdo        = Database::getLocalConnection();
     $siteId     = $_GET['site_id']     ?? '';
-    $kpiName    = $_GET['kpi_name']    ?? 'RNA';
-    $requestedKpi = $kpiName;
+    $kpiInput   = $_GET['kpi_name']    ?? 'kpi_global';
     $technology = $_GET['technology']  ?? null;
     $days       = max(5, min(30, intval($_GET['days'] ?? 7)));
 
@@ -25,7 +24,54 @@ try {
         exit;
     }
 
-    // Validation du nom de KPI contre injection (whitelist colonnes réelles de kpis_ran)
+    // ===== Mapping des noms lisibles vers les colonnes SQL =====
+    // Les clés sont les noms affichables (case-insensitive), les valeurs sont les colonnes SQL
+    $kpiMapping = [
+        // Format: "Nom Lisible" => "nom_colonne_sql"
+        // 2G KPIs
+        'Disponibilité TCH'          => 'tch_availability',
+        'Taux de chute appel'        => 'tch_drop_rate',
+        'Taux de handover 2G'        => 'handover_sr_2g',
+        'Congestion SDCCH'           => 'sdcch_cong',
+        'Chute SDCCH'                => 'sdcch_drop',
+        'Taux établissement appel'   => 'cssr_2g',
+        'Taux congestion TCH'        => 'tch_cong_rate',
+        'Accessibilité RNA 2G'       => 'rna_2g',
+        
+        // 3G KPIs
+        'RRC CS SR'                  => 'rrc_cs_sr',
+        'RAB CS SR'                  => 'rab_cs_sr',
+        'RRC PS SR'                  => 'rrc_ps_sr',
+        'Taux de chute CS'           => 'cs_drop_rate',
+        'Soft HO'                    => 'soft_ho_rate',
+        'Taux établissement CS'      => 'cssr_cs_sr',
+        'Taux établissement PS'      => 'cssr_ps_sr',
+        'Taux de chute PS'           => 'ps_drop_rate',
+        
+        // 4G KPIs
+        'LTE S1 SR'                  => 'lte_s1_sr',
+        'LTE RRC SR'                 => 'lte_rrc_sr',
+        'LTE ERAB SR'                => 'lte_erab_sr',
+        'Taux établissement session' => 'lte_session_sr',
+        'LTE CSFB SR'                => 'lte_csfb_sr',
+        'Taux de chute ERAB'         => 'lte_erab_drop_rate',
+        'LTE Intra-fréquence'        => 'lte_intra_freq_sr',
+        'LTE Inter-fréquence'        => 'lte_inter_freq_sr',
+        
+        // KPI Global
+        'KPI Global'                 => 'kpi_global',
+    ];
+    
+    // Convertir le nom lisible en colonne SQL (case-insensitive)
+    $kpiName = 'kpi_global'; // défaut
+    foreach ($kpiMapping as $readableName => $columnName) {
+        if (strtolower($kpiInput) === strtolower($readableName)) {
+            $kpiName = $columnName;
+            break;
+        }
+    }
+    
+    // Whitelist de sécurité (colonnes SQL autorisées)
     $allowed = [
         'kpi_global',
         // 2G
@@ -73,6 +119,7 @@ try {
     // Dans certains cas, l'import ne remplit que kpi_global + worst_kpi_name/value
     // et laisse les colonnes KPI individuelles à NULL.
     // Si c'est le cas, on bascule sur kpi_global (toujours rempli) pour avoir un trend utile.
+    $requestedKpi = $kpiName; // Garder trace du KPI original demandé
     if ($kpiName !== 'kpi_global') {
         $chk = $pdo->prepare("
             SELECT COUNT(*) AS cnt
@@ -126,7 +173,8 @@ try {
         'data'    => [
             'labels' => $labels,
             'values' => $values,
-            'kpi_name' => $kpiName,
+            'kpi_name' => $requestedKpi,
+            'kpi_column' => $kpiName,
             'used_fallback' => ($requestedKpi !== $kpiName),
             'used_hour' => $useHour,
         ]

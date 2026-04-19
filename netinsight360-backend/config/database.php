@@ -78,6 +78,14 @@ class Database
         
         self::$envLoaded = true;
     }
+
+    /**
+     * Rend le chargement d'environnement accessible aux scripts CLI.
+     */
+    public static function bootstrapEnvironment(): void
+    {
+        self::loadEnv();
+    }
     
     /**
      * Récupère une variable d'environnement
@@ -92,6 +100,19 @@ class Database
         }
         
         return $_ENV[$key] ?? $default;
+    }
+
+    /**
+     * Récupère une variable obligatoire et échoue explicitement si absente.
+     */
+    private static function requireEnv(string $key): string
+    {
+        $value = self::getEnv($key, '');
+        if (!is_string($value) || trim($value) === '') {
+            throw new RuntimeException("Variable d'environnement requise absente: {$key}");
+        }
+
+        return $value;
     }
     
     /**
@@ -145,8 +166,8 @@ class Database
                 $host = self::getEnv('REMOTE_DB_HOST', '10.171.16.120');
                 $port = self::getEnv('REMOTE_DB_PORT', '3306');
                 $dbname = self::getEnv('REMOTE_DB_NAME', 'NetPulseAI_NetworkInsight');
-                $username = self::getEnv('REMOTE_DB_USER', 'fo_npm');
-                $password = self::getEnv('REMOTE_DB_PASS', 'fo_npm');
+                $username = self::requireEnv('REMOTE_DB_USER');
+                $password = self::requireEnv('REMOTE_DB_PASS');
                 $charset = self::getEnv('REMOTE_DB_CHARSET', 'utf8mb4');
                 
                 $dsn = "mysql:host={$host};port={$port};dbname={$dbname};charset={$charset}";

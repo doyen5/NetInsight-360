@@ -10,11 +10,12 @@
  * Exécution : php import_ran_kpis_complete.php
  */
 
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
 define('COUNTRY_CODE', 'CI');
 define('COUNTRY_NAME', 'Côte d\'Ivoire');
+define('MANFLA_SITE_ID', 'AC971');
+define('MANFLA_NAME', 'MANFLA');
+define('MANFLA_LAT', 7.4002338);
+define('MANFLA_LNG', -5.92163);
 
 // Chemins
 $basePath = dirname(__DIR__);
@@ -22,6 +23,10 @@ $csvFile = $basePath . '/data/sites_coordinates.csv';
 
 require_once $basePath . '/config/database.php';
 require_once $basePath . '/app/helpers/AuditHelper.php';
+
+Database::bootstrapEnvironment();
+error_reporting(E_ALL);
+ini_set('display_errors', strtolower((string) getenv('APP_ENV')) === 'production' ? '0' : '1');
 
 /**
  * Classe principale d'import
@@ -99,6 +104,19 @@ class RanKpiCompleteImporter
                     'country_code' => 'CI',
                 ];
             }
+
+            // Verrou anti-régression : Manfla doit toujours rester en Côte d'Ivoire.
+            $this->coordinates[MANFLA_SITE_ID] = [
+                'name'       => MANFLA_NAME,
+                'latitude'   => MANFLA_LAT,
+                'longitude'  => MANFLA_LNG,
+                'vendor'     => $this->coordinates[MANFLA_SITE_ID]['vendor'] ?? 'Ericsson',
+                'localite'   => $this->coordinates[MANFLA_SITE_ID]['localite'] ?? null,
+                'region'     => $this->coordinates[MANFLA_SITE_ID]['region'] ?? null,
+                'zone_loc'   => $this->coordinates[MANFLA_SITE_ID]['zone_loc'] ?? null,
+                'zone_op'    => $this->coordinates[MANFLA_SITE_ID]['zone_op'] ?? null,
+                'country_code' => 'CI',
+            ];
 
             echo "[OK] Chargé " . count($this->coordinates) . " sites depuis sites_database (base distante)\n\n";
         } catch (Exception $e) {
@@ -257,12 +275,20 @@ class RanKpiCompleteImporter
             $source      = 'existing';
         }
 
+        if ($siteId === MANFLA_SITE_ID || strtoupper(trim($name)) === MANFLA_NAME) {
+            $name = MANFLA_NAME;
+            $latitude = MANFLA_LAT;
+            $longitude = MANFLA_LNG;
+            $countryCode = COUNTRY_CODE;
+            $source = 'forced_override';
+        }
+
         $domain = ($technology === 'CORE') ? 'CORE' : 'RAN';
 
         if ($exists) {
             // Ne mettre à jour les coordonnées que si on en a de meilleures (source distante)
             // Sinon conserver celles déjà en base
-            $updateCoords = ($source === 'sites_database') ? ", latitude = ?, longitude = ?" : "";
+            $updateCoords = (in_array($source, ['sites_database', 'forced_override'], true)) ? ", latitude = ?, longitude = ?" : "";
             $sql = "UPDATE sites SET
                         name = ?, vendor = ?, technology = ?,
                         domain = ?, region = ?, localite = ?,
@@ -270,7 +296,7 @@ class RanKpiCompleteImporter
                         $updateCoords
                     WHERE id = ?";
             $params = [$name, $vendorFinal, $technology, $domain, $region, $localite];
-            if ($source === 'sites_database') {
+            if (in_array($source, ['sites_database', 'forced_override'], true)) {
                 $params[] = $latitude;
                 $params[] = $longitude;
             }

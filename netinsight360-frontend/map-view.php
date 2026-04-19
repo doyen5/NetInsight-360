@@ -8,6 +8,10 @@ AuthHelper::requireLogin();
 // Récupérer les infos utilisateur
 $user = AuthHelper::getUser();
 $userRole = AuthHelper::getUserRole();
+
+$mapViewCssVersion = @filemtime(__DIR__ . '/css/map-view.css') ?: time();
+$apiJsVersion = @filemtime(__DIR__ . '/js/api.js') ?: time();
+$mapViewJsVersion = @filemtime(__DIR__ . '/js/map-view.js') ?: time();
 ?>
 
 <!DOCTYPE html>
@@ -33,7 +37,7 @@ $userRole = AuthHelper::getUserRole();
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
-    <link rel="stylesheet" href="css/map-view.css">
+    <link rel="stylesheet" href="css/map-view.css?v=<?= $mapViewCssVersion ?>">
     
     <style>
         .logout-confirm-modal {
@@ -143,27 +147,27 @@ $userRole = AuthHelper::getUserRole();
         <div class="row g-4 mt-2">
             <div class="col-md-4"><div class="stat-card"><h6><i class="bi bi-bar-chart"></i> Répartition par statut</h6><canvas id="statusChart" height="200"></canvas></div></div>
             <div class="col-md-4"><div class="stat-card"><h6><i class="bi bi-pie-chart"></i> Répartition par technologie</h6><canvas id="techChart" height="200"></canvas></div></div>
-            <div class="col-md-4"><div class="stat-card"><h6><i class="bi bi-building"></i> Top 5 sites par pays</h6><div id="topCountriesList" class="top-countries-list"></div></div></div>
+            <div class="col-md-4"><div class="stat-card"><h6><i class="bi bi-exclamation-triangle"></i> Pires performances par technologie</h6><div id="worstKpisPanel" class="worst-kpis-panel"></div></div></div>
         </div>
 
         <div class="row mt-4">
-            <div class="col-12"><div class="stat-card"><h6><i class="bi bi-table"></i> Liste des sites (cliquez sur un site pour voir les détails)</h6><div class="table-responsive"><table class="table table-hover" id="sitesTable"><thead><tr><th>Site ID</th><th>Nom</th><th>Pays</th><th>Vendor</th><th>Technologie</th><th>Domaine</th><th>KPI Global</th><th>Statut</th><th>Actions</th></tr></thead><tbody id="sitesTableBody"><tr><td colspan="9" class="text-center">Chargement des données...</td></tr></tbody></table></div><div class="mt-3" id="paginationControls"></div></div></div>
+            <div class="col-12"><div class="stat-card"><h6><i class="bi bi-table"></i> Liste des sites (cliquez sur un site pour voir les détails)</h6><div class="table-responsive"><table class="table table-hover" id="sitesTable"><thead><tr><th>Site ID</th><th>Nom</th><th>Pays</th><th>Vendor</th><th>Technologie</th><th>Domaine</th><th>Pire KPI</th><th>Statut</th><th>Actions</th></tr></thead><tbody id="sitesTableBody"><tr><td colspan="9" class="text-center">Chargement des données...</td></tr></tbody></table></div><div class="mt-3" id="paginationControls"></div></div></div>
         </div>
 
-        <div class="row mt-4 viewer-restricted"><div class="col-12"><div class="stat-card"><h6><i class="bi bi-file-text"></i> Rapports Cartographiques</h6><div class="report-buttons"><button class="btn btn-whatsapp" id="shareMapBtn"><i class="bi bi-whatsapp"></i> Partager la carte</button><button class="btn btn-danger" id="exportPdfMapBtn"><i class="bi bi-file-earmark-pdf"></i> Exporter PDF</button><button class="btn btn-info" id="printMapBtn"><i class="bi bi-printer"></i> Imprimer la carte</button></div></div></div></div>
+        <div class="row mt-4 viewer-restricted"><div class="col-12"><div class="stat-card"><h6><i class="bi bi-file-text"></i> Rapports Cartographiques</h6><div class="report-buttons"><div class="dropdown-pdf-wrapper"><button class="btn btn-danger" id="exportPdfMapBtn"><i class="bi bi-file-earmark-pdf"></i> Exporter PDF</button><div class="pdf-export-menu" id="pdfExportMenu"><div class="pdf-option" data-period="day"><i class="bi bi-calendar-day"></i> Par jour</div><div class="pdf-option" data-period="week"><i class="bi bi-calendar-week"></i> Par semaine</div><div class="pdf-option" data-period="month"><i class="bi bi-calendar-month"></i> Par mois</div></div></div><button class="btn btn-success" id="exportCsvMapBtn"><i class="bi bi-file-earmark-excel"></i> Exporter CSV</button><button class="btn btn-primary" id="generateReportBtn"><i class="bi bi-graph-up"></i> Générer rapport</button><button class="btn btn-secondary" id="downloadSnapshotBtn"><i class="bi bi-cloud-download"></i> Snapshot</button></div></div></div></div>
     </div>
 
     <!-- Modals -->
-    <div class="modal fade" id="siteDetailsModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header py-2" style="background:linear-gradient(135deg,#1e3a5f,#00a3c4);color:white"><div><h6 class="modal-title mb-0" id="modalSiteTitle">Détails du site</h6><small id="modalSiteSubtitle" class="opacity-75 small"></small></div><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div id="modalStatsBar" class="px-3 py-2 border-bottom d-flex flex-wrap gap-3" style="background:#f8f9fa;font-size:0.8rem"></div><div class="modal-body p-3"><div class="row g-3"><div class="col-md-5"><p class="text-muted small text-uppercase fw-bold mb-2"><i class="bi bi-info-circle"></i> Informations générales</p><div id="modalSiteInfo"></div></div><div class="col-md-7"><p class="text-muted small text-uppercase fw-bold mb-2"><i class="bi bi-exclamation-triangle"></i> KPIs dégradants par technologie</p><div id="modalWorstKpis"></div></div></div><div class="mt-3"><p class="text-muted small text-uppercase fw-bold mb-1"><i class="bi bi-graph-up"></i> Trend KPI Global — 14 jours</p><canvas id="trend5DaysChart" height="110"></canvas></div></div><div class="modal-footer py-2"><button class="btn btn-success btn-sm viewer-restricted" id="shareSiteWhatsApp"><i class="bi bi-whatsapp"></i> Partager WhatsApp</button><button class="btn btn-outline-success btn-sm viewer-restricted" id="exportSiteCsv"><i class="bi bi-file-earmark-excel"></i> Export CSV</button><button class="btn btn-outline-danger btn-sm viewer-restricted" id="exportSitePdf"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fermer</button></div></div></div></div>
+    <div class="modal fade" id="siteDetailsModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header py-2" style="background:linear-gradient(135deg,#1e3a5f,#00a3c4);color:white"><div><h6 class="modal-title mb-0" id="modalSiteTitle">Détails du site</h6><small id="modalSiteSubtitle" class="opacity-75 small"></small></div><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div id="modalStatsBar" class="px-3 py-2 border-bottom d-flex flex-wrap gap-3" style="background:#f8f9fa;font-size:0.8rem"></div><div class="modal-body p-3"><div class="row g-3"><div class="col-md-5"><p class="text-muted small text-uppercase fw-bold mb-2"><i class="bi bi-info-circle"></i> Informations générales</p><div id="modalSiteInfo"></div></div><div class="col-md-7"><p class="text-muted small text-uppercase fw-bold mb-2"><i class="bi bi-exclamation-triangle"></i> KPIs dégradants par technologie</p><div id="modalWorstKpis"></div></div></div><div class="mt-3"><p class="text-muted small text-uppercase fw-bold mb-1"><i class="bi bi-graph-up"></i> Tendance — <span id="trendKpiLabel">KPI dégradant</span> (14 jours)</p><canvas id="trend5DaysChart" height="110"></canvas></div></div><div class="modal-footer py-2"><button class="btn btn-success btn-sm viewer-restricted" id="shareSiteWhatsApp"><i class="bi bi-whatsapp"></i> Partager WhatsApp</button><button class="btn btn-outline-success btn-sm viewer-restricted" id="exportSiteCsv"><i class="bi bi-file-earmark-excel"></i> Export CSV</button><button class="btn btn-outline-danger btn-sm viewer-restricted" id="exportSitePdf"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fermer</button></div></div></div></div>
     <div id="logoutConfirmModal" class="logout-confirm-modal"><div class="logout-confirm-card"><i class="bi bi-box-arrow-right"></i><h3>Déconnexion</h3><p>Êtes-vous sûr de vouloir vous déconnecter ?</p><div class="logout-confirm-buttons"><button class="btn-cancel-logout" id="cancelLogoutBtn"><i class="bi bi-x-lg"></i> Annuler</button><button class="btn-confirm-logout" id="confirmLogoutBtn"><i class="bi bi-check-lg"></i> Déconnecter</button></div></div></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-    <script src="js/api.js"></script>
+    <script src="js/api.js?v=<?= $apiJsVersion ?>"></script>
     <script src="js/logout.js?v=2"></script>
     <script src="js/app.js"></script>
     <script src="js/charts.js?v=2"></script>
-    <script src="js/map-view.js"></script>
+    <script src="js/map-view.js?v=<?= $mapViewJsVersion ?>"></script>
 </body>
 </html>

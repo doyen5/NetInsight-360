@@ -40,6 +40,8 @@ try {
             ROUND(AVG(CASE
                 WHEN k.technology = '2G' AND k.worst_kpi_name = 'Taux de chute appel'
                 THEN k.worst_kpi_value ELSE NULL END), 2)                                AS avg_tch_drop,
+            COUNT(CASE WHEN k.kpi_global >= 95 THEN 1 END)                               AS good_sites,
+            COUNT(CASE WHEN k.kpi_global >= 90 AND k.kpi_global < 95 THEN 1 END)        AS warning_sites,
             COUNT(CASE WHEN k.kpi_global < 90 THEN 1 END)                                AS critical_sites
         FROM sites s
         INNER JOIN kpis_ran k ON k.site_id = s.id
@@ -107,12 +109,18 @@ try {
     $countryStmt->execute($params);
     $distribution['countries'] = $countryStmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // Récupérer la dernière date des KPIs (date de la dernière importation)
+    $dateStmt = $pdo->query("SELECT MAX(kpi_date) AS last_kpi_date FROM kpis_ran");
+    $dateRow = $dateStmt->fetch(PDO::FETCH_ASSOC);
+    $lastKpiDate = $dateRow['last_kpi_date'] ?? null;
+
     echo json_encode([
         'success' => true,
         'data'    => [
             'stats'        => $stats,
             'kpis'         => $kpis,
             'distribution' => $distribution,
+            'last_kpi_date' => $lastKpiDate,  // Dernière date d'importation des KPIs
         ]
     ]);
 

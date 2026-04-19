@@ -120,6 +120,171 @@
     color: #00a3c4;
 }
 
+/* Pires KPIs par technologie — Affiche les indicateurs critiques pour chaque tech */
+.worst-kpis-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* En-tête du panneau avec la date des KPIs */
+.worst-kpis-header {
+    font-size: 0.7rem;
+    color: #64748b;
+    padding: 0 2px 2px 2px;
+    border-bottom: 1px solid #e2e8f0;
+    flex-shrink: 0;
+}
+
+/* Conteneur des 3 technologies en grille/colonnes */
+.worst-kpis-techs-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+/* Conteneur d'une technologie avec ses pires KPIs */
+.worst-kpis-tech {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 6px;
+    background: #f8fafc;
+    border-left: 4px solid #1e3a5f;
+    border-radius: 4px;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Couleurs distinctes pour chaque technologie */
+.worst-kpis-tech.tech-2g {
+    border-left-color: #10b981;  /* vert pour 2G */
+}
+
+.worst-kpis-tech.tech-3g {
+    border-left-color: #f59e0b;  /* orange pour 3G */
+}
+
+.worst-kpis-tech.tech-4g {
+    border-left-color: #00a3c4;  /* cyan pour 4G */
+}
+
+.worst-kpis-tech.tech-core {
+    border-left-color: #8b5cf6;  /* violet pour CORE */
+}
+
+/* Label de la technologie */
+.worst-kpis-tech-label {
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 0.8rem;
+    margin-bottom: 2px;
+}
+
+/* Conteneur de la liste de KPIs — affiche horizontalement */
+.worst-kpis-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+}
+
+/* Ligne avec nom du KPI et valeur — affichage compact en badge */
+.worst-kpi-row {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.7rem;
+    gap: 2px;
+    line-height: 1;
+    padding: 2px 4px;
+    background: white;
+    border-radius: 3px;
+    border: 1px solid #e2e8f0;
+}
+
+/* Nom du KPI — texte compressé */
+.worst-kpi-name {
+    color: #1e293b;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 70px;
+}
+
+/* Valeur du KPI — badge ultra-compact */
+.worst-kpi-value {
+    background: #e0e7ff;
+    color: #4f46e5;
+    padding: 1px 3px;
+    border-radius: 2px;
+    font-weight: 700;
+    white-space: nowrap;
+    font-size: 0.6rem;
+    flex-shrink: 0;
+}
+
+/* Menu déroulant PDF — s'ouvre vers le haut */
+.dropdown-pdf-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.pdf-export-menu {
+    display: none;
+    position: absolute;
+    bottom: 110%;
+    left: 0;
+    background: white;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    min-width: 180px;
+    animation: slideUpMenu 0.2s ease-out;
+}
+
+@keyframes slideUpMenu {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dropdown-pdf-wrapper:hover .pdf-export-menu {
+    display: block;
+}
+
+.pdf-option {
+    padding: 12px 16px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s, color 0.2s;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.pdf-option:last-child {
+    border-bottom: none;
+}
+
+.pdf-option:hover {
+    background-color: #f8fafc;
+    color: #ef4444;
+    font-weight: 500;
+}
+
 /* Table des sites */
 #sitesTable {
     font-size: 0.85rem;
@@ -197,6 +362,69 @@
 .btn-details:hover {
     transform: scale(1.1);
     color: #006994;
+}
+
+/* Boutons des rapports — layout flexbox avec wrapping */
+.report-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.report-buttons .btn {
+    font-size: 0.9rem;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.report-buttons .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.report-buttons .btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.report-buttons .btn-danger:hover {
+    background: #dc2626;
+}
+
+.report-buttons .btn-success {
+    background: #10b981;
+    color: white;
+}
+
+.report-buttons .btn-success:hover {
+    background: #059669;
+}
+
+.report-buttons .btn-primary {
+    background: #3b82f6;
+    color: white;
+}
+
+.report-buttons .btn-primary:hover {
+    background: #2563eb;
+}
+
+.report-buttons .btn-secondary {
+    background: #6b7280;
+    color: white;
+}
+
+.report-buttons .btn-secondary:hover {
+    background: #4b5563;
 }
 
 /* Pagination */

@@ -101,6 +101,7 @@ async function loadImportStatus() {
     const area = document.getElementById('importStatusArea');
     const logBox = document.getElementById('importLogBox');
     const auditList = document.getElementById('auditImportList');
+    const msg = document.getElementById('importMsg');
 
     try {
         const res = await API.getImportStatus();
@@ -120,7 +121,7 @@ async function loadImportStatus() {
         area.innerHTML = `
             <div class="d-flex align-items-center gap-2 mb-3">${runningBadge}</div>
             <div class="row g-2">
-                ${buildStatCard('Dernier import', formatDate(ran.last_date) || '—', 'bi-calendar-check')}
+                ${buildStatCard('Dernier import', formatDate(d.last_import_datetime || ran.last_date) || '—', 'bi-calendar-check')}
                 ${buildStatCard('Sites RAN',      ran.sites    ?? '—', 'bi-wifi')}
                 ${buildStatCard('Enregistrements', ran.records ?? '—', 'bi-database')}
                 ${buildStatCard('Bon / Alerte / Critique', `${ran.sites_good??0} / ${ran.sites_warning??0} / ${ran.sites_critical??0}`, 'bi-bar-chart-line')}
@@ -440,8 +441,9 @@ function formatDate(str) {
     if (isDateOnly) {
         return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
     }
+    // Afficher la date + heure (minutes) pour la lisibilité — pas besoin des secondes
     return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' })
-         + ' ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+         + ' ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
 }
 
 function escapeHtml(str) {

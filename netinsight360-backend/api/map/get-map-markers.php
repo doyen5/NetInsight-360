@@ -79,7 +79,9 @@ try {
           . " AND latitude BETWEEN -5.0 AND 25.0"
           . " AND longitude BETWEEN -18.0 AND 30.0"
           . $statusHaving;
-    $sql .= " ORDER BY kpi_global ASC LIMIT 2000";
+    // Augmenter la limite à 5000 pour afficher plus de sites par pays
+    // (limite de 2000 était trop restrictive pour les grands pays comme la CI)
+    $sql .= " ORDER BY kpi_global ASC LIMIT 5000";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);

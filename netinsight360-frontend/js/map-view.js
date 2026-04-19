@@ -45,15 +45,23 @@ async function initMapView() {
 
 /**
  * Initialise la carte
+ * Vue par défaut: Afrique entière (latitude 37 au nord, -35 au sud, longitude -17 à l'ouest, 55 à l'est)
  */
 function initFullMap() {
     const mapContainer = document.getElementById('map');
     if (!mapContainer) return;
     
-    fullMap = L.map('map').setView([8.0, 2.0], 5);
+    // Créer la carte sans position initiale fixe
+    fullMap = L.map('map');
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(fullMap);
+    
+    // Afficher l'Afrique entière au chargement: bounds [[lat_nord, lon_ouest], [lat_sud, lon_est]]
+    // Latitude: de 37° (Tunisie nord) à -35° (Afrique du Sud)
+    // Longitude: de -17° (Mauritanie ouest) à 55° (Somalie est)
+    const africaBounds = L.latLngBounds([[37, -17], [-35, 55]]);
+    fullMap.fitBounds(africaBounds, { padding: [30, 30] });
 }
 
 /**
@@ -96,9 +104,12 @@ async function loadFullMapMarkers() {
                 color = API.statusColor(site.status);
             }
             
+            // Créer une icône avec taille réduite (6px au lieu de 12px)
+            // Réduit la surcharge visuelle quand de nombreux sites sont affichés sur la carte
+            // Les points CORE sont des carrés rotés, les autres sont des cercles colorés par statut
             const icon = L.divIcon({
-                html: `<div style="background:${color}; width:12px; height:12px; ${site.domain === 'CORE' ? 'border-radius:2px; transform:rotate(45deg);' : 'border-radius:50%;'} border:2px solid white;"></div>`,
-                iconSize: [12, 12]
+                html: `<div style="background:${color}; width:6px; height:6px; ${site.domain === 'CORE' ? 'border-radius:1px; transform:rotate(45deg);' : 'border-radius:50%;'} border:1px solid white;"></div>`,
+                iconSize: [6, 6]
             });
             
             const marker = L.marker([lat, lng], { icon }).addTo(fullMap);
@@ -177,9 +188,9 @@ function renderSitesTable() {
             <td>${escapeHtml(site.name)}</td>
             <td><i class="bi bi-flag"></i> ${escapeHtml(site.country_name ?? site.country_code)}</td>
             <td><span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:4px;vertical-align:middle"></span>${escapeHtml(site.vendor)}</td>
-            <td><span class="badge-tech">${escapeHtml(site.technology)}</span></td>
+            <td><strong>${escapeHtml(site.technology)}</strong></td>
             <td>${escapeHtml(site.domain)}</td>
-            <td><strong>${site.kpi_global}%</strong></td>
+            <td><strong title="${escapeHtml(site.worst_kpi_name || 'N/A')}">${escapeHtml(site.worst_kpi_name || 'N/A')}</strong><br><span style="font-size:0.75rem;color:#4f46e5">${site.worst_kpi_value || 0}%</span></td>
             <td><span class="status-badge status-${site.status}">${statusLabel(site.status)}</span></td>
             <td><button class="btn-details" onclick="showFullSiteDetails('${escapeHtml(site.id)}')"><i class="bi bi-eye-fill"></i></button></td>
         </tr>
@@ -216,18 +227,39 @@ async function loadFullCharts() {
         // Si vide (chargement initial parallèle), utiliser fullSitesData comme fallback
         const data = (fullTableData && fullTableData.length > 0) ? fullTableData : fullSitesData;
         if (!data || data.length === 0) return;
+
+        // Récupérer l'API RAN KPIs pour les statistiques globales fiables
+        // et la distribution par pays (au lieu de calculer manuellement)
+        let ranKpis = null;
+        let countriesDistribution = [];
+        try {
+            ranKpis = await API.getRanKpis(fullFilters);
+            countriesDistribution = ranKpis?.success
+                ? (ranKpis.data?.distribution?.countries || [])
+                : [];
+        } catch (distributionError) {
+            console.warn('[MapView] Répartition pays indisponible, fallback sur les données locales.', distributionError);
+        }
         
-        // Répartition par statut
-        const good = data.filter(s => s.status === 'good').length;
-        const warning = data.filter(s => s.status === 'warning').length;
-        const critical = data.filter(s => s.status === 'critical').length;
+        // --- GRAPHIQUE 1: Répartition par statut ---
+        // Utiliser les stats du backend RAN KPIs pour la vraie répartition de tous les sites
+        // (évite le biais du tri par criticité + limite dans fullTableData)
+        let good = 0, warning = 0, critical = 0;
+        if (ranKpis?.success && ranKpis.data?.stats) {
+            const stats = ranKpis.data.stats;
+            good = parseInt(stats.good_sites) || 0;
+            warning = parseInt(stats.warning_sites) || 0;
+            critical = parseInt(stats.critical_sites) || 0;
+        }
+        
+        console.log('[MapView] Statut - Good:', good, 'Warning:', warning, 'Critical:', critical);
         
         chartManager.createPieChart('statusChart', {
             labels: ['Bon (≥95%)', 'Alerte (90-95%)', 'Critique (<90%)'],
             datasets: [{ data: [good, warning, critical], backgroundColor: [API.COLORS.status.good, API.COLORS.status.warning, API.COLORS.status.bad] }]
         });
         
-        // Répartition par technologie
+        // Répartition par technologie — Couleurs distinctes par tech
         const twoG = data.filter(s => s.technology === '2G').length;
         const threeG = data.filter(s => s.technology === '3G').length;
         const fourG = data.filter(s => s.technology === '4G').length;
@@ -235,24 +267,85 @@ async function loadFullCharts() {
         
         chartManager.createBarChart('techChart', {
             labels: ['2G', '3G', '4G', 'CORE'],
-            datasets: [{ label: 'Nombre de sites', data: [twoG, threeG, fourG, core], backgroundColor: API.COLORS.tech['4G'] }]
+            datasets: [{ 
+                label: 'Nombre de sites', 
+                data: [twoG, threeG, fourG, core], 
+                backgroundColor: [
+                    API.COLORS.tech['2G'],    // 2G: vert
+                    API.COLORS.tech['3G'],    // 3G: orange
+                    API.COLORS.tech['4G'],    // 4G: cyan
+                    API.COLORS.tech['CORE']   // CORE: violet
+                ]
+            }]
         });
         
-        // Top pays
-        const countryMap = new Map();
-        data.forEach(site => {
-            countryMap.set(site.country_name, (countryMap.get(site.country_name) || 0) + 1);
-        });
-        const sorted = Array.from(countryMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        // --- Top pays — utiliser l'agrégation backend ---
+        let sorted = countriesDistribution
+            .map(country => [country.name, Number(country.count) || 0])
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5);
+
+        if (sorted.length === 0) {
+            // Fallback: recalculer depuis les données locales
+            const countryMap = new Map();
+            data.forEach(site => {
+                countryMap.set(site.country_name, (countryMap.get(site.country_name) || 0) + 1);
+            });
+            sorted = Array.from(countryMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        }
         
-        const container = document.getElementById('topCountriesList');
-        if (container) {
-            container.innerHTML = sorted.map(([name, count]) => `
-                <div class="top-country-item" onclick="centerOnCountry('${name}')">
-                    <span class="top-country-name"><i class="bi bi-flag"></i> ${name}</span>
-                    <span class="top-country-count">${count} site(s)</span>
-                </div>
-            `).join('');
+        // --- Pires KPIs par technologie ---
+        // Affiche les 3 KPIs les plus dégradants pour chaque technologie (2G, 3G, 4G) avec noms complets et date
+        // Très utile pour identifier rapidement les points critiques du réseau par domaine
+        const worstContainer = document.getElementById('worstKpisPanel');
+        if (worstContainer && ranKpis?.success && ranKpis.data?.kpis) {
+            const kpis = ranKpis.data.kpis;
+            const lastKpiDate = ranKpis.data.last_kpi_date;
+            const technologies = ['2G', '3G', '4G'];
+            const techClasses = { '2G': 'tech-2g', '3G': 'tech-3g', '4G': 'tech-4g' };
+            
+            // Format de la date pour affichage (ex: "19 avril 2026")
+            let dateDisplay = '';
+            if (lastKpiDate) {
+                const dateObj = new Date(lastKpiDate + ' 00:00:00');
+                dateDisplay = dateObj.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' });
+            }
+            
+            // En-tête avec la date des données
+            const headerHtml = dateDisplay ? `<div class="worst-kpis-header">Données du <strong>${dateDisplay}</strong></div>` : '';
+            
+            // Corps avec les KPIs par technologie en grille (3 colonnes)
+            const techsHtml = technologies.map(tech => {
+                const techKpis = kpis[tech] || {};
+                // Trier les KPIs par valeur (pires en premier) et prendre les 3 pires
+                const techSorted = Object.entries(techKpis)
+                    .sort((a, b) => b[1] - a[1])  // Tri descendant: pire valeur en premier
+                    .slice(0, 3);
+                
+                const kpiRowsHtml = techSorted.length > 0
+                    ? techSorted.map(([kpiName, value]) => `
+                        <div class="worst-kpi-row">
+                            <span class="worst-kpi-name">${kpiName}</span>
+                            <span class="worst-kpi-value">${value.toFixed(1)}%</span>
+                        </div>
+                    `).join('')
+                    : '<div style="font-size: 0.8rem; color: #94a3b8; padding: 4px;">— Aucune donnée —</div>';
+                
+                return `
+                    <div class="worst-kpis-tech ${techClasses[tech] || ''}">
+                        <div class="worst-kpis-tech-label">${tech}</div>
+                        <div class="worst-kpis-list">
+                            ${kpiRowsHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            console.log('[MapView] Pires KPIs (date:', lastKpiDate, '):', kpis);
+            worstContainer.innerHTML = headerHtml + `<div class="worst-kpis-techs-container">${techsHtml}</div>`;
+        } else if (worstContainer) {
+            console.warn('[MapView] Container #worstKpisPanel trouvé mais données RAN indisponibles');
+            worstContainer.innerHTML = '<div style="padding: 10px; color: #94a3b8; font-size: 0.9rem;">Données non disponibles</div>';
         }
     } catch (error) {
         console.error('[MapView] Erreur chargement graphiques:', error);
@@ -322,7 +415,7 @@ function initFullFilters() {
  * Affiche les frontières GeoJSON du pays sélectionné sur la carte Map View.
  * Partage le même endpoint PHP et les mêmes fichiers GeoJSON en cache que le dashboard.
  * Pays disponibles : ci.geojson, bj.geojson, cf.geojson, ne.geojson, tg.geojson
- * @param {string} countryCode - Code ISO-2 (ex: 'CI', 'BJ') ou 'all' pour vue globale
+ * @param {string} countryCode - Code ISO-2 (ex: 'CI', 'BJ') ou 'all' pour vue globale (Afrique entière)
  */
 async function showFullCountryBorder(countryCode) {
     if (!fullMap) return;
@@ -333,9 +426,11 @@ async function showFullCountryBorder(countryCode) {
         fullCountryBorderLayer = null;
     }
 
-    // Pas de pays spécifique : revenir à la vue globale
+    // Pas de pays spécifique : afficher l'Afrique entière avec fitBounds
+    // Cela remplace le setView/flyTo qui était figé sur la CI
     if (!countryCode || countryCode === 'all') {
-        fullMap.flyTo([8.0, 2.0], 5);
+        const africaBounds = L.latLngBounds([[37, -17], [-35, 55]]);
+        fullMap.fitBounds(africaBounds, { padding: [30, 30] });
         return;
     }
 
@@ -355,7 +450,10 @@ async function showFullCountryBorder(countryCode) {
             }
         }).addTo(fullMap);
 
-        // Zoomer automatiquement pour que tout le pays soit visible
+        // Zoomer automatiquement pour que tout le pays sélectionné soit visible
+        // fitBounds() centrera et ajustera automatiquement le zoom selon la taille du pays
+        // padding=[60, 60] ajoute de l'espace autour des bordures du pays pour meilleure lisibilité
+        // maxZoom=8 évite de zoomer trop fort sur les petits pays
         fullMap.fitBounds(fullCountryBorderLayer.getBounds(), { padding: [60, 60], maxZoom: 8 });
     } catch (err) {
         console.warn('[MapView] Frontières pays non disponibles:', err);
@@ -366,32 +464,120 @@ async function showFullCountryBorder(countryCode) {
  * Initialise les rapports
  */
 function initFullReports() {
-    const shareBtn = document.getElementById('shareMapBtn');
-    if (shareBtn) {
-        shareBtn.addEventListener('click', async () => {
+    // Menu déroulant pour l'export PDF
+    const pdfOptions = document.querySelectorAll('.pdf-option');
+    pdfOptions.forEach(option => {
+        option.addEventListener('click', async () => {
+            const period = option.getAttribute('data-period');
             try {
-                const result = await API.generateWhatsAppReport({ type: 'map', filters: fullFilters });
-                if (result.success && result.report) {
-                    window.open(`https://wa.me/?text=${encodeURIComponent(result.report)}`, '_blank');
+                // Convertir "period" en dates start_date et end_date
+                const now = new Date();
+                let startDate, endDate = now.toISOString().split('T')[0];
+                
+                if (period === 'day') {
+                    startDate = endDate;
+                } else if (period === 'week') {
+                    const weekAgo = new Date(now);
+                    weekAgo.setDate(weekAgo.getDate() - 7);
+                    startDate = weekAgo.toISOString().split('T')[0];
+                } else if (period === 'month') {
+                    const monthAgo = new Date(now);
+                    monthAgo.setMonth(monthAgo.getMonth() - 1);
+                    startDate = monthAgo.toISOString().split('T')[0];
                 }
+                
+                // Construire l'URL d'export PDF
+                const params = new URLSearchParams({ 
+                    type: 'map', 
+                    start_date: startDate, 
+                    end_date: endDate,
+                    ...(fullFilters || {})
+                }).toString();
+                const url = `/NetInsight%20360/netinsight360-backend/api/reports/export-pdf.php?${params}`;
+                window.open(url, '_blank');
+            } catch (error) { 
+                console.error('[MapView] Erreur export PDF:', error); 
+            }
+        });
+    });
+    
+    // Export CSV — télécharge les sites du tableau
+    const exportCsvBtn = document.getElementById('exportCsvMapBtn');
+    if (exportCsvBtn) {
+        exportCsvBtn.addEventListener('click', () => {
+            if (!fullTableData || fullTableData.length === 0) {
+                alert('Aucune donnée à exporter');
+                return;
+            }
+            // Construire le CSV
+            const headers = ['Site ID', 'Nom', 'Pays', 'Vendor', 'Technologie', 'Domaine', 'Pire KPI', 'Valeur KPI', 'Statut'];
+            const rows = fullTableData.map(site => [
+                site.id,
+                `"${site.name}"`,
+                site.country_name || site.country_code || 'N/A',
+                site.vendor || 'N/A',
+                site.technology || 'N/A',
+                site.domain || 'N/A',
+                site.worst_kpi_name || 'N/A',
+                site.worst_kpi_value || 'N/A',
+                site.status || 'unknown'
+            ]);
+            const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+            
+            // Télécharger
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `NetInsight360_CartographieSites_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+        });
+    }
+    
+    // Générer rapport — crée un rapport synthétique HTML printable avec stats
+    const generateReportBtn = document.getElementById('generateReportBtn');
+    if (generateReportBtn) {
+        generateReportBtn.addEventListener('click', () => {
+            try {
+                // Construire l'URL d'export rapport
+                const params = new URLSearchParams({ 
+                    type: 'map_report',
+                    ...(fullFilters || {})
+                }).toString();
+                const url = `/NetInsight%20360/netinsight360-backend/api/reports/export-pdf.php?${params}`;
+                window.open(url, '_blank');
             } catch (error) {
-                console.error('[MapView] Erreur partage:', error);
+                console.error('[MapView] Erreur génération rapport:', error);
+                alert('Une erreur est survenue lors de la génération du rapport');
             }
         });
     }
     
-    const printBtn = document.getElementById('printMapBtn');
-    if (printBtn) {
-        printBtn.addEventListener('click', () => window.print());
-    }
-
-    const exportPdfMapBtn = document.getElementById('exportPdfMapBtn');
-    if (exportPdfMapBtn) {
-        exportPdfMapBtn.addEventListener('click', async () => {
-            try {
-                const result = await API.exportPdf({ type: 'map', ...fullFilters });
-                if (result.success && result.url) window.open(result.url, '_blank');
-            } catch (error) { console.error('[MapView] Erreur export PDF:', error); }
+    // Snapshot — sauvegarde l'état actuel des filtres et données
+    const downloadSnapshotBtn = document.getElementById('downloadSnapshotBtn');
+    if (downloadSnapshotBtn) {
+        downloadSnapshotBtn.addEventListener('click', () => {
+            const snapshot = {
+                timestamp: new Date().toISOString(),
+                filters: fullFilters,
+                sitesCount: fullTableData?.length || 0,
+                statusCounts: {
+                    good: fullTableData?.filter(s => s.status === 'good').length || 0,
+                    warning: fullTableData?.filter(s => s.status === 'warning').length || 0,
+                    critical: fullTableData?.filter(s => s.status === 'critical').length || 0,
+                },
+                techCounts: {
+                    '2G': fullTableData?.filter(s => s.technology === '2G').length || 0,
+                    '3G': fullTableData?.filter(s => s.technology === '3G').length || 0,
+                    '4G': fullTableData?.filter(s => s.technology === '4G').length || 0,
+                }
+            };
+            
+            const json = JSON.stringify(snapshot, null, 2);
+            const blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `cartographie_snapshot_${new Date().toISOString().split('T')[0]}_${Date.now()}.json`;
+            link.click();
         });
     }
 }
@@ -462,17 +648,18 @@ async function showFullSiteDetails(siteId) {
         const subtitle = document.getElementById('modalSiteSubtitle');
         if (subtitle) subtitle.innerText = `${site.country_name} — ${site.vendor} — ${site.technology}`;
 
-        // Barre de stats (kpi dégradant, KPI global, statut, dates)
+        // Barre de stats (pire KPI, statut, dates)
         const statusLabel = site.status === 'good' ? 'Bon' : (site.status === 'warning' ? 'Alerte' : 'Critique');
         const statusColor = API.statusColor(site.status);
-        const lastDate = site.latest_kpis?.kpi_date ?? 'N/A';
+        const lastDate = site.latest_kpis?.kpi_date ?? site.kpi_date ?? 'N/A';
         const lastImport = site.latest_kpis?.imported_at ? site.latest_kpis.imported_at.substring(0,16).replace('T',' ') : 'N/A';
         const worstKpiName = site.worst_kpi?.worst_kpi_name ?? (site.kpis_by_tech?.[0]?.worst_kpi_name ?? 'N/A');
+        const worstKpiValue = site.worst_kpi?.worst_kpi_value ?? (site.kpis_by_tech?.[0]?.worst_kpi_value ?? 0);
         const statsBar = document.getElementById('modalStatsBar');
         if (statsBar) statsBar.innerHTML = [
-            `<div><span class="text-muted">KPI dégradant</span><br><strong>${escapeHtml(worstKpiName)}</strong></div>`,
-            `<div><span class="text-muted">KPI Global</span><br><strong style="color:${statusColor};font-size:1.1rem">${site.kpi_global}%</strong></div>`,
-            `<div><span class="text-muted">Statut</span><br><strong style="color:${statusColor}">${statusLabel}</strong></div>`,
+            `<div><span class="text-muted">Pire KPI du site</span><br><strong style="color:#ef4444">${escapeHtml(worstKpiName)}</strong></div>`,
+            `<div><span class="text-muted">Valeur</span><br><strong style="color:#ef4444;font-size:1.1rem">${worstKpiValue}%</strong></div>`,
+            `<div><span class="text-muted">Statut global</span><br><strong style="color:${statusColor}">${statusLabel}</strong></div>`,
             `<div><span class="text-muted">Dernière date KPI</span><br><strong>${lastDate}</strong></div>`,
             `<div><span class="text-muted">Dernier import</span><br><strong>${lastImport}</strong></div>`,
         ].join('');
@@ -521,26 +708,39 @@ async function showFullSiteDetails(siteId) {
         const modalEl = document.getElementById('siteDetailsModal');
         bootstrap.Modal.getOrCreateInstance(modalEl).show();
 
-        // Charger la tendance KPI (utilise kpi_global si besoin)
+        // Mettre à jour le label du graphique de tendance
+        const trendLabel = document.getElementById('trendKpiLabel');
+        if (trendLabel) trendLabel.innerText = worstKpiName;
+
+        // Charger la tendance du pire KPI (14 jours)
         try {
-            const trends = await API.getKpiTrends(siteId, 'kpi_global', 14, site.technology);
+            // Utiliser le nom du pire KPI au lieu de 'kpi_global'
+            const trends = await API.getKpiTrends(siteId, worstKpiName, 14, site.technology);
             if (trends.success && trends.data) {
                 const defaultOptions = {
                     scales: { y: { min: 0, max: 100, ticks: { callback: v => v + '%' } } },
-                    plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}%` } } }
+                    plugins: { 
+                        legend: { position: 'bottom' }, 
+                        tooltip: { 
+                            callbacks: { 
+                                label: ctx => ` ${ctx.parsed.y}%`,
+                                title: function(items) {
+                                    if (!items || items.length === 0) return '';
+                                    // Afficher la date et l'heure si disponible
+                                    return items.map(it => it.label).join(' — ');
+                                }
+                            } 
+                        } 
+                    }
                 };
 
                 if (trends.data.used_hour) {
                     defaultOptions.scales.x = { ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } };
-                    defaultOptions.plugins.tooltip.callbacks.title = function(items) {
-                        if (!items || items.length === 0) return '';
-                        return items.map(it => it.label).join(' - ');
-                    };
                 }
 
                 chartManager.createLineChart('trend5DaysChart', {
                     labels: trends.data.labels,
-                    datasets: [{ label: `${site.name} — KPI Global (%)`, data: trends.data.values, borderColor: API.COLORS.status.bad, backgroundColor: 'rgba(239,68,68,0.1)', fill: true }]
+                    datasets: [{ label: `${site.name} — ${worstKpiName} (%)`, data: trends.data.values, borderColor: API.COLORS.status.bad, backgroundColor: 'rgba(239,68,68,0.1)', fill: true }]
                 }, defaultOptions);
             }
         } catch (trendErr) {
@@ -553,7 +753,8 @@ async function showFullSiteDetails(siteId) {
             shareBtn.onclick = () => {
                 const s = window.currentSiteForModal;
                 if (!s) return;
-                const msg = `📡 *Site: ${s.name} (${s.country_name})*\nID: ${s.id}\nKPI Global: ${s.kpi_global}%\nVendor: ${s.vendor}\nTechno: ${s.technology}\nStatut: ${s.status}`;
+                const worstKpiInfo = s.worst_kpi?.worst_kpi_name ? `\nPire KPI: ${s.worst_kpi.worst_kpi_name} (${s.worst_kpi.worst_kpi_value}%)` : '';
+                const msg = `📡 *Site: ${s.name} (${s.country_name})*\nID: ${s.id}${worstKpiInfo}\nVendor: ${s.vendor}\nTechno: ${s.technology}\nStatut: ${s.status}`;
                 window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
             };
         }
