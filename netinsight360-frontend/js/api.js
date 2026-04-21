@@ -10,6 +10,46 @@
 const API_BASE_URL = '/NetInsight%20360/netinsight360-backend/api';
 
 class API {
+    static csrfToken = null;
+    static isLocalDebug = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+    static publicMutationEndpoints = new Set([
+        '/auth/login.php',
+        '/auth/forgot-password.php',
+        '/auth/reset-password.php'
+    ]);
+
+    static debugLog(...args) {
+        if (API.isLocalDebug) {
+            console.log(...args);
+        }
+    }
+
+    static async getCsrfToken(forceRefresh = false) {
+        if (API.csrfToken && !forceRefresh) {
+            return API.csrfToken;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/auth/csrf-token.php`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Impossible de récupérer le jeton CSRF');
+        }
+
+        const payload = await response.json();
+        if (!payload?.success || !payload?.csrf_token) {
+            throw new Error('Réponse CSRF invalide');
+        }
+
+        API.csrfToken = payload.csrf_token;
+        return API.csrfToken;
+    }
+
     /**
      * Requête générique vers l'API
      * @param {string} endpoint - Point d'entrée API (ex: /auth/login.php)
@@ -18,8 +58,8 @@ class API {
      */
     static async request(endpoint, options = {}) {
         const url = `${API_BASE_URL}${endpoint}`;
-        
-        console.log('[API] Requête vers:', url);  // Ajout pour debug
+
+        API.debugLog('[API] Requête vers:', url);
         
         // Configuration par défaut
         const config = {
@@ -34,6 +74,15 @@ class API {
         
         if (config.body && typeof config.body === 'object') {
             config.body = JSON.stringify(config.body);
+        }
+
+        const method = (config.method || 'GET').toUpperCase();
+        const needsCsrf = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)
+            && !API.publicMutationEndpoints.has(endpoint);
+
+        if (needsCsrf) {
+            const csrfToken = await API.getCsrfToken();
+            config.headers['X-CSRF-Token'] = csrfToken;
         }
         
         try {
@@ -77,20 +126,30 @@ class API {
     // ============================================
     
     static async login(email, password, remember = false) {
-        return this.request('/auth/login.php', {
+        const data = await this.request('/auth/login.php', {
             method: 'POST',
             body: { email, password, remember }
         });
+        if (data?.csrf_token) {
+            API.csrfToken = data.csrf_token;
+        }
+        return data;
     }
     
     static async logout() {
-        return this.request('/auth/logout.php', {
+        const data = await this.request('/auth/logout.php', {
             method: 'POST'
         });
+        API.csrfToken = null;
+        return data;
     }
     
     static async verify() {
-        return this.request('/auth/verify.php');
+        const data = await this.request('/auth/verify.php');
+        if (data?.csrf_token) {
+            API.csrfToken = data.csrf_token;
+        }
+        return data;
     }
     
     // ============================================

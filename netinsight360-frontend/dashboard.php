@@ -8,6 +8,11 @@ AuthHelper::requireLogin();
 // Récupérer les infos utilisateur
 $user = AuthHelper::getUser();
 $userRole = AuthHelper::getUserRole();
+
+$dashboardCssVersion = @filemtime(__DIR__ . '/css/dashboard.css') ?: time();
+$apiJsVersion = @filemtime(__DIR__ . '/js/api.js') ?: time();
+$dashboardJsVersion = @filemtime(__DIR__ . '/js/dashboard.js') ?: time();
+$kpiColClass = ($userRole === 'ADMIN') ? 'col-md-3 col-sm-6' : 'col-md-4 col-sm-6';
 ?>
 
 <!DOCTYPE html>
@@ -30,42 +35,7 @@ $userRole = AuthHelper::getUserRole();
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/dashboard.css">
-    
-    <style>
-        .logout-confirm-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(4px);
-            z-index: 2000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
-        .logout-confirm-modal.show { display: flex; }
-        .logout-confirm-card {
-            background: white;
-            border-radius: 24px;
-            padding: 30px;
-            max-width: 400px;
-            width: 90%;
-            text-align: center;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
-        }
-        .logout-confirm-card i { font-size: 4rem; color: #ef4444; margin-bottom: 20px; }
-        .logout-confirm-card h3 { font-size: 1.5rem; margin-bottom: 10px; color: #1e293b; }
-        .logout-confirm-card p { color: #64748b; margin-bottom: 25px; }
-        .logout-confirm-buttons { display: flex; gap: 15px; justify-content: center; }
-        .logout-confirm-buttons button { padding: 10px 25px; border-radius: 40px; font-weight: 600; border: none; cursor: pointer; }
-        .btn-confirm-logout { background: #ef4444; color: white; }
-        .btn-confirm-logout:hover { background: #dc2626; }
-        .btn-cancel-logout { background: #e2e8f0; color: #1e293b; }
-        .btn-cancel-logout:hover { background: #cbd5e1; }
-    </style>
+    <link rel="stylesheet" href="css/dashboard.css?v=<?= $dashboardCssVersion ?>">
 </head>
 <body>
     <button class="menu-toggle" id="menuToggle"><i class="bi bi-list"></i></button>
@@ -80,14 +50,15 @@ $userRole = AuthHelper::getUserRole();
             <a href="kpis-ran.php" class="nav-link"><i class="bi bi-wifi"></i> KPIs RAN</a>
             <a href="kpis-core.php" class="nav-link"><i class="bi bi-hdd-stack"></i> KPIs CORE</a>
             <a href="map-view.php" class="nav-link"><i class="bi bi-map"></i> Cartographie</a>
-            <!--<a href="users-management.php" class="nav-link" data-section="users-management" id="navUsersManagement">
-                <i class="bi bi-people"></i> Gestion Users
-            </a>-->
-            <a href="users-management.php" class="nav-link admin-only" data-section="users-management">
-                <i class="bi bi-people"></i> Gestion Users
-            </a>
+            <?php if ($userRole === 'ADMIN'): ?>
+                <a href="users-management.php" class="nav-link admin-only" data-section="users-management">
+                    <i class="bi bi-people"></i> Gestion Users
+                </a>
+            <?php endif; ?>
             <a href="alerts.php" class="nav-link viewer-restricted"><i class="bi bi-bell"></i> Alertes</a>
-            <a href="admin-tools.php" class="nav-link admin-only"><i class="bi bi-tools"></i> Outils Admin</a>
+            <?php if ($userRole === 'ADMIN'): ?>
+                <a href="admin-tools.php" class="nav-link admin-only"><i class="bi bi-tools"></i> Outils Admin</a>
+            <?php endif; ?>
         </nav>
     </div>
 
@@ -109,19 +80,21 @@ $userRole = AuthHelper::getUserRole();
 
         <!-- KPIs Cards -->
         <div class="row g-4 mb-4">
-            <div class="col-md-3 col-sm-6 admin-only" id="cardTotalUsers">
-                <div class="stat-card">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <span class="text-muted">Total Utilisateurs</span>
-                            <div class="kpi-value" id="totalUsers">0</div>
+            <?php if ($userRole === 'ADMIN'): ?>
+                <div class="col-md-3 col-sm-6 admin-only" id="cardTotalUsers">
+                    <div class="stat-card">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <span class="text-muted">Total Utilisateurs</span>
+                                <div class="kpi-value" id="totalUsers">0</div>
+                            </div>
+                            <div><i class="bi bi-people-fill fs-2 text-primary"></i></div>
                         </div>
-                        <div><i class="bi bi-people-fill fs-2 text-primary"></i></div>
+                        <small>Comptes actifs</small>
                     </div>
-                    <small>Comptes actifs</small>
                 </div>
-            </div>
-            <div class="col-md-3 col-sm-6">
+            <?php endif; ?>
+            <div class="<?= $kpiColClass ?>">
                 <div class="stat-card">
                     <div class="d-flex justify-content-between">
                         <div><span class="text-muted">Sites Supervisés</span><div class="kpi-value" id="totalSites">0</div></div>
@@ -130,7 +103,7 @@ $userRole = AuthHelper::getUserRole();
                     <small>RAN + CORE</small>
                 </div>
             </div>
-            <div class="col-md-3 col-sm-6">
+            <div class="<?= $kpiColClass ?>">
                 <div class="stat-card">
                     <div class="d-flex justify-content-between">
                         <div><span class="text-muted">Disponibilité RAN</span><div class="kpi-value" id="globalRanAvail">0%</div></div>
@@ -139,7 +112,7 @@ $userRole = AuthHelper::getUserRole();
                     <small>Objectif ≥ 99.5%</small>
                 </div>
             </div>
-            <div class="col-md-3 col-sm-6">
+            <div class="<?= $kpiColClass ?>">
                 <div class="stat-card">
                     <div class="d-flex justify-content-between">
                         <div><span class="text-muted">Packet Loss CORE</span><div class="kpi-value" id="globalPacketLoss">0%</div></div>
@@ -157,6 +130,7 @@ $userRole = AuthHelper::getUserRole();
             <div class="filter-group"><label><i class="bi bi-signal"></i> Technologie</label><select id="filterTech"><option value="all">Toutes</option><option value="2G">2G</option><option value="3G">3G</option><option value="4G">4G</option></select></div>
             <div class="filter-group"><label><i class="bi bi-diagram-3"></i> Domaine</label><select id="filterDomain"><option value="all">Tous</option><option value="RAN">RAN</option><option value="CORE">CORE</option></select></div>
             <div class="search-box"><i class="bi bi-search"></i><input type="text" id="searchSite" placeholder="Rechercher un site..."><button id="searchBtn"><i class="bi bi-arrow-right"></i></button></div>
+            <div class="small text-warning" id="searchNotice" style="display:none" aria-live="polite"></div>
             <button class="btn btn-primary btn-sm" id="applyFilters"><i class="bi bi-funnel"></i> Appliquer</button>
             <button class="btn btn-secondary btn-sm" id="resetFilters"><i class="bi bi-arrow-repeat"></i> Réinitialiser</button>
         </div>
@@ -177,7 +151,27 @@ $userRole = AuthHelper::getUserRole();
         </div>
 
         <!-- Rapports -->
-        <div class="row mt-4 viewer-restricted"><div class="col-12"><div class="stat-card"><h6><i class="bi bi-file-text"></i> Rapports et Analyses</h6><div class="report-buttons"><button class="btn btn-whatsapp" id="shareWhatsApp"><i class="bi bi-whatsapp"></i> Partager sur WhatsApp</button><button class="btn btn-success" id="exportExcel"><i class="bi bi-file-earmark-excel"></i> Exporter Excel</button><button class="btn btn-danger" id="exportPdf"><i class="bi bi-file-earmark-pdf"></i> Exporter PDF</button><button class="btn btn-info" id="weeklyComparison"><i class="bi bi-graph-up"></i> Comparaison Hebdomadaire</button></div></div></div></div>
+        <div class="row mt-4 viewer-restricted">
+            <div class="col-12">
+                <div class="stat-card">
+                    <h6><i class="bi bi-file-text"></i> Rapports et Analyses</h6>
+                    <div class="report-buttons">
+                        <button class="btn btn-whatsapp" id="shareWhatsApp"><i class="bi bi-whatsapp"></i> Partager sur WhatsApp</button>
+                        <button class="btn btn-success" id="exportExcel"><i class="bi bi-file-earmark-excel"></i> Exporter Excel</button>
+                        <div class="dropdown-pdf-wrapper">
+                            <button class="btn btn-danger" id="exportPdf"><i class="bi bi-file-earmark-pdf"></i> Exporter PDF</button>
+                            <div class="pdf-export-menu" id="dashboardPdfMenu">
+                                <div class="pdf-option" data-period="day"><i class="bi bi-calendar-day"></i> Par jour</div>
+                                <div class="pdf-option" data-period="week"><i class="bi bi-calendar-week"></i> Par semaine</div>
+                                <div class="pdf-option" data-period="month"><i class="bi bi-calendar-month"></i> Par mois</div>
+                            </div>
+                        </div>
+                        <button class="btn btn-info" id="weeklyComparison"><i class="bi bi-graph-up"></i> Comparaison Hebdomadaire</button>
+                    </div>
+                    <div class="small mt-2" id="reportActionMsg" aria-live="polite"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Modals -->
@@ -201,11 +195,11 @@ $userRole = AuthHelper::getUserRole();
     </div>
 
     <!-- Ordre correct : utilitaires généraux d'abord, puis les pages -->
-    <script src="js/api.js?v=2"></script>
+    <script src="js/api.js?v=<?= $apiJsVersion ?>"></script>
     <script src="js/logout.js?v=2"></script>
     <script src="js/app.js?v=2"></script>
     <script src="js/charts.js?v=2"></script>
-    <script src="js/dashboard.js?v=2"></script>
+    <script src="js/dashboard.js?v=<?= $dashboardJsVersion ?>"></script>
 
 </body>
 </html>

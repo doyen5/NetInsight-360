@@ -21,7 +21,7 @@ try {
         SELECT
             COUNT(*)                   AS total,
             SUM(role = 'ADMIN')        AS admin,
-            SUM(role = 'FO_ANALYSTE')  AS npm,
+            SUM(role = 'FO_ANALYSTE')  AS analyst,
             SUM(role = 'CUSTOMER')     AS customer,
             SUM(status = 'active')     AS active_users
         FROM users
@@ -46,7 +46,8 @@ try {
         'data' => [
             'total'        => (int)($row['total']        ?? 0),
             'admin'        => (int)($row['admin']        ?? 0),
-            'npm'          => (int)($row['npm']          ?? 0),
+            'analyst'      => (int)($row['analyst']      ?? 0),
+            'npm'          => (int)($row['analyst']      ?? 0),
             'core'         => 0,
             'customer'     => (int)($row['customer']     ?? 0),
             'active_users' => (int)($row['active_users'] ?? 0),

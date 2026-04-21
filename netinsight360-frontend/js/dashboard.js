@@ -100,10 +100,9 @@ async function showCountryBorder(countryCode) {
     }
 
     try {
-        // Appel à notre endpoint PHP qui sert le GeoJSON (depuis le dossier data/geojson/ local)
-        const res = await fetch(`../netinsight360-backend/api/map/get-country-border.php?cc=${encodeURIComponent(countryCode)}`);
-        if (!res.ok) return;
-        const geojson = await res.json();
+        // Utiliser le client API centralisé pour homogénéiser la gestion des erreurs.
+        const geojson = await API.getCountryBorder(countryCode);
+        if (!geojson || !geojson.type) return;
 
         // Ajouter la couche GeoJSON avec un style de frontière visible
         countryBorderLayer = L.geoJSON(geojson, {
@@ -156,18 +155,19 @@ async function loadMapMarkers(filters = {}) {
                 iconSize: [12, 12]
             });
             
+            const safeSiteId = escapeJsSingleQuoted(site.id);
             const marker = L.marker([lat, lng], { icon }).addTo(dashboardMap);
             // Afficher technologie + KPI dégradant dans le popup
             const worstLine = site.worst_kpi_name
-                ? `<b>KPI dégradant (${site.technology}):</b> ${site.worst_kpi_name} = ${site.worst_kpi_value}%<br>`
+                ? `<b>KPI dégradant (${escapeHtml(site.technology)}):</b> ${escapeHtml(site.worst_kpi_name)} = ${site.worst_kpi_value}%<br>`
                 : '';
             marker.bindPopup(`
-                <b>${site.name}</b> <span style="font-size:0.8em;background:#e0e7ff;padding:1px 5px;border-radius:4px">${site.technology}</span><br>
-                <b>Pays:</b> ${site.country_name}<br>
-                <b>Vendor:</b> <span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:3px;vertical-align:middle"></span>${site.vendor}<br>
+                <b>${escapeHtml(site.name)}</b> <span style="font-size:0.8em;background:#e0e7ff;padding:1px 5px;border-radius:4px">${escapeHtml(site.technology)}</span><br>
+                <b>Pays:</b> ${escapeHtml(site.country_name)}<br>
+                <b>Vendor:</b> <span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:3px;vertical-align:middle"></span>${escapeHtml(site.vendor)}<br>
                 <b>KPI Global:</b> ${site.kpi_global}%<br>
                 ${worstLine}
-                <button class="btn btn-sm btn-primary mt-2" onclick="showSiteDetails('${site.id}')">Voir détails</button>
+                <button class="btn btn-sm btn-primary mt-2" onclick="showSiteDetails('${safeSiteId}')">Voir détails</button>
             `);
             dashboardMarkers.push(marker);
         });
@@ -214,7 +214,7 @@ async function loadTopWorstSites(filters = {}) {
         const topContainer = document.getElementById('topSitesList');
         if (topContainer) {
             topContainer.innerHTML = top.map(site => `
-                <div class="site-item" onclick="showSiteDetails('${site.id}')">
+                <div class="site-item" onclick="showSiteDetails('${escapeJsSingleQuoted(site.id)}')">
                     <div>
                         <span class="site-name">${escapeHtml(site.name)}</span>
                         <span style="font-size:0.75em;background:#e0e7ff;padding:1px 5px;border-radius:10px;margin-left:4px">${escapeHtml(site.technology)}</span><br>
@@ -234,7 +234,7 @@ async function loadTopWorstSites(filters = {}) {
                     ? `<br><small style="color:#ef4444">⬇ ${escapeHtml(site.worst_kpi_name)}: ${site.worst_kpi_value}%</small>`
                     : '';
                 return `
-                <div class="site-item" onclick="showSiteDetails('${site.id}')">
+                <div class="site-item" onclick="showSiteDetails('${escapeJsSingleQuoted(site.id)}')">
                     <div>
                         <span class="site-name">${escapeHtml(site.name)}</span>
                         <span style="font-size:0.75em;background:#fee2e2;padding:1px 5px;border-radius:10px;margin-left:4px">${escapeHtml(site.technology)}</span><br>
@@ -403,8 +403,19 @@ function initDashboardSearch() {
     
     const performSearch = async () => {
         const query = searchInput.value.trim();
+        const notice = document.getElementById('searchNotice');
+
+        const showNotice = (text) => {
+            if (!notice) return;
+            notice.textContent = text;
+            notice.style.display = 'block';
+            setTimeout(() => {
+                notice.style.display = 'none';
+            }, 3500);
+        };
+
         if (!query) {
-            alert('Veuillez entrer un nom de site ou un ID');
+            showNotice('Veuillez entrer un nom de site ou un ID.');
             return;
         }
         
@@ -418,13 +429,11 @@ function initDashboardSearch() {
                 }
                 showSiteDetails(site.id);
             } else {
-                // Afficher un toast discret au lieu d'un alert bloquant
-                const notice = document.getElementById('searchNotice');
-                if (notice) { notice.textContent = `Aucun site trouvé pour : ${query}`; notice.style.display = 'block'; setTimeout(() => { notice.style.display = 'none'; }, 4000); }
-                else alert(`Aucun site trouvé avec: ${query}`);
+                showNotice(`Aucun site trouvé pour : ${query}`);
             }
         } catch (error) {
             console.error('[Dashboard] Erreur recherche:', error);
+            showNotice('Erreur lors de la recherche. Réessayez.');
         }
     };
     
@@ -438,17 +447,168 @@ function initDashboardSearch() {
  * Initialise les rapports
  */
 function initDashboardReports() {
+    const reportMsgId = 'reportActionMsg';
+
+    const setActionMessage = (type, text) => {
+        const el = document.getElementById(reportMsgId);
+        if (!el) return;
+        if (!text) {
+            el.innerHTML = '';
+            return;
+        }
+        const cssByType = {
+            success: 'text-success',
+            info: 'text-info',
+            warning: 'text-warning',
+            error: 'text-danger'
+        };
+        const iconByType = {
+            success: 'bi-check-circle',
+            info: 'bi-info-circle',
+            warning: 'bi-exclamation-triangle',
+            error: 'bi-x-circle'
+        };
+        const cls = cssByType[type] || 'text-info';
+        const icon = iconByType[type] || 'bi-info-circle';
+        el.innerHTML = `<span class="${cls}"><i class="bi ${icon} me-1"></i>${escapeHtml(text)}</span>`;
+    };
+
+    const runButtonAction = async (btn, runningLabel, action) => {
+        if (!btn || btn.dataset.busy === '1') return false;
+
+        const width = Math.ceil(btn.getBoundingClientRect().width);
+        btn.dataset.busy = '1';
+        btn.dataset.originalHtml = btn.innerHTML;
+        btn.dataset.originalMinWidth = btn.style.minWidth || '';
+        btn.style.minWidth = `${width}px`;
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>${runningLabel}`;
+
+        try {
+            await action();
+            return true;
+        } finally {
+            btn.disabled = false;
+            if (btn.dataset.originalHtml) {
+                btn.innerHTML = btn.dataset.originalHtml;
+                delete btn.dataset.originalHtml;
+            }
+            btn.style.minWidth = btn.dataset.originalMinWidth || '';
+            delete btn.dataset.originalMinWidth;
+            delete btn.dataset.busy;
+        }
+    };
+
+    const getPeriodDateRange = (period) => {
+        const now = new Date();
+        const endDate = now.toISOString().split('T')[0];
+        let startDate = endDate;
+
+        if (period === 'week') {
+            const weekAgo = new Date(now);
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            startDate = weekAgo.toISOString().split('T')[0];
+        } else if (period === 'month') {
+            const monthAgo = new Date(now);
+            monthAgo.setMonth(monthAgo.getMonth() - 1);
+            startDate = monthAgo.toISOString().split('T')[0];
+        }
+
+        return { startDate, endDate };
+    };
+
+    const setPdfPeriodButtonLabel = (btn, period) => {
+        if (!btn) return;
+        const periodLabel = period === 'week' ? 'Semaine' : (period === 'month' ? 'Mois' : 'Jour');
+        btn.dataset.selectedPeriod = period;
+        btn.innerHTML = `<i class="bi bi-file-earmark-pdf"></i> Exporter PDF - ${periodLabel}`;
+    };
+
+    const exportPdfBtn = document.getElementById('exportPdf');
+    const pdfMenu = document.getElementById('dashboardPdfMenu');
+
+    const closePdfMenu = () => {
+        pdfMenu?.classList.remove('show');
+    };
+
+    if (exportPdfBtn && pdfMenu) {
+        exportPdfBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            pdfMenu.classList.toggle('show');
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        const inside = e.target.closest('.dropdown-pdf-wrapper');
+        if (!inside) closePdfMenu();
+    });
+
+    document.querySelectorAll('#dashboardPdfMenu .pdf-option').forEach(option => {
+        option.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const period = option.getAttribute('data-period') || 'day';
+            const periodLabel = period === 'week' ? 'semaine' : (period === 'month' ? 'mois' : 'jour');
+            const { startDate, endDate } = getPeriodDateRange(period);
+            closePdfMenu();
+            setPdfPeriodButtonLabel(exportPdfBtn, period);
+
+            const filters = {
+                country: document.getElementById('filterCountry')?.value || 'all',
+                vendor:  document.getElementById('filterVendor')?.value  || 'all',
+                tech:    document.getElementById('filterTech')?.value    || 'all',
+                domain:  document.getElementById('filterDomain')?.value  || 'all',
+            };
+
+            await runButtonAction(exportPdfBtn, 'Export PDF...', async () => {
+                setActionMessage('info', `Génération du PDF (${periodLabel}) en cours...`);
+                try {
+                    const result = await API.exportPdf({
+                        type: 'dashboard',
+                        start_date: startDate,
+                        end_date: endDate,
+                        ...filters
+                    });
+                    if (result.success && result.url) {
+                        const w = window.open(result.url, '_blank');
+                        if (!w) {
+                            setActionMessage('warning', 'Pop-up bloquée: autorisez les pop-ups pour ouvrir le PDF.');
+                            return;
+                        }
+                        setActionMessage('success', `Export PDF (${periodLabel}) généré avec succès.`);
+                    } else {
+                        setActionMessage('error', result?.message || result?.error || 'Échec de génération du PDF.');
+                    }
+                } catch (error) {
+                    console.error('[Dashboard] Erreur export PDF:', error);
+                    setActionMessage('error', 'Erreur pendant l\'export PDF.');
+                }
+            });
+        });
+    });
+
     const shareBtn = document.getElementById('shareWhatsApp');
     if (shareBtn) {
         shareBtn.addEventListener('click', async () => {
-            try {
-                const result = await API.generateWhatsAppReport();
-                if (result.success && result.report) {
-                    window.open(`https://wa.me/?text=${encodeURIComponent(result.report)}`, '_blank');
+            await runButtonAction(shareBtn, 'Partage...', async () => {
+                setActionMessage('info', 'Préparation du rapport WhatsApp...');
+                try {
+                    const result = await API.generateWhatsAppReport();
+                    if (result.success && result.report) {
+                        const w = window.open(`https://wa.me/?text=${encodeURIComponent(result.report)}`, '_blank');
+                        if (!w) {
+                            setActionMessage('warning', 'Pop-up bloquée: autorisez les pop-ups pour ouvrir WhatsApp.');
+                            return;
+                        }
+                        setActionMessage('success', 'Rapport WhatsApp prêt à être envoyé.');
+                    } else {
+                        setActionMessage('error', result?.message || result?.error || 'Impossible de préparer le rapport WhatsApp.');
+                    }
+                } catch (error) {
+                    console.error('[Dashboard] Erreur génération rapport:', error);
+                    setActionMessage('error', 'Erreur pendant la préparation du rapport WhatsApp.');
                 }
-            } catch (error) {
-                console.error('[Dashboard] Erreur génération rapport:', error);
-            }
+            });
         });
     }
     
@@ -457,9 +617,11 @@ function initDashboardReports() {
     const weeklyBtn = document.getElementById('weeklyComparison');
     if (weeklyBtn) {
         weeklyBtn.addEventListener('click', async () => {
-            try {
-                const result = await API.getWeeklyComparison();
-                if (result.success) {
+            await runButtonAction(weeklyBtn, 'Analyse...', async () => {
+                setActionMessage('info', 'Calcul de la comparaison hebdomadaire...');
+                try {
+                    const result = await API.getWeeklyComparison();
+                    if (result.success) {
                     // Barre de stats
                     const statsBar = document.getElementById('comparisonStatsBar');
                     if (statsBar && result.data?.datasets?.length === 2) {
@@ -506,11 +668,16 @@ function initDashboardReports() {
                         }
                     });
                     document.getElementById('comparisonLessons').innerHTML = result.lessons || '';
-                    new bootstrap.Modal(document.getElementById('comparisonModal')).show();
+                        new bootstrap.Modal(document.getElementById('comparisonModal')).show();
+                        setActionMessage('success', 'Comparaison hebdomadaire générée.');
+                    } else {
+                        setActionMessage('error', result?.message || result?.error || 'Comparaison indisponible.');
+                    }
+                } catch (error) {
+                    console.error('[Dashboard] Erreur comparaison:', error);
+                    setActionMessage('error', 'Erreur pendant la comparaison hebdomadaire.');
                 }
-            } catch (error) {
-                console.error('[Dashboard] Erreur comparaison:', error);
-            }
+            });
         });
     }
     
@@ -527,37 +694,33 @@ function initDashboardReports() {
     const exportExcelBtn = document.getElementById('exportExcel');
     if (exportExcelBtn) {
         exportExcelBtn.addEventListener('click', async () => {
-            try {
-                const filters = {
-                    country: document.getElementById('filterCountry')?.value || 'all',
-                    vendor:  document.getElementById('filterVendor')?.value  || 'all',
-                    tech:    document.getElementById('filterTech')?.value    || 'all',
-                    domain:  document.getElementById('filterDomain')?.value  || 'all',
-                };
-                const result = await API.exportExcel('dashboard', filters);
-                if (result.success && result.url) window.open(result.url, '_blank');
-                else alert('Rapport Excel généré dans le dossier exports.');
-            } catch (error) {
-                console.error('[Dashboard] Erreur export Excel:', error);
-            }
-        });
-    }
-
-    const exportPdfBtn = document.getElementById('exportPdf');
-    if (exportPdfBtn) {
-        exportPdfBtn.addEventListener('click', async () => {
-            try {
-                const filters = {
-                    country: document.getElementById('filterCountry')?.value || 'all',
-                    vendor:  document.getElementById('filterVendor')?.value  || 'all',
-                    tech:    document.getElementById('filterTech')?.value    || 'all',
-                    domain:  document.getElementById('filterDomain')?.value  || 'all',
-                };
-                const result = await API.exportPdf({ type: 'dashboard', ...filters });
-                if (result.success && result.url) window.open(result.url, '_blank');
-            } catch (error) {
-                console.error('[Dashboard] Erreur export PDF:', error);
-            }
+            await runButtonAction(exportExcelBtn, 'Export Excel...', async () => {
+                setActionMessage('info', 'Génération du fichier Excel en cours...');
+                try {
+                    const filters = {
+                        country: document.getElementById('filterCountry')?.value || 'all',
+                        vendor:  document.getElementById('filterVendor')?.value  || 'all',
+                        tech:    document.getElementById('filterTech')?.value    || 'all',
+                        domain:  document.getElementById('filterDomain')?.value  || 'all',
+                    };
+                    const result = await API.exportExcel('dashboard', filters);
+                    if (result.success && result.url) {
+                        const w = window.open(result.url, '_blank');
+                        if (!w) {
+                            setActionMessage('warning', 'Pop-up bloquée: autorisez les pop-ups pour ouvrir le fichier Excel.');
+                            return;
+                        }
+                        setActionMessage('success', 'Export Excel généré avec succès.');
+                    } else if (result.success) {
+                        setActionMessage('info', 'Rapport Excel généré (vérifiez le dossier exports).');
+                    } else {
+                        setActionMessage('error', result?.message || result?.error || 'Échec de génération du fichier Excel.');
+                    }
+                } catch (error) {
+                    console.error('[Dashboard] Erreur export Excel:', error);
+                    setActionMessage('error', 'Erreur pendant l\'export Excel.');
+                }
+            });
         });
     }
 }
@@ -631,6 +794,14 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+/**
+ * Protège une valeur injectée dans un attribut JS de type quote simple.
+ */
+function escapeJsSingleQuoted(value) {
+    if (value === null || value === undefined) return '';
+    return String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
 // Initialisation au chargement

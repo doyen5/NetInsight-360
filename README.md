@@ -40,7 +40,7 @@
 | **KPIs CORE** | Surveillance du cœur réseau (Packet Loss, Latence, Jitter, Débit) |
 | **Cartographie** | Visualisation géographique des sites avec filtres avancés |
 | **Alertes** | Gestion des alertes critiques et avertissements |
-| **Gestion Utilisateurs** | CRUD complet avec rôles (ADMIN, FO_NPM, FO_CORE_RAN, CUSTOMER) |
+| **Gestion Utilisateurs** | CRUD complet avec rôles (ADMIN, FO_ANALYSTE, CUSTOMER) |
 | **Rapports** | Génération de rapports WhatsApp, PowerPoint, Excel, PDF |
 | **Prédictions** | Tendances sur 5 jours et prévisions basées sur l'historique |
 
@@ -49,8 +49,7 @@
 | Rôle | Description | Accès |
 |-------------------|------- |
 | **ADMIN** | Administrateur | Accès complet à toutes les fonctionnalités |
-| **FO_NPM** | Agent Superviseur | Dashboard, KPIs RAN, KPIs CORE, Cartographie, Alertes |
-| **FO_CORE_RAN** | Agent Partageur | Dashboard, KPIs RAN, Cartographie, Alertes |
+| **FO_ANALYSTE** | Agent Analyste | Dashboard, KPIs RAN, KPIs CORE, Cartographie, Alertes |
 | **CUSTOMER** | Agent Visualiseur | Dashboard uniquement (lecture seule) |
 
 ---

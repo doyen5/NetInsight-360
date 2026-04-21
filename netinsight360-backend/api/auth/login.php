@@ -105,6 +105,7 @@ try {
     $_SESSION['user_email'] = $user['email'];
     $_SESSION['user_role'] = $user['role'];
     $_SESSION['logged_in_at'] = time();
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     
     // Mettre à jour la dernière connexion
     $updateStmt = $pdo->prepare("UPDATE users SET last_login = NOW(), last_ip = ? WHERE id = ?");
@@ -142,6 +143,7 @@ try {
     // Retourner la réponse de succès
     echo json_encode([
         'success' => true,
+        'csrf_token' => $_SESSION['csrf_token'],
         'user' => [
             'id'          => $user['id'],
             'name'        => $user['name'],

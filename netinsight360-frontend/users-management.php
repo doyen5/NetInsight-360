@@ -96,7 +96,7 @@ if ($userRole !== 'ADMIN') {
         <div class="row g-4 mb-4">
             <div class="col-md-3"><div class="stat-card"><div class="d-flex justify-content-between align-items-center"><div><span class="text-muted">Total utilisateurs</span><div class="kpi-value" id="totalUsers">0</div></div><i class="bi bi-people-fill fs-2 text-primary"></i></div></div></div>
             <div class="col-md-3"><div class="stat-card"><div class="d-flex justify-content-between align-items-center"><div><span class="text-muted">Administrateurs</span><div class="kpi-value text-danger" id="adminCount">0</div></div><i class="bi bi-shield-fill fs-2 text-danger"></i></div></div></div>
-            <div class="col-md-3"><div class="stat-card"><div class="d-flex justify-content-between align-items-center"><div><span class="text-muted">Agents Superviseurs</span><div class="kpi-value text-primary" id="npmCount">0</div></div><i class="bi bi-person-badge-fill fs-2 text-primary"></i></div></div></div>
+            <div class="col-md-3"><div class="stat-card"><div class="d-flex justify-content-between align-items-center"><div><span class="text-muted">Agents Analystes</span><div class="kpi-value text-primary" id="analystCount">0</div></div><i class="bi bi-person-badge-fill fs-2 text-primary"></i></div></div></div>
             <div class="col-md-3"><div class="stat-card"><div class="d-flex justify-content-between align-items-center"><div><span class="text-muted">Agents Visualiseurs</span><div class="kpi-value text-warning" id="customerCount">0</div></div><i class="bi bi-eye-fill fs-2 text-warning"></i></div></div></div>
         </div>
 

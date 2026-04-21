@@ -28,6 +28,21 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// CSRF: exiger le jeton uniquement si une session authentifiée existe.
+if (isset($_SESSION['user_id'])) {
+    $csrfHeader = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    $csrfToken = $_SESSION['csrf_token'] ?? '';
+    if (!is_string($csrfHeader) || $csrfHeader === '' || !is_string($csrfToken) || $csrfToken === '' || !hash_equals($csrfToken, $csrfHeader)) {
+        http_response_code(403);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Jeton CSRF invalide ou manquant.',
+            'code' => 'CSRF_INVALID'
+        ]);
+        exit();
+    }
+}
+
 // Connexion à la base de données (pour supprimer le token)
 try {
     require_once __DIR__ . '/../../config/database.php';

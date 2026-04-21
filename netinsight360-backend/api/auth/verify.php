@@ -14,11 +14,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 session_start();
 
+if (!isset($_SESSION['csrf_token']) && isset($_SESSION['user_id'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 // Vérifier la session
 if (isset($_SESSION['user_id'])) {
     echo json_encode([
         'success' => true,
         'authenticated' => true,
+        'csrf_token' => $_SESSION['csrf_token'] ?? null,
         'user' => [
             'id' => $_SESSION['user_id'],
             'name' => $_SESSION['user_name'],
@@ -52,10 +57,12 @@ if (isset($_COOKIE['remember_token'])) {
             $_SESSION['user_name'] = $user['name'];
             $_SESSION['user_email'] = $user['email'];
             $_SESSION['user_role'] = $user['role'];
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
             
             echo json_encode([
                 'success' => true,
                 'authenticated' => true,
+                'csrf_token' => $_SESSION['csrf_token'],
                 'user' => $user
             ]);
             exit();

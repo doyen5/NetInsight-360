@@ -131,7 +131,7 @@ async function loadUsersStats() {
         const stats = result.data;
         document.getElementById('totalUsers').innerText = stats.total || 0;
         document.getElementById('adminCount').innerText = stats.admin || 0;
-        document.getElementById('npmCount').innerText = stats.npm || 0;
+        document.getElementById('analystCount').innerText = stats.analyst || stats.npm || 0;
         document.getElementById('customerCount').innerText = stats.customer || 0;
     } catch (error) {
         console.error('[Users] Erreur chargement stats:', error);
@@ -150,7 +150,7 @@ async function loadUsersCharts() {
         
         chartManager.createPieChart('roleChart', {
             labels: ['Administrateurs', 'Agents Analystes', 'Agents Visualiseurs'],
-            datasets: [{ data: [stats.admin || 0, stats.npm || 0, stats.customer || 0], backgroundColor: ['#ef4444', '#00a3c4', '#10b981'] }]
+            datasets: [{ data: [stats.admin || 0, stats.analyst || stats.npm || 0, stats.customer || 0], backgroundColor: ['#ef4444', '#00a3c4', '#10b981'] }]
         });
         
         if (stats.evolution) {

@@ -8,6 +8,91 @@ AuthHelper::requireLogin();
 // Récupérer les infos utilisateur
 $user = AuthHelper::getUser();
 $userRole = AuthHelper::getUserRole();
+
+$maintenanceMode = true;
+if ($maintenanceMode) {
+    ?>
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>NetInsight 360 - Maintenance</title>
+        <link rel="icon" type="image/png" href="assets/img/logo.PNG">
+        <style>
+            * { box-sizing: border-box; }
+            body {
+                margin: 0;
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-family: Inter, Segoe UI, Arial, sans-serif;
+                background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0b5f78 100%);
+                color: #ffffff;
+            }
+            .maintenance-card {
+                width: min(92vw, 640px);
+                text-align: center;
+                background: rgba(15, 23, 42, 0.72);
+                border: 1px solid rgba(148, 163, 184, 0.35);
+                border-radius: 18px;
+                padding: 40px 26px;
+                box-shadow: 0 20px 45px rgba(2, 6, 23, 0.45);
+                backdrop-filter: blur(6px);
+            }
+            .badge {
+                display: inline-block;
+                padding: 8px 14px;
+                border-radius: 999px;
+                font-size: 0.82rem;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                background: rgba(239, 68, 68, 0.2);
+                border: 1px solid rgba(239, 68, 68, 0.45);
+                color: #fecaca;
+                margin-bottom: 16px;
+            }
+            h1 {
+                margin: 0;
+                font-size: clamp(1.6rem, 4vw, 2.3rem);
+                letter-spacing: 0.02em;
+            }
+            p {
+                margin: 14px 0 0;
+                color: #cbd5e1;
+                font-size: 1rem;
+            }
+            .back-btn {
+                display: inline-block;
+                margin-top: 26px;
+                padding: 11px 18px;
+                border-radius: 10px;
+                text-decoration: none;
+                color: #ffffff;
+                font-weight: 600;
+                background: linear-gradient(135deg, #0ea5e9, #0284c7);
+                border: 1px solid rgba(125, 211, 252, 0.6);
+                transition: transform 0.15s ease, box-shadow 0.2s ease;
+            }
+            .back-btn:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 8px 18px rgba(2, 132, 199, 0.35);
+            }
+        </style>
+    </head>
+    <body>
+        <main class="maintenance-card" role="main" aria-live="polite">
+            <div class="badge">Indisponible temporairement</div>
+            <h1>PAGE EN MAINTENANCE</h1>
+            <p>Le module KPIs CORE est momentanément indisponible.</p>
+            <a class="back-btn" href="dashboard.php">Retourner au Dashboard</a>
+        </main>
+    </body>
+    </html>
+    <?php
+    exit();
+}
 ?>
 
 <!DOCTYPE html>
