@@ -53,6 +53,20 @@ set_time_limit(3600);
 
 $startTime = microtime(true);
 
+function finalizeTechImport(bool $success): void {
+    $logsDir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'logs';
+    @unlink($logsDir . DIRECTORY_SEPARATOR . 'netinsight_import.lock');
+
+    // Marker consommé par l'API de statut pour signaler une fin récente.
+    $marker = $logsDir . DIRECTORY_SEPARATOR . 'import_finished.json';
+    $payload = [
+        'finished_at' => date('Y-m-d H:i:s'),
+        'status' => $success ? 'success' : 'error',
+        'summary' => ['tech' => '4G']
+    ];
+    @file_put_contents($marker, json_encode($payload, JSON_PRETTY_PRINT));
+}
+
 echo "========================================\n";
 echo "IMPORT 4G OPTIMISÉ - Batch Processing\n";
 echo "Pays: " . COUNTRY_NAME . "\n";
@@ -263,8 +277,11 @@ try {
     echo "Temps écoulé: " . round(microtime(true) - $startTime, 2) . "s\n";
     echo "Débit: " . round($totalImported / (microtime(true) - $startTime), 0) . " sites/s\n";
     echo "========================================\n";
+
+    finalizeTechImport(true);
     
 } catch (Exception $e) {
+    finalizeTechImport(false);
     echo "[✗ ERREUR] " . $e->getMessage() . "\n";
     exit(1);
 }

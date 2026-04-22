@@ -505,8 +505,9 @@ function pageBtn(p, current, label) {
  * @returns {string} - HTML de la colonne <div class="col-6">
  */
 function buildStatCard(label, value, icon) {
+    const compactClass = label === 'Bon / Alerte / Critique' ? ' compact-triple' : '';
     return `<div class="col-6">
-        <div class="stat-import-card">
+        <div class="stat-import-card${compactClass}">
             <div class="label"><i class="bi ${icon} me-1"></i>${label}</div>
             <div class="value">${value}</div>
         </div>

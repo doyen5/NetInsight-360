@@ -50,6 +50,12 @@ if ($userRole !== 'ADMIN') {
         .stat-import-card { border-left:4px solid #00a3c4; padding:12px 16px; background:#f8fafc; border-radius:8px; margin-bottom:12px; }
         .stat-import-card .label { font-size:0.78rem; color:#64748b; margin-bottom:2px; }
         .stat-import-card .value { font-size:1.4rem; font-weight:700; color:#1e3a5f; }
+        .stat-import-card.compact-triple .value {
+            font-size: 1.1rem;
+            white-space: nowrap;
+            line-height: 1.25;
+            letter-spacing: -0.01em;
+        }
         .audit-badge { font-size:0.72rem; padding:2px 8px; border-radius:12px; font-weight:600; }
         .audit-IMPORT_TRIGGERED  { background:#dbeafe; color:#1d4ed8; }
         .audit-CREATE_USER       { background:#d1fae5; color:#059669; }
