@@ -31,7 +31,7 @@
 }
 
 #map {
-    height: 550px;
+    height: 700px;
     border-radius: 20px;
     z-index: 1;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
@@ -84,6 +84,21 @@
 
 .map-legend .legend-stats div {
     margin-bottom: 4px;
+}
+
+/* Cards secondaires plus compactes pour donner la priorité visuelle à la carte */
+.map-kpi-row .compact-card {
+    padding: 12px 14px;
+    min-height: 230px;
+}
+
+.map-kpi-row .compact-card h6 {
+    font-size: 0.92rem;
+    margin-bottom: 8px;
+}
+
+.map-kpi-row .worst-kpis-panel {
+    max-height: 165px;
 }
 
 /* Top pays list */
@@ -462,7 +477,11 @@
     }
     
     #map {
-        height: 400px;
+        height: 500px;
+    }
+
+    .map-kpi-row .compact-card {
+        min-height: 200px;
     }
     
     .map-legend {
@@ -530,4 +549,61 @@
     font-size: 12px;
     padding: 8px;
     border-radius: 8px;
+}
+
+/* Clusters KPI personnalisés (phases 1-2-3) */
+.custom-kpi-cluster {
+    background: transparent;
+    border: none;
+}
+
+.cluster-bubble {
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    border: 2px solid rgba(255, 255, 255, 0.95);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    line-height: 1;
+}
+
+.cluster-bubble.cluster-small {
+    width: 40px;
+    height: 40px;
+}
+
+.cluster-bubble.cluster-medium {
+    width: 48px;
+    height: 48px;
+}
+
+.cluster-bubble.cluster-large {
+    width: 56px;
+    height: 56px;
+}
+
+.cluster-count {
+    font-weight: 800;
+    font-size: 0.86rem;
+}
+
+.cluster-kpi {
+    font-size: 0.66rem;
+    opacity: 0.95;
+}
+
+.cluster-good {
+    background: #10b981;
+}
+
+.cluster-warning {
+    background: #f59e0b;
+}
+
+.cluster-critical {
+    background: #ef4444;
 }

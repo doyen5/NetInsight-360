@@ -205,10 +205,17 @@ async function loadDashboardStats(filters = {}) {
         if (!result.success) return;
         
         const stats = result.data;
-        document.getElementById('totalUsers').innerText = stats.total_users || 0;
-        document.getElementById('totalSites').innerText = stats.total_sites || 0;
-        document.getElementById('globalRanAvail').innerText = (stats.avg_ran_availability || 0) + '%';
-        document.getElementById('globalPacketLoss').innerText = (stats.avg_packet_loss || 0) + '%';
+        // Le bloc "Total Utilisateurs" est masqué hors ADMIN: on protège chaque accès DOM
+        // pour éviter une exception qui empêcherait la mise à jour des autres cartes KPI.
+        const totalUsersEl = document.getElementById('totalUsers');
+        const totalSitesEl = document.getElementById('totalSites');
+        const globalRanAvailEl = document.getElementById('globalRanAvail');
+        const globalPacketLossEl = document.getElementById('globalPacketLoss');
+
+        if (totalUsersEl) totalUsersEl.innerText = stats.total_users || 0;
+        if (totalSitesEl) totalSitesEl.innerText = stats.total_sites || 0;
+        if (globalRanAvailEl) globalRanAvailEl.innerText = (stats.avg_ran_availability || 0) + '%';
+        if (globalPacketLossEl) globalPacketLossEl.innerText = (stats.avg_packet_loss || 0) + '%';
     } catch (error) {
         console.error('[Dashboard] Erreur chargement stats:', error);
     }

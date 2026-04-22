@@ -125,6 +125,7 @@ $mapViewJsVersion = @filemtime(__DIR__ . '/js/map-view.js') ?: time();
             <div class="filter-group"><label><i class="bi bi-signal"></i> Technologie</label><select id="filterTech"><option value="all">Toutes</option><option value="2G">2G</option><option value="3G">3G</option><option value="4G">4G</option></select></div>
             <div class="filter-group"><label><i class="bi bi-diagram-3"></i> Domaine</label><select id="filterDomain"><option value="all">Tous</option><option value="RAN">RAN</option><option value="CORE">CORE</option></select></div>
             <div class="filter-group"><label><i class="bi bi-bar-chart"></i> Statut KPI</label><select id="filterStatus"><option value="all">Tous</option><option value="good">✅ Bon (≥95%)</option><option value="warning">⚠️ Alerte (90-95%)</option><option value="critical">🔴 Critique (<90%)</option></select></div>
+            <div class="filter-group"><label><i class="bi bi-palette"></i> Couleurs KPI</label><select id="filterScoreMode"><option value="fixed">Seuils fixes</option><option value="dynamic">Seuils dynamiques</option></select></div>
             <button class="btn btn-primary btn-sm" id="applyFilters"><i class="bi bi-funnel"></i> Appliquer</button>
             <button class="btn btn-secondary btn-sm" id="resetFilters"><i class="bi bi-arrow-repeat"></i> Réinitialiser</button>
             <button class="btn btn-info btn-sm" id="fitBoundsBtn"><i class="bi bi-arrows-fullscreen"></i> Voir tout</button>
@@ -139,15 +140,16 @@ $mapViewJsVersion = @filemtime(__DIR__ . '/js/map-view.js') ?: time();
                 <div class="legend-item"><span class="legend-color" style="background: #f59e0b;"></span><span>Alerte (KPI 90-95%)</span></div>
                 <div class="legend-item"><span class="legend-color" style="background: #ef4444;"></span><span>Critique (KPI &lt; 90%)</span></div>
                 <div class="legend-item"><span class="legend-color" style="background: #00a3c4;"></span><span>Site CORE</span></div>
+                <div class="legend-item" id="legendModeHint"><span class="legend-color" style="background: linear-gradient(135deg,#10b981,#ef4444);"></span><span>Mode fixe (seuils métier)</span></div>
                 <hr class="my-2">
                 <div class="legend-stats" id="legendStats"><div><i class="bi bi-building"></i> Sites: <span id="legendSiteCount">0</span></div><div><i class="bi bi-exclamation-triangle text-danger"></i> Critiques: <span id="legendCriticalCount">0</span></div></div>
             </div>
         </div>
 
-        <div class="row g-4 mt-2">
-            <div class="col-md-4"><div class="stat-card"><h6><i class="bi bi-bar-chart"></i> Répartition par statut</h6><canvas id="statusChart" height="200"></canvas></div></div>
-            <div class="col-md-4"><div class="stat-card"><h6><i class="bi bi-pie-chart"></i> Répartition par technologie</h6><canvas id="techChart" height="200"></canvas></div></div>
-            <div class="col-md-4"><div class="stat-card"><h6><i class="bi bi-exclamation-triangle"></i> Pires performances par technologie</h6><div id="worstKpisPanel" class="worst-kpis-panel"></div></div></div>
+        <div class="row g-3 mt-2 map-kpi-row">
+            <div class="col-lg-3 col-md-6"><div class="stat-card compact-card"><h6><i class="bi bi-bar-chart"></i> Répartition par statut</h6><canvas id="statusChart" height="150"></canvas></div></div>
+            <div class="col-lg-3 col-md-6"><div class="stat-card compact-card"><h6><i class="bi bi-pie-chart"></i> Répartition par technologie</h6><canvas id="techChart" height="150"></canvas></div></div>
+            <div class="col-lg-6 col-md-12"><div class="stat-card compact-card"><h6><i class="bi bi-exclamation-triangle"></i> Pires performances par technologie</h6><div id="worstKpisPanel" class="worst-kpis-panel"></div></div></div>
         </div>
 
         <div class="row mt-4">

@@ -29,6 +29,11 @@ try {
     $tech    = $_GET['tech']    ?? 'all';
     $domain  = $_GET['domain']  ?? 'all';
     $status  = $_GET['status']  ?? 'all';
+    // Mode de scoring: fixed (seuils métiers statiques) ou dynamic (baseline pays+tech)
+    $scoreMode = strtolower(trim((string)($_GET['score_mode'] ?? 'fixed')));
+    if (!in_array($scoreMode, ['fixed', 'dynamic'], true)) {
+        $scoreMode = 'fixed';
+    }
 
     // --- Requête principale ---
     // LEFT JOIN kpis_ran sur la dernière date disponible (pas forcément aujourd'hui)
@@ -65,20 +70,11 @@ try {
     if ($vendor  !== 'all') { $sql .= " AND s.vendor = ?";       $params[] = $vendor;  }
     if ($tech    !== 'all') { $sql .= " AND k.technology = ?";   $params[] = $tech;    }
     if ($domain  !== 'all') { $sql .= " AND s.domain = ?";       $params[] = $domain;  }
-    // 'status' est un alias CASE dans le SELECT — non filtrable dans WHERE.
-    // On valide via whitelist puis on filtre dans HAVING après calcul.
-    $statusHaving = '';
-    $validStatuses = ['good', 'warning', 'critical'];
-    if ($status !== 'all' && in_array($status, $validStatuses, true)) {
-        $statusHaving = " AND status = '" . $status . "'";
-    }
-
     // Exclure les sites sans coordonnées valides
     // Exclut les coordonnées nulles/zéro et hors des limites de l'Afrique
     $sql .= " HAVING latitude IS NOT NULL AND latitude != 0 AND longitude != 0"
           . " AND latitude BETWEEN -5.0 AND 25.0"
-          . " AND longitude BETWEEN -18.0 AND 30.0"
-          . $statusHaving;
+          . " AND longitude BETWEEN -18.0 AND 30.0";
     // Augmenter la limite à 5000 pour afficher plus de sites par pays
     // (limite de 2000 était trop restrictive pour les grands pays comme la CI)
     $sql .= " ORDER BY kpi_global ASC LIMIT 5000";
@@ -121,6 +117,115 @@ try {
         $site['kpi_global']     = round(floatval($site['kpi_global']), 2);
         $site['worst_kpi_name'] = $site['worst_kpi_name']  ?? null;
         $site['worst_kpi_value']= isset($site['worst_kpi_value']) ? round(floatval($site['worst_kpi_value']), 2) : null;
+
+        // PHASE 1 — Score santé unifié (0..100) et recommandation de base.
+        // On réutilise kpi_global comme base de health_score pour garder
+        // une lecture métier cohérente entre dashboard et cartographie.
+        $site['health_score'] = round(max(0, min(100, floatval($site['kpi_global']))), 2);
+        $site['risk_fixed'] = $site['status'];
+
+        // Recommandation opérationnelle par KPI dégradant principal.
+        $wk = strtolower(trim((string)($site['worst_kpi_name'] ?? '')));
+        if ($wk === '') {
+            $site['recommendation'] = 'Surveiller le site et confirmer la stabilité sur les prochains cycles de mesure.';
+        } elseif (strpos($wk, 'drop') !== false || strpos($wk, 'chute') !== false) {
+            $site['recommendation'] = 'Prioriser la réduction des coupures: vérifier handovers, couverture radio et congestion locale.';
+        } elseif (strpos($wk, 'avail') !== false || strpos($wk, 'disponibil') !== false) {
+            $site['recommendation'] = 'Vérifier la disponibilité équipements/liaisons, incidents énergie et maintenance préventive.';
+        } elseif (strpos($wk, 'cssr') !== false || strpos($wk, 'rrc') !== false || strpos($wk, 'rab') !== false) {
+            $site['recommendation'] = 'Analyser la signalisation et l’admission: optimiser setup, capacité et paramètres radio.';
+        } elseif (strpos($wk, 'cong') !== false || strpos($wk, 'prb') !== false) {
+            $site['recommendation'] = 'Traiter la congestion: équilibrage de charge, capacité additionnelle et optimisation traffic steering.';
+        } else {
+            $site['recommendation'] = 'Contrôler les KPIs dégradés et planifier une action ciblée sur la zone impactée.';
+        }
+    }
+    unset($site);
+
+    // PHASE 2 — Seuils dynamiques par pays+technologie (baseline locale)
+    // Calcul d'une baseline (moyenne, écart-type) pour adapter la couleur au contexte.
+    $groupStats = [];
+    $groupBuckets = [];
+    foreach ($sites as $s) {
+        $kpi = floatval($s['kpi_global'] ?? 0);
+        if ($kpi <= 0) continue;
+        $groupKey = ($s['country_code'] ?? 'NA') . '|' . ($s['technology'] ?? 'NA');
+        if (!isset($groupBuckets[$groupKey])) $groupBuckets[$groupKey] = [];
+        $groupBuckets[$groupKey][] = $kpi;
+    }
+
+    foreach ($groupBuckets as $groupKey => $vals) {
+        $n = count($vals);
+        if ($n === 0) continue;
+        $avg = array_sum($vals) / $n;
+        $var = 0.0;
+        foreach ($vals as $v) {
+            $d = $v - $avg;
+            $var += $d * $d;
+        }
+        $std = $n > 1 ? sqrt($var / ($n - 1)) : 0.0;
+
+        // Seuils dynamiques bornés pour éviter les extrêmes visuels.
+        $warn = max(85.0, min(98.5, $avg - max(0.6, 1.0 * $std)));
+        $crit = max(75.0, min(95.0, $avg - max(1.2, 2.0 * $std)));
+        if ($crit >= $warn) {
+            $crit = max(75.0, $warn - 2.0);
+        }
+
+        $groupStats[$groupKey] = [
+            'count' => $n,
+            'avg' => round($avg, 2),
+            'std' => round($std, 3),
+            'warn_threshold' => round($warn, 2),
+            'crit_threshold' => round($crit, 2),
+        ];
+    }
+
+    foreach ($sites as &$site) {
+        $groupKey = ($site['country_code'] ?? 'NA') . '|' . ($site['technology'] ?? 'NA');
+        $kpi = floatval($site['kpi_global'] ?? 0);
+        $gs = $groupStats[$groupKey] ?? null;
+
+        if ($gs && ($gs['count'] ?? 0) >= 5) {
+            $warn = floatval($gs['warn_threshold']);
+            $crit = floatval($gs['crit_threshold']);
+            if ($kpi >= $warn) {
+                $riskDyn = 'good';
+            } elseif ($kpi >= $crit) {
+                $riskDyn = 'warning';
+            } else {
+                $riskDyn = 'critical';
+            }
+
+            $std = floatval($gs['std']);
+            $z = $std > 0 ? round(($kpi - floatval($gs['avg'])) / $std, 2) : 0.0;
+            $site['risk_dynamic'] = $riskDyn;
+            $site['z_score'] = $z;
+            $site['dynamic_baseline'] = [
+                'avg' => floatval($gs['avg']),
+                'std' => $std,
+                'warn_threshold' => $warn,
+                'crit_threshold' => $crit,
+                'sample_size' => intval($gs['count']),
+            ];
+        } else {
+            // Fallback automatique si échantillon insuffisant.
+            $site['risk_dynamic'] = $site['risk_fixed'];
+            $site['z_score'] = 0.0;
+            $site['dynamic_baseline'] = null;
+        }
+
+        // Niveau de risque utilisé par le front selon le mode choisi.
+        $site['risk_level'] = ($scoreMode === 'dynamic') ? $site['risk_dynamic'] : $site['risk_fixed'];
+    }
+    unset($site);
+
+    // Filtre statut final appliqué sur le niveau actif (fixed/dynamic)
+    $validStatuses = ['good', 'warning', 'critical'];
+    if ($status !== 'all' && in_array($status, $validStatuses, true)) {
+        $sites = array_values(array_filter($sites, function ($s) use ($status) {
+            return ($s['risk_level'] ?? '') === $status;
+        }));
     }
 
     echo json_encode([
@@ -128,6 +233,8 @@ try {
         'data'               => $sites,
         'count'              => count($sites),
         'total_count'        => $totalBeforeLimit,
+        'score_mode'         => $scoreMode,
+        'dynamic_groups'     => $groupStats,
         'limit_per_tech'     => $topByTech ? $limitPerTech : null,
         'limited_by_top_by_tech' => $limited,
     ]);
