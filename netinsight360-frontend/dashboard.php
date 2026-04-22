@@ -97,7 +97,7 @@ $kpiColClass = ($userRole === 'ADMIN') ? 'col-md-3 col-sm-6' : 'col-md-4 col-sm-
             <div class="<?= $kpiColClass ?>">
                 <div class="stat-card">
                     <div class="d-flex justify-content-between">
-                        <div><span class="text-muted">Sites Supervisés</span><div class="kpi-value" id="totalSites">0</div></div>
+                        <div><span class="text-muted">Sites Supervisés <i class="bi bi-info-circle text-secondary" data-bs-toggle="tooltip" title="Nombre de sites actifs visibles avec les filtres courants."></i></span><div class="kpi-value" id="totalSites">0</div></div>
                         <div><i class="bi bi-building fs-2 text-success"></i></div>
                     </div>
                     <small>RAN + CORE</small>
@@ -106,7 +106,7 @@ $kpiColClass = ($userRole === 'ADMIN') ? 'col-md-3 col-sm-6' : 'col-md-4 col-sm-
             <div class="<?= $kpiColClass ?>">
                 <div class="stat-card">
                     <div class="d-flex justify-content-between">
-                        <div><span class="text-muted">Disponibilité RAN</span><div class="kpi-value" id="globalRanAvail">0%</div></div>
+                        <div><span class="text-muted">Disponibilité RAN <i class="bi bi-info-circle text-secondary" data-bs-toggle="tooltip" title="RNA moyen: plus la valeur est haute, meilleure est la qualité perçue du réseau radio."></i></span><div class="kpi-value" id="globalRanAvail">0%</div></div>
                         <div><i class="bi bi-wifi fs-2 text-info"></i></div>
                     </div>
                     <small>Objectif ≥ 99.5%</small>
@@ -115,7 +115,7 @@ $kpiColClass = ($userRole === 'ADMIN') ? 'col-md-3 col-sm-6' : 'col-md-4 col-sm-
             <div class="<?= $kpiColClass ?>">
                 <div class="stat-card">
                     <div class="d-flex justify-content-between">
-                        <div><span class="text-muted">Packet Loss CORE</span><div class="kpi-value" id="globalPacketLoss">0%</div></div>
+                        <div><span class="text-muted">Packet Loss CORE <i class="bi bi-info-circle text-secondary" data-bs-toggle="tooltip" title="Taux de paquets perdus au coeur réseau: plus la valeur est basse, meilleure est la performance."></i></span><div class="kpi-value" id="globalPacketLoss">0%</div></div>
                         <div><i class="bi bi-hdd-network fs-2 text-warning"></i></div>
                     </div>
                     <small>Seuil critique: > 1%</small>
@@ -145,9 +145,41 @@ $kpiColClass = ($userRole === 'ADMIN') ? 'col-md-3 col-sm-6' : 'col-md-4 col-sm-
         </div>
 
         <!-- Graphiques -->
-        <div class="row g-4">
-            <div class="col-md-6"><div class="stat-card"><h6><i class="bi bi-graph-up"></i> Évolution KPI RAN (RNA)</h6><canvas id="ranTrendChart" height="200"></canvas></div></div>
-            <div class="col-md-6"><div class="stat-card"><h6><i class="bi bi-hdd-stack"></i> Packet Loss par pays</h6><canvas id="packetLossChart" height="200"></canvas></div></div>
+        <div class="row g-4 dashboard-kpi-layout">
+            <div class="col-xl-8">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="stat-card kpi-trend-card">
+                            <h6><i class="bi bi-graph-up"></i> RNA (global RAN) <i class="bi bi-info-circle text-secondary" data-bs-toggle="tooltip" title="Indicateur synthétique de performance RAN multi-tech. La tendance doit rester stable et élevée."></i></h6>
+                            <canvas id="ranTrendChart" height="170"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="stat-card kpi-trend-card">
+                            <h6><i class="bi bi-telephone-x"></i> 2G - TCH Drop Rate <i class="bi bi-info-circle text-secondary" data-bs-toggle="tooltip" title="Taux de coupure d'appel 2G. Objectif: minimiser cette valeur."></i></h6>
+                            <canvas id="tchDropTrendChart" height="170"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="stat-card kpi-trend-card">
+                            <h6><i class="bi bi-broadcast-pin"></i> 3G - CSSR <i class="bi bi-info-circle text-secondary" data-bs-toggle="tooltip" title="Call Setup Success Rate 3G. Plus le pourcentage est haut, meilleure est l'initialisation des sessions."></i></h6>
+                            <canvas id="cssrTrendChart" height="170"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="stat-card kpi-trend-card">
+                            <h6><i class="bi bi-signal"></i> 4G - ERAB Success Rate <i class="bi bi-info-circle text-secondary" data-bs-toggle="tooltip" title="Taux de succès d'établissement des bearers LTE. Plus haut = meilleure expérience data 4G."></i></h6>
+                            <canvas id="erabTrendChart" height="170"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-4">
+                <div class="stat-card packetloss-compact-card">
+                    <h6><i class="bi bi-hdd-stack"></i> Packet Loss par pays</h6>
+                    <canvas id="packetLossChart" height="150"></canvas>
+                </div>
+            </div>
         </div>
 
         <!-- Rapports -->

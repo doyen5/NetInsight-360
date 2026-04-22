@@ -590,20 +590,83 @@ class RanKpiCompleteImporter
             }
         }
 
-        // Insérer / mettre à jour kpis_ran
+        // -----------------------------------------------------------------------
+        // Préparer les valeurs détaillées par technologie.
+        // Avant ce correctif, seuls kpi_global/status/worst_kpi_* étaient écrits
+        // en base — toutes les colonnes individuelles (tch_drop_rate, lte_erab_sr,
+        // rrc_cs_sr…) restaient NULL car elles n'étaient pas passées dans l'INSERT.
+        // On les extrait ici depuis $data (résultat de la requête distante) pour
+        // les insérer dans les colonnes correspondantes de kpis_ran.
+        // -----------------------------------------------------------------------
+
+        if ($technology === '2G') {
+            // 2G : KPIs issus de network_2g_main_kpis_hourly
+            // rna_2g  = score synthétique global 2G (= kpi_global pour cohérence)
+            // cssr_2g = taux de succès appel 2G = 100 - call_drop_rate
+            $detailCols   = 'rna_2g, tch_availability, cssr_2g, sdcch_cong, sdcch_drop, tch_drop_rate, handover_sr_2g';
+            $detailVals   = [
+                round($globalKpi, 2),                                                        // rna_2g
+                isset($data['tch_availability'])  ? round($data['tch_availability'], 2)  : null, // tch_availability
+                isset($data['call_drop_rate'])     ? round(100 - $data['call_drop_rate'], 2) : null, // cssr_2g
+                isset($data['sdcch_cong'])         ? round($data['sdcch_cong'], 2)         : null, // sdcch_cong
+                isset($data['sdcch_drop'])         ? round($data['sdcch_drop'], 2)         : null, // sdcch_drop
+                isset($data['call_drop_rate'])     ? round($data['call_drop_rate'], 2)     : null, // tch_drop_rate
+                isset($data['handover_sr'])        ? round($data['handover_sr'], 2)        : null, // handover_sr_2g
+            ];
+            $detailUpdate = 'rna_2g=VALUES(rna_2g), tch_availability=VALUES(tch_availability), cssr_2g=VALUES(cssr_2g), sdcch_cong=VALUES(sdcch_cong), sdcch_drop=VALUES(sdcch_drop), tch_drop_rate=VALUES(tch_drop_rate), handover_sr_2g=VALUES(handover_sr_2g)';
+
+        } elseif ($technology === '3G') {
+            // 3G : KPIs issus de network_3g_main_kpis_hourly
+            $detailCols   = 'rrc_cs_sr, rab_cs_sr, rrc_ps_sr, cs_drop_rate, ps_drop_rate, soft_ho_rate';
+            $detailVals   = [
+                isset($data['rrc_cs_sr'])    ? round($data['rrc_cs_sr'], 2)    : null, // rrc_cs_sr
+                isset($data['rab_cs_sr'])    ? round($data['rab_cs_sr'], 2)    : null, // rab_cs_sr
+                isset($data['rrc_ps_sr'])    ? round($data['rrc_ps_sr'], 2)    : null, // rrc_ps_sr
+                isset($data['cs_drop_rate']) ? round($data['cs_drop_rate'], 2) : null, // cs_drop_rate
+                isset($data['ps_drop_rate']) ? round($data['ps_drop_rate'], 2) : null, // ps_drop_rate
+                isset($data['soft_ho_rate']) ? round($data['soft_ho_rate'], 2) : null, // soft_ho_rate
+            ];
+            $detailUpdate = 'rrc_cs_sr=VALUES(rrc_cs_sr), rab_cs_sr=VALUES(rab_cs_sr), rrc_ps_sr=VALUES(rrc_ps_sr), cs_drop_rate=VALUES(cs_drop_rate), ps_drop_rate=VALUES(ps_drop_rate), soft_ho_rate=VALUES(soft_ho_rate)';
+
+        } else {
+            // 4G : KPIs issus de network_4g_main_kpis_hourly
+            $detailCols   = 'lte_s1_sr, lte_rrc_sr, lte_erab_sr, lte_session_sr, lte_erab_drop_rate, lte_csfb_sr, lte_intra_freq_sr, lte_inter_freq_sr';
+            $detailVals   = [
+                isset($data['lte_s1_sr'])          ? round($data['lte_s1_sr'], 2)          : null, // lte_s1_sr
+                isset($data['lte_rrc_sr'])         ? round($data['lte_rrc_sr'], 2)         : null, // lte_rrc_sr
+                isset($data['lte_erab_sr'])        ? round($data['lte_erab_sr'], 2)        : null, // lte_erab_sr
+                isset($data['lte_session_sr'])     ? round($data['lte_session_sr'], 2)     : null, // lte_session_sr
+                isset($data['lte_erab_drop_rate']) ? round($data['lte_erab_drop_rate'], 2) : null, // lte_erab_drop_rate
+                isset($data['lte_csfb_sr'])        ? round($data['lte_csfb_sr'], 2)        : null, // lte_csfb_sr
+                isset($data['lte_intra_freq_sr'])  ? round($data['lte_intra_freq_sr'], 2)  : null, // lte_intra_freq_sr
+                isset($data['lte_inter_freq_sr'])  ? round($data['lte_inter_freq_sr'], 2)  : null, // lte_inter_freq_sr
+            ];
+            $detailUpdate = 'lte_s1_sr=VALUES(lte_s1_sr), lte_rrc_sr=VALUES(lte_rrc_sr), lte_erab_sr=VALUES(lte_erab_sr), lte_session_sr=VALUES(lte_session_sr), lte_erab_drop_rate=VALUES(lte_erab_drop_rate), lte_csfb_sr=VALUES(lte_csfb_sr), lte_intra_freq_sr=VALUES(lte_intra_freq_sr), lte_inter_freq_sr=VALUES(lte_inter_freq_sr)';
+        }
+
+        // Construire les placeholders dynamiquement selon le nombre de colonnes détail
+        $detailPlaceholders = implode(', ', array_fill(0, count($detailVals), '?'));
+
+        // Insérer / mettre à jour kpis_ran avec toutes les colonnes détaillées
+        // ON DUPLICATE KEY UPDATE couvre le cas où la ligne existe déjà (même site_id + kpi_date + technology)
         $sql = "
             INSERT INTO kpis_ran
-                (site_id, kpi_date, technology, kpi_global, status, worst_kpi_name, worst_kpi_value, imported_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+                (site_id, kpi_date, technology, kpi_global, status, worst_kpi_name, worst_kpi_value, $detailCols, imported_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, $detailPlaceholders, NOW())
             ON DUPLICATE KEY UPDATE
                 kpi_global       = VALUES(kpi_global),
                 status           = VALUES(status),
                 worst_kpi_name   = VALUES(worst_kpi_name),
                 worst_kpi_value  = VALUES(worst_kpi_value),
+                $detailUpdate,
                 imported_at      = NOW()
         ";
         $stmt = $this->localDb->prepare($sql);
-        $stmt->execute([$siteId, $this->date, $technology, $globalKpi, $status, $worstKpiName, $worstKpiValue]);
+        // Fusionner les paramètres fixes + les valeurs détaillées dans le bon ordre
+        $stmt->execute(array_merge(
+            [$siteId, $this->date, $technology, $globalKpi, $status, $worstKpiName, $worstKpiValue],
+            $detailVals
+        ));
 
         // Historique
         $historyStmt = $this->localDb->prepare("

@@ -254,6 +254,17 @@ if ($userRole === 'CUSTOMER') {
             </div>
         </div>
 
+        <div class="stat-card mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0"><i class="bi bi-lightning-charge"></i> Alertes intelligentes (seuils dynamiques)</h6>
+                <small class="text-muted" id="smartInsightsStamp">Chargement...</small>
+            </div>
+            <div class="small text-muted mb-2">Détection d'anomalies basée sur la baseline des 7 derniers jours.</div>
+            <div id="smartInsightsList" class="row g-2">
+                <div class="col-12 text-muted">Chargement des insights...</div>
+            </div>
+        </div>
+
         <!-- Filtres et Actions -->
         <div class="filter-bar">
             <div class="d-flex gap-3 flex-wrap align-items-center">

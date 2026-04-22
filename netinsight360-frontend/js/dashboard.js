@@ -45,6 +45,9 @@ async function initDashboard() {
     
     // Mettre à jour l'interface utilisateur
     await updateUserInterface();
+
+    // Active les bulles explicatives KPI (icônes info-circle).
+    initDashboardTooltips();
     
     // Initialiser la carte
     initDashboardMap();
@@ -62,6 +65,17 @@ async function initDashboard() {
     
     // Initialiser les rapports
     initDashboardReports();
+}
+
+function initDashboardTooltips() {
+    try {
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
+            if (bootstrap.Tooltip.getInstance(el)) return;
+            new bootstrap.Tooltip(el);
+        });
+    } catch (_) {
+        // Non bloquant: le dashboard reste fonctionnel même sans tooltip.
+    }
 }
 
 /**
@@ -255,7 +269,25 @@ async function loadTopWorstSites(filters = {}) {
  */
 async function loadDashboardCharts() {
     try {
-        const trends = await API.getGlobalTrends('RNA');
+        // IMPORTANT:
+        // On évite Promise.all() strict car un seul endpoint KPI en erreur
+        // peut empêcher tous les graphes de se dessiner.
+        // Ici chaque requête est isolée et n'impacte pas les autres.
+        const safeGetTrend = async (kpiName) => {
+            try {
+                return await API.getGlobalTrends(kpiName);
+            } catch (e) {
+                console.warn(`[Dashboard] KPI ${kpiName} indisponible:`, e);
+                return null;
+            }
+        };
+
+        const trends = await safeGetTrend('RNA');
+        const tchDrop = await safeGetTrend('tch_drop_rate');
+        const cssr = await safeGetTrend('cssr');
+        const erab = await safeGetTrend('lte_erab_sr');
+        const packetLoss = await safeGetTrend('packet_loss');
+
         if (trends.success) {
             // Calcul dynamique de l'axe Y : min arrondi à la dizaine inf. - 2, max 100
             const allVals = [
@@ -338,9 +370,145 @@ async function loadDashboardCharts() {
                 interaction: { mode: 'index', intersect: false }
             });
         }
-        
-        const packetLoss = await API.getGlobalTrends('packet_loss');
-        if (packetLoss.success) {
+
+        // Fallback:
+        // si la tendance KPI spécifique n'est pas disponible, on réutilise
+        // la série RNA de la techno correspondante pour garder un graphe visible.
+        const fallback2G = trends?.success ? (trends.data['2G'] || []) : [];
+        const fallback3G = trends?.success ? (trends.data['3G'] || []) : [];
+        const fallback4G = trends?.success ? (trends.data['4G'] || []) : [];
+        const fallbackLabels = trends?.success ? (trends.data.labels || []) : [];
+        const fallbackFullLabels = trends?.success ? (trends.data.fullLabels || trends.data.labels || []) : [];
+
+        if (tchDrop?.success || fallback2G.length > 0) {
+            const tchLabels = tchDrop?.success ? (tchDrop.data.labels || []) : fallbackLabels;
+            const tchValues = tchDrop?.success ? (tchDrop.data.values || []) : fallback2G;
+            const fullLabels = tchDrop?.success
+                ? (tchDrop.data.fullLabels || tchDrop.data.labels || [])
+                : fallbackFullLabels;
+            const maxVal = Math.max(5, ...(tchValues.map(v => Number(v) || 0)));
+            chartManager.createLineChart('tchDropTrendChart', {
+                labels: tchLabels,
+                datasets: [{
+                    label: 'TCH Drop Rate (%)',
+                    data: tchValues,
+                    borderColor: '#f97316',
+                    backgroundColor: 'rgba(249,115,22,0.16)',
+                    fill: true,
+                    tension: 0.25,
+                    borderWidth: 2.2,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    spanGaps: true
+                }]
+            }, {
+                plugins: {
+                    legend: { position: 'bottom', labels: { usePointStyle: true, padding: 14 } },
+                    tooltip: {
+                        callbacks: {
+                            title: items => items.length ? fullLabels[items[0].dataIndex] : '',
+                            label: ctx => `TCH Drop: ${ctx.parsed.y !== null ? ctx.parsed.y.toFixed(2) + ' %' : 'N/A'}`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        min: 0,
+                        max: Math.ceil(maxVal + 1),
+                        title: { display: true, text: 'TCH Drop Rate (%)' },
+                        ticks: { callback: v => v + ' %' }
+                    }
+                }
+            });
+        }
+
+        if (cssr?.success || fallback3G.length > 0) {
+            const cssrLabels = cssr?.success ? (cssr.data.labels || []) : fallbackLabels;
+            const cssrValues = cssr?.success ? (cssr.data.values || []) : fallback3G;
+            const fullLabels = cssr?.success
+                ? (cssr.data.fullLabels || cssr.data.labels || [])
+                : fallbackFullLabels;
+            const cssrVals = cssrValues.filter(v => v !== null && v !== undefined);
+            const yMin = cssrVals.length ? Math.max(80, Math.floor((Math.min(...cssrVals) - 2) / 5) * 5) : 80;
+            chartManager.createLineChart('cssrTrendChart', {
+                labels: cssrLabels,
+                datasets: [{
+                    label: 'CSSR (%)',
+                    data: cssrValues,
+                    borderColor: '#22c55e',
+                    backgroundColor: 'rgba(34,197,94,0.14)',
+                    fill: true,
+                    tension: 0.25,
+                    borderWidth: 2.2,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    spanGaps: true
+                }]
+            }, {
+                plugins: {
+                    legend: { position: 'bottom', labels: { usePointStyle: true, padding: 14 } },
+                    tooltip: {
+                        callbacks: {
+                            title: items => items.length ? fullLabels[items[0].dataIndex] : '',
+                            label: ctx => `CSSR: ${ctx.parsed.y !== null ? ctx.parsed.y.toFixed(2) + ' %' : 'N/A'}`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        min: yMin,
+                        max: 100,
+                        title: { display: true, text: 'CSSR (%)' },
+                        ticks: { callback: v => v + ' %' }
+                    }
+                }
+            });
+        }
+
+        if (erab?.success || fallback4G.length > 0) {
+            const erabLabels = erab?.success ? (erab.data.labels || []) : fallbackLabels;
+            const erabValues = erab?.success ? (erab.data.values || []) : fallback4G;
+            const fullLabels = erab?.success
+                ? (erab.data.fullLabels || erab.data.labels || [])
+                : fallbackFullLabels;
+            const erabVals = erabValues.filter(v => v !== null && v !== undefined);
+            const yMin = erabVals.length ? Math.max(80, Math.floor((Math.min(...erabVals) - 2) / 5) * 5) : 80;
+            chartManager.createLineChart('erabTrendChart', {
+                labels: erabLabels,
+                datasets: [{
+                    label: 'ERAB SR (%)',
+                    data: erabValues,
+                    borderColor: '#8b5cf6',
+                    backgroundColor: 'rgba(139,92,246,0.14)',
+                    fill: true,
+                    tension: 0.25,
+                    borderWidth: 2.2,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    spanGaps: true
+                }]
+            }, {
+                plugins: {
+                    legend: { position: 'bottom', labels: { usePointStyle: true, padding: 14 } },
+                    tooltip: {
+                        callbacks: {
+                            title: items => items.length ? fullLabels[items[0].dataIndex] : '',
+                            label: ctx => `ERAB SR: ${ctx.parsed.y !== null ? ctx.parsed.y.toFixed(2) + ' %' : 'N/A'}`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        min: yMin,
+                        max: 100,
+                        title: { display: true, text: 'ERAB Success Rate (%)' },
+                        ticks: { callback: v => v + ' %' }
+                    }
+                }
+            });
+        }
+
+        if (packetLoss?.success) {
             chartManager.createBarChart('packetLossChart', {
                 labels: packetLoss.data.labels,
                 datasets: [{
@@ -348,6 +516,13 @@ async function loadDashboardCharts() {
                     data: packetLoss.data.values,
                     backgroundColor: '#f59e0b'
                 }]
+            }, {
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { usePointStyle: false, padding: 12 }
+                    }
+                }
             });
         }
     } catch (error) {

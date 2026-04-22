@@ -258,6 +258,10 @@ class API {
         return this.request('/alerts/get-alerts-stats.php');
     }
 
+    static async getSmartAlertInsights() {
+        return this.request('/alerts/get-smart-insights.php');
+    }
+
     static async getAlertHistory(alertId) {
         return this.request(`/alerts/get-alert-history.php?alert_id=${encodeURIComponent(alertId)}`);
     }
@@ -420,6 +424,16 @@ class API {
             method: 'POST',
             body: { tech }
         });
+    }
+
+    static async getDataHealth() {
+        return this.request('/admin/get-data-health.php');
+    }
+
+    static async getImportRuns(filters = {}) {
+        const params = new URLSearchParams(filters).toString();
+        const suffix = params ? `?${params}` : '';
+        return this.request(`/admin/get-import-runs.php${suffix}`);
     }
 
     // ============================================

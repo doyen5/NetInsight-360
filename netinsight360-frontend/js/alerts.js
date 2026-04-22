@@ -40,7 +40,7 @@ async function initAlerts() {
     await updateUserInterface();
 
     // Chargement initial: on récupère en parallèle la page d'alertes et les stats dashboard.
-    await Promise.all([loadAlerts(), refreshAlertsDashboardStats()]);
+    await Promise.all([loadAlerts(), refreshAlertsDashboardStats(), loadSmartInsights()]);
 
     initAlertsFilters();
     initAlertsEvents();
@@ -125,6 +125,54 @@ async function refreshAlertsDashboardStats() {
     renderAlertsCharts(stats);
     renderTopSites(stats);
     renderAvgResolutionTime(stats);
+}
+
+/**
+ * Charge les insights intelligents (baseline dynamique + score d'anomalie).
+ */
+async function loadSmartInsights() {
+    const list = document.getElementById('smartInsightsList');
+    const stamp = document.getElementById('smartInsightsStamp');
+    if (!list || !stamp) return;
+
+    try {
+        const res = await API.getSmartAlertInsights();
+        if (!res.success) throw new Error(res.error || 'API error');
+
+        const items = res.data?.items || [];
+        stamp.textContent = `Mis à jour: ${new Date(res.data?.generated_at || Date.now()).toLocaleString('fr-FR')}`;
+
+        if (items.length === 0) {
+            list.innerHTML = '<div class="col-12 text-muted">Aucun insight disponible.</div>';
+            return;
+        }
+
+        list.innerHTML = items.map((it) => {
+            const sev = it.severity || 'good';
+            const badge = sev === 'critical'
+                ? '<span class="badge bg-danger">Critique</span>'
+                : (sev === 'warning'
+                    ? '<span class="badge bg-warning text-dark">Alerte</span>'
+                    : '<span class="badge bg-success">Stable</span>');
+
+            return `
+                <div class="col-md-6">
+                    <div class="p-2 border rounded bg-light">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <strong>${escapeHtml(it.label || it.id || 'KPI')}</strong>
+                            ${badge}
+                        </div>
+                        <div class="small">Actuel: <strong>${Number(it.current || 0).toFixed(2)}%</strong> | Seuil dynamique: <strong>${Number(it.dynamic_threshold || 0).toFixed(2)}%</strong></div>
+                        <div class="small">Baseline: ${Number(it.baseline_avg || 0).toFixed(2)}% (σ ${Number(it.baseline_std || 0).toFixed(2)}) | z-score: ${Number(it.z_score || 0).toFixed(2)}</div>
+                        <div class="small text-muted mt-1">${escapeHtml(it.recommendation || '')}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        stamp.textContent = 'Insights indisponibles';
+        list.innerHTML = '<div class="col-12 text-danger">Impossible de charger les alertes intelligentes.</div>';
+    }
 }
 
 /**
@@ -676,7 +724,7 @@ function startAlertsAutoRefresh() {
     }
 
     alertsAutoRefreshTimer = setInterval(async () => {
-        await Promise.all([loadAlerts(), refreshAlertsDashboardStats()]);
+        await Promise.all([loadAlerts(), refreshAlertsDashboardStats(), loadSmartInsights()]);
     }, 60000);
 }
 

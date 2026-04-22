@@ -399,6 +399,27 @@
     animation: fadeIn 0.3s ease-out;
 }
 
+/* Dashboard KPI layout: 4 tendances à gauche, packet loss compact à droite */
+.dashboard-kpi-layout .kpi-trend-card {
+    min-height: 290px;
+}
+
+.dashboard-kpi-layout .kpi-trend-card h6,
+.dashboard-kpi-layout .packetloss-compact-card h6 {
+    font-size: 0.98rem;
+    margin-bottom: 10px;
+}
+
+.dashboard-kpi-layout .packetloss-compact-card {
+    min-height: 300px;
+}
+
+@media (max-width: 1199.98px) {
+    .dashboard-kpi-layout .packetloss-compact-card {
+        min-height: auto;
+    }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .sidebar {

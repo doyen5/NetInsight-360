@@ -86,6 +86,11 @@ if ($userRole !== 'ADMIN') {
         .logout-confirm-buttons button { padding:10px 25px;border-radius:40px;font-weight:600;border:none;cursor:pointer; }
         .btn-confirm-logout { background:#ef4444;color:#fff; } .btn-confirm-logout:hover { background:#dc2626; }
         .btn-cancel-logout  { background:#e2e8f0;color:#1e293b; } .btn-cancel-logout:hover { background:#cbd5e1; }
+        .health-score { font-size: 2rem; font-weight: 800; color:#0f766e; }
+        .health-issue { border-left: 3px solid #f59e0b; padding: 6px 10px; background:#fffbeb; border-radius: 6px; margin-bottom: 6px; font-size: 0.82rem; }
+        .health-issue.critical { border-left-color:#ef4444; background:#fef2f2; }
+        .import-runs-table td, .import-runs-table th { font-size:0.8rem; vertical-align: middle; }
+        .compare-box { background:#f8fafc; border:1px dashed #cbd5e1; border-radius:10px; padding:10px 12px; font-size:0.82rem; }
     </style>
 </head>
 <body>
@@ -191,7 +196,61 @@ if ($userRole !== 'ADMIN') {
         </div>
 
         <!-- ============================================================ -->
-        <!-- SECTION 2 : Logs d'audit                                      -->
+        <!-- SECTION 2 : Qualité des données + Traçabilité imports        -->
+        <!-- ============================================================ -->
+        <div class="row g-4 mb-4">
+            <div class="col-lg-4">
+                <div class="stat-card h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0"><i class="bi bi-heart-pulse"></i> Santé des données</h6>
+                        <button class="btn btn-sm btn-outline-secondary" id="refreshDataHealthBtn" title="Actualiser"><i class="bi bi-arrow-clockwise"></i></button>
+                    </div>
+                    <div class="health-score" id="dataHealthScore">--</div>
+                    <div class="text-muted mb-2" id="dataHealthFreshness">Chargement...</div>
+                    <div class="small text-muted mb-2" id="dataHealthCompleteness"></div>
+                    <div id="dataHealthIssues"></div>
+                </div>
+            </div>
+            <div class="col-lg-8">
+                <div class="stat-card h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                        <h6 class="mb-0"><i class="bi bi-clock-history"></i> Traçabilité des imports</h6>
+                        <div class="d-flex gap-2">
+                            <input class="form-control form-control-sm" id="importRunsSearch" placeholder="Rechercher (tech, user, statut...)" style="width:250px">
+                            <button class="btn btn-sm btn-outline-secondary" id="refreshImportRunsBtn"><i class="bi bi-arrow-clockwise"></i></button>
+                        </div>
+                    </div>
+                    <div class="table-responsive mb-2">
+                        <table class="table table-sm table-hover import-runs-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Fin d'exécution</th>
+                                    <th>Tech</th>
+                                    <th>Importés</th>
+                                    <th>Durée</th>
+                                    <th>Débit</th>
+                                    <th>Statut</th>
+                                    <th>Déclenché par</th>
+                                </tr>
+                            </thead>
+                            <tbody id="importRunsTableBody">
+                                <tr><td colspan="7" class="text-center text-muted py-2">Chargement...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+                        <span class="small text-muted">Comparer:</span>
+                        <select class="form-select form-select-sm" id="runCompareA" style="width:200px"></select>
+                        <select class="form-select form-select-sm" id="runCompareB" style="width:200px"></select>
+                        <button class="btn btn-sm btn-primary" id="compareRunsBtn"><i class="bi bi-bar-chart-steps"></i> Comparer</button>
+                    </div>
+                    <div class="compare-box" id="importRunsCompareResult">Sélectionnez deux exécutions pour afficher l'écart de performance.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 3 : Logs d'audit                                      -->
         <!-- ============================================================ -->
         <div class="stat-card mb-4">
             <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">

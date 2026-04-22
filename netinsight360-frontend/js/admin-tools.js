@@ -65,6 +65,16 @@ function initAdminTools() {
     document.getElementById('runImport3GBtn')?.addEventListener('click', () => triggerTechImport('3G'));
     document.getElementById('runImport4GBtn')?.addEventListener('click', () => triggerTechImport('4G'));
 
+    // --- Section Qualité des données + Traçabilité imports ---
+    loadDataHealth();
+    loadImportRuns();
+    document.getElementById('refreshDataHealthBtn')?.addEventListener('click', loadDataHealth);
+    document.getElementById('refreshImportRunsBtn')?.addEventListener('click', () => loadImportRuns());
+    document.getElementById('importRunsSearch')?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') loadImportRuns();
+    });
+    document.getElementById('compareRunsBtn')?.addEventListener('click', compareImportRuns);
+
     // --- Section Audit ---
     // Charge la première page des logs d'audit sans filtre
     loadAuditLogs(1, {});
@@ -82,6 +92,11 @@ function initAdminTools() {
     // Actualisation automatique du statut d'import toutes les 30 secondes
     // (pour détecter si un import planifié ou automatique vient de se terminer)
     setInterval(loadImportStatus, 30000);
+    // Rafraîchissement plus lent des indicateurs de gouvernance (qualité + traçabilité).
+    setInterval(() => {
+        loadDataHealth();
+        loadImportRuns();
+    }, 60000);
 }
 
 /* ============================================================
@@ -338,6 +353,123 @@ function setImportRunning(running) {
         _activeImportMode = null;
     }
     document.getElementById('importSpinner').classList.toggle('show', running);
+}
+
+/* ============================================================
+   QUALITÉ DES DONNÉES + TRAÇABILITÉ IMPORTS
+   ============================================================ */
+
+async function loadDataHealth() {
+    const scoreEl = document.getElementById('dataHealthScore');
+    const freshEl = document.getElementById('dataHealthFreshness');
+    const compEl = document.getElementById('dataHealthCompleteness');
+    const issuesEl = document.getElementById('dataHealthIssues');
+    if (!scoreEl || !freshEl || !compEl || !issuesEl) return;
+
+    try {
+        const res = await API.getDataHealth();
+        if (!res.success) throw new Error(res.error || 'API error');
+
+        const d = res.data || {};
+        const score = Number(d.quality_score ?? 0);
+        scoreEl.textContent = `${score.toFixed(1)}%`;
+        scoreEl.style.color = score >= 90 ? '#0f766e' : (score >= 75 ? '#b45309' : '#dc2626');
+
+        freshEl.textContent = `Dernière data RAN: ${formatDate(d.freshness?.ran_last_datetime) || '—'}`;
+        compEl.textContent = `${d.totals?.active_sites ?? 0} sites actifs, ${d.completeness?.missing_coords ?? 0} sans coordonnées, ${d.completeness?.ran_without_recent_kpi ?? 0} sans KPI <24h.`;
+
+        const issues = Array.isArray(d.issues) ? d.issues : [];
+        if (issues.length === 0) {
+            issuesEl.innerHTML = '<div class="small text-success"><i class="bi bi-check-circle me-1"></i>Aucun point bloquant détecté.</div>';
+        } else {
+            issuesEl.innerHTML = issues.map(i => {
+                const cls = i.level === 'critical' ? 'health-issue critical' : 'health-issue';
+                return `<div class="${cls}">${escapeHtml(i.message || 'Alerte qualité')}</div>`;
+            }).join('');
+        }
+    } catch (e) {
+        scoreEl.textContent = '—';
+        freshEl.textContent = 'Santé des données indisponible';
+        compEl.textContent = '';
+        issuesEl.innerHTML = '<div class="small text-danger">Impossible de charger les indicateurs qualité.</div>';
+    }
+}
+
+async function loadImportRuns() {
+    const tbody = document.getElementById('importRunsTableBody');
+    const q = document.getElementById('importRunsSearch')?.value?.trim() || '';
+    const compareA = document.getElementById('runCompareA');
+    const compareB = document.getElementById('runCompareB');
+    if (!tbody || !compareA || !compareB) return;
+
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-2">Chargement...</td></tr>';
+
+    try {
+        const res = await API.getImportRuns({ q, limit: 30 });
+        if (!res.success) throw new Error(res.error || 'API error');
+        const runs = res.data?.runs || [];
+
+        if (runs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-2">Aucune exécution trouvée.</td></tr>';
+            compareA.innerHTML = '<option value="">—</option>';
+            compareB.innerHTML = '<option value="">—</option>';
+            return;
+        }
+
+        tbody.innerHTML = runs.map(r => {
+            const st = r.status === 'failed'
+                ? '<span class="badge bg-danger">Échec</span>'
+                : '<span class="badge bg-success">Succès</span>';
+            const dur = r.duration_sec != null ? `${Number(r.duration_sec).toFixed(2)} s` : '—';
+            const tpt = r.throughput_sites_sec != null ? `${Number(r.throughput_sites_sec).toFixed(0)} sites/s` : '—';
+            return `<tr>
+                <td>${formatDate(r.finished_at)}</td>
+                <td><span class="badge bg-info text-dark">${escapeHtml(r.tech || 'GLOBAL')}</span></td>
+                <td>${r.sites_imported ?? '—'}</td>
+                <td>${dur}</td>
+                <td>${tpt}</td>
+                <td>${st}</td>
+                <td>${escapeHtml(r.triggered_by || 'Système')}</td>
+            </tr>`;
+        }).join('');
+
+        const options = ['<option value="">Sélectionner</option>'].concat(
+            runs.map(r => `<option value="${escapeHtml(r.id)}">${escapeHtml(r.tech)} • ${formatDate(r.finished_at)} • ${r.status === 'failed' ? 'Échec' : 'Succès'}</option>`)
+        ).join('');
+
+        compareA.innerHTML = options;
+        compareB.innerHTML = options;
+        window._latestImportRuns = runs;
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-2">Erreur de chargement des exécutions.</td></tr>';
+    }
+}
+
+function compareImportRuns() {
+    const compareA = document.getElementById('runCompareA');
+    const compareB = document.getElementById('runCompareB');
+    const out = document.getElementById('importRunsCompareResult');
+    const runs = window._latestImportRuns || [];
+    if (!compareA || !compareB || !out) return;
+
+    const a = runs.find(r => r.id === compareA.value);
+    const b = runs.find(r => r.id === compareB.value);
+
+    if (!a || !b) {
+        out.textContent = 'Sélectionnez deux exécutions pour afficher l\'écart de performance.';
+        return;
+    }
+
+    const deltaSites = (Number(a.sites_imported || 0) - Number(b.sites_imported || 0));
+    const deltaDuration = (Number(a.duration_sec || 0) - Number(b.duration_sec || 0));
+    const deltaTpt = (Number(a.throughput_sites_sec || 0) - Number(b.throughput_sites_sec || 0));
+
+    out.innerHTML = `
+        <strong>Comparaison ${escapeHtml(a.tech)} vs ${escapeHtml(b.tech)}</strong><br>
+        Sites importés: <strong>${a.sites_imported ?? '—'}</strong> vs <strong>${b.sites_imported ?? '—'}</strong> (écart: ${deltaSites >= 0 ? '+' : ''}${deltaSites})<br>
+        Durée: <strong>${a.duration_sec ?? '—'} s</strong> vs <strong>${b.duration_sec ?? '—'} s</strong> (écart: ${deltaDuration >= 0 ? '+' : ''}${deltaDuration.toFixed(2)} s)<br>
+        Débit: <strong>${a.throughput_sites_sec ?? '—'} sites/s</strong> vs <strong>${b.throughput_sites_sec ?? '—'} sites/s</strong> (écart: ${deltaTpt >= 0 ? '+' : ''}${deltaTpt.toFixed(0)} sites/s)
+    `;
 }
 
 /* ============================================================
