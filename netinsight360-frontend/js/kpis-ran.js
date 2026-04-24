@@ -37,6 +37,18 @@ let ranItemsPerPage = 10;
 let ranKpisCacheKey = '';
 let ranKpisCacheData = null;
 
+/**
+ * Mode d'affichage actif sur la carte KPIs RAN.
+ * Valeurs possibles : 'cluster' | 'individual' | 'heatmap'
+ */
+let currentRanDisplayMode = 'cluster';
+
+/** Instance du gestionnaire de modes (initialisée dans initRanMap) */
+let ranMapModeManager = null;
+
+/** Cache des données carte pour les changements de mode sans re-fetch */
+let ranSitesData = [];
+
 function getBaseRanFilters() {
     return {
         country: ranFilters.country || 'all',
@@ -162,6 +174,13 @@ function initRanMap() {
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(ranMap);
+
+    // Initialiser le gestionnaire des 4 modes d'affichage.
+    // kpi_global est le score de santé global du site RAN (0-100).
+    ranMapModeManager = new MapModeManager(
+        ranMap,
+        (s) => Number(s.kpi_global || s.health_score || 0)
+    );
     
     loadRanMapMarkers();
 }
@@ -172,98 +191,160 @@ function initRanMap() {
 async function loadRanMapMarkers() {
     if (!ranMap) return;
     
+    // Nettoyage complet des couches précédentes
     ranMarkers.forEach(marker => ranMap.removeLayer(marker));
     ranMarkers = [];
+    if (ranMapModeManager) ranMapModeManager.clearManagedLayers();
     
     try {
-        // Si l'option 'topByTechCheckbox' est cochée, on demande au backend
-        // les X pires sites par technologie (utile à afficher juste après un import).
+        // Mode "top by tech" : affichage des X pires sites par technologie
         const topByTech = document.getElementById('topByTechCheckbox')?.checked;
         if (topByTech) {
-            // Appel API dédié retournant { date, top_n, per_tech: { '2G':[...], ... } }
-                // Déterminer top_n : choisir la valeur du select si présente, sinon 10
-                let topN = 10;
-                try {
-                    const sel = document.getElementById('topByTechNSelect');
-                    if (sel) topN = parseInt(sel.value) || 10;
-                } catch (_) { topN = 10; }
-                const res = await API.getTopWorstSitesByTech({ ...getWorstSitesFilters(), top_n: topN });
+            let topN = 10;
+            try {
+                const sel = document.getElementById('topByTechNSelect');
+                if (sel) topN = parseInt(sel.value) || 10;
+            } catch (_) { topN = 10; }
+            const res = await API.getTopWorstSitesByTech({ ...getWorstSitesFilters(), top_n: topN });
             if (!res.success || !res.data) return;
-            // Fusionner les listes par techno pour afficher sur la carte
             const combined = [];
             Object.keys(res.data.per_tech || {}).forEach(tech => {
                 (res.data.per_tech[tech] || []).forEach(s => { s._tech_group = tech; combined.push(s); });
             });
-
-            // Créer les marqueurs
-            combined.forEach(site => {
-                if (!site.latitude || !site.longitude || site.latitude == 0) return;
-                const tc = API.techColor(site.technology || site._tech_group) || '#6c757d';
-                const safeSiteId = escapeJsSingleQuoted(site.id);
-                const icon = L.divIcon({
-                    html: `<div style="background:${tc}; width:14px; height:14px; border-radius:50%; border:2px solid white;"></div>`,
-                    iconSize: [14, 14]
-                });
-                const marker = L.marker([site.latitude, site.longitude], { icon }).addTo(ranMap);
-                const worstLine = site.worst_kpi_name
-                    ? `<br><b>KPI dégradant:</b> ${escapeHtml(site.worst_kpi_name)} (${site.worst_kpi_value}%)`
-                    : '';
-                marker.bindPopup(`
-                    <b>${escapeHtml(site.name)}</b><br>
-                    <b>ID:</b> ${escapeHtml(site.id)}<br>
-                    <b>Pays:</b> ${escapeHtml(site.country_name || site.country_code)}<br>
-                    <b>Vendor:</b> <span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:3px;vertical-align:middle"></span>${escapeHtml(site.vendor)} | <span class="badge-tech">${escapeHtml(site.technology || site._tech_group || 'N/A')}</span><br>
-                    <b>KPI global:</b> ${site.kpi_global}%${worstLine}<br>
-                    <small class="text-muted">Tech group: ${escapeHtml(site._tech_group || 'N/A')}</small><br>
-                    <button class="btn btn-sm btn-primary mt-2" onclick="showRanSiteDetails('${safeSiteId}')">Voir détails</button>
-                `);
-                ranMarkers.push(marker);
-            });
-
-            // Mettre à jour le badge avec le nombre affiché
+            ranSitesData = combined;
+            await renderRanMapMode(combined);
             API.updateMapCountBadge({ count: combined.length, total_count: combined.length }, 'map', `${topN} pires par techno`);
             return;
         }
 
-        // Mode normal : récupérer les marqueurs standards (tous les sites selon filtre)
-        // Construire les filtres de requête et transmettre top_by_tech si la checkbox est présente
         const queryFilters = { ...getBaseRanFilters(), domain: 'RAN' };
-        try {
-            const topCb = document.getElementById('topByTechCheckbox');
-            if (topCb && topCb.checked) queryFilters.top_by_tech = '1';
-        } catch (e) { /* ignore */ }
-
         const result = await API.getMapMarkers(queryFilters);
         if (!result.success || !result.data) return;
-        
-        result.data.forEach(site => {
-            if (!site.latitude || !site.longitude || site.latitude == 0) return;
-            const safeSiteId = escapeJsSingleQuoted(site.id);
-            const color = API.statusColor(site.status);
-            const icon = L.divIcon({
-                html: `<div style="background:${color}; width:12px; height:12px; border-radius:50%; border:2px solid white;"></div>`,
-                iconSize: [12, 12]
-            });
-            
-            const marker = L.marker([site.latitude, site.longitude], { icon }).addTo(ranMap);
-            const worstLine = site.worst_kpi_name
-                ? `<br><b>KPI dégradant:</b> ${escapeHtml(site.worst_kpi_name)} (${site.worst_kpi_value}%)`
-                : '';
-            marker.bindPopup(`
-                <b>${escapeHtml(site.name)}</b><br>
-                <b>ID:</b> ${escapeHtml(site.id)}<br>
-                <b>Pays:</b> ${escapeHtml(site.country_name || site.country_code)}<br>
-                    <b>Vendor:</b> <span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:3px;vertical-align:middle"></span>${escapeHtml(site.vendor)} | <span class="badge-tech">${escapeHtml(site.technology)}</span><br>
-                <b>KPI global:</b> ${site.kpi_global}%${worstLine}<br>
-                <button class="btn btn-sm btn-primary mt-2" onclick="showRanSiteDetails('${safeSiteId}')">Voir détails</button>
-            `);
-            ranMarkers.push(marker);
-        });
-        // Badge : X affichés / Y total
+
+        // Mise en cache pour les changements de mode sans re-fetch
+        ranSitesData = result.data;
+        await renderRanMapMode(ranSitesData);
         API.updateMapCountBadge(result);
     } catch (error) {
         console.error('[KPIs RAN] Erreur chargement marqueurs:', error);
     }
+}
+
+/**
+ * Change le mode d'affichage de la carte KPIs RAN SANS recharger depuis l'API.
+ *
+ * Appelé par le <select id="mapDisplayMode"> dans kpis-ran.php.
+ * @param {string} mode - 'cluster' | 'individual' | 'heatmap'
+ */
+async function switchRanDisplayMode(mode) {
+    currentRanDisplayMode = mode;
+    ranMarkers.forEach(m => { try { ranMap.removeLayer(m); } catch (_) {} });
+    ranMarkers = [];
+    if (ranMapModeManager) ranMapModeManager.clearManagedLayers();
+
+    if (ranSitesData && ranSitesData.length > 0) {
+        await renderRanMapMode(ranSitesData);
+    } else {
+        await loadRanMapMarkers();
+    }
+}
+
+/**
+ * Rend les sites sur la carte KPIs RAN selon le mode d'affichage actif.
+ * @param {Array} sites - Sites à afficher
+ */
+async function renderRanMapMode(sites) {
+    const mode = currentRanDisplayMode;
+
+    // ── Mode 1 : Clusters ────────────────────────────────────────────────
+    if (mode === 'cluster') {
+        // Cluster colorié par techno dominante dans le groupe
+        const clusterGroup = L.markerClusterGroup({
+            maxClusterRadius: 55,
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            iconCreateFunction: (cluster) => {
+                const children = cluster.getAllChildMarkers();
+                const count    = children.length;
+                const critCount = children.filter(m => m.options?.siteStatus === 'critical').length;
+                const warnCount = children.filter(m => m.options?.siteStatus === 'warning').length;
+                let color = API.COLORS.status.good;
+                if (critCount >= Math.max(1, Math.ceil(count * 0.25))) color = API.COLORS.status.bad;
+                else if ((critCount + warnCount) >= Math.max(1, Math.ceil(count * 0.35))) color = API.COLORS.status.warning;
+                const sizeClass = count < 20 ? 'small' : (count < 80 ? 'medium' : 'large');
+                const avgKpi = count > 0
+                    ? (children.reduce((acc, m) => acc + Number(m.options?.siteKpi || 0), 0) / count)
+                    : 0;
+                return L.divIcon({
+                    html: `<div class="cluster-bubble cluster-${sizeClass}" style="background:${color}"><span class="cluster-count">${count}</span><span class="cluster-kpi">${avgKpi.toFixed(0)}%</span></div>`,
+                    className: 'custom-kpi-cluster',
+                    iconSize: [44, 44]
+                });
+            }
+        });
+        ranMap.addLayer(clusterGroup);
+
+        sites.forEach(site => {
+            if (!site.latitude || !site.longitude || site.latitude == 0) return;
+            // Icône colorée par techno pour différencier 2G/3G/4G dans les clusters
+            const tc = API.techColor(site.technology || site._tech_group) || API.statusColor(site.status);
+            const safeSiteId = escapeJsSingleQuoted(site.id);
+            const icon = L.divIcon({
+                html: `<div style="background:${tc}; width:8px; height:8px; border-radius:50%; border:1px solid white;"></div>`,
+                iconSize: [8, 8]
+            });
+            const worstLine = site.worst_kpi_name
+                ? `<br><b>KPI dégradant:</b> ${escapeHtml(site.worst_kpi_name)} (${site.worst_kpi_value}%)` : '';
+            const marker = L.marker([site.latitude, site.longitude], { icon, siteStatus: site.status, siteKpi: site.kpi_global || 0 });
+            marker.bindPopup(`
+                <b>${escapeHtml(site.name)}</b><br>
+                <b>ID:</b> ${escapeHtml(site.id)}<br>
+                <b>Pays:</b> ${escapeHtml(site.country_name || site.country_code)}<br>
+                <b>Vendor:</b> <span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:3px;vertical-align:middle"></span>${escapeHtml(site.vendor)} | <span class="badge-tech">${escapeHtml(site.technology || site._tech_group || 'N/A')}</span><br>
+                <b>KPI global:</b> ${site.kpi_global}%${worstLine}<br>
+                <button class="btn btn-sm btn-primary mt-2" onclick="showRanSiteDetails('${safeSiteId}')">Voir détails</button>
+            `);
+            clusterGroup.addLayer(marker);
+            ranMarkers.push(marker);
+        });
+
+    } // ─── fin mode cluster ───────────────────────────────────────────────────
+
+    // ── Mode 2 : Individuel ────────────────────────────────────────────────
+    // Marqueurs colorés par techno, visibles individuellement.
+    else if (mode === 'individual') {
+        sites.forEach(site => {
+            if (!site.latitude || !site.longitude || site.latitude == 0) return;
+            const tc = API.techColor(site.technology || site._tech_group) || API.statusColor(site.status);
+            const safeSiteId = escapeJsSingleQuoted(site.id);
+            // Taille 14px — plus grande qu'en cluster pour rester lisible sans regroupement
+            const icon = L.divIcon({
+                html: `<div style="background:${tc}; width:14px; height:14px; border-radius:50%; border:2px solid white; box-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>`,
+                iconSize: [14, 14]
+            });
+            const worstLine = site.worst_kpi_name
+                ? `<br><b>KPI dégradant:</b> ${escapeHtml(site.worst_kpi_name)} (${site.worst_kpi_value}%)` : '';
+            const marker = L.marker([site.latitude, site.longitude], { icon });
+            marker.bindPopup(`
+                <b>${escapeHtml(site.name)}</b><br>
+                <b>ID:</b> ${escapeHtml(site.id)}<br>
+                <b>Pays:</b> ${escapeHtml(site.country_name || site.country_code)}<br>
+                <b>Vendor:</b> <span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:3px;vertical-align:middle"></span>${escapeHtml(site.vendor)} | <span class="badge-tech">${escapeHtml(site.technology || site._tech_group || 'N/A')}</span><br>
+                <b>KPI global:</b> ${site.kpi_global}%${worstLine}<br>
+                <button class="btn btn-sm btn-primary mt-2" onclick="showRanSiteDetails('${safeSiteId}')">Voir détails</button>
+            `);
+            marker.addTo(ranMap);
+            ranMarkers.push(marker);
+        });
+    }
+
+    // ── Mode 3 : Heatmap ────────────────────────────────────────────────
+    // Les zones rouges = concentration de sites avec KPIs RAN dégradés.
+    else if (mode === 'heatmap') {
+        if (ranMapModeManager) ranMapModeManager.applyHeatmap(sites);
+    }
+
+    // Le mode choroplèthe a été retiré : aucun traitement supplémentaire.
 }
 
 /**

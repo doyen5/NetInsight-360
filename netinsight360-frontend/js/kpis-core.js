@@ -14,6 +14,18 @@ let coreCurrentPage = 1;
 let coreItemsPerPage = 10;
 
 /**
+ * Mode d'affichage actif sur la carte KPIs CORE.
+ * Valeurs possibles : 'cluster' | 'individual' | 'heatmap'
+ */
+let currentCoreDisplayMode = 'cluster';
+
+/** Instance du gestionnaire de modes (initialisée dans initCoreMap) */
+let coreMapModeManager = null;
+
+/** Cache des données carte pour les changements de mode sans re-fetch */
+let coreSitesData = [];
+
+/**
  * Initialise la page KPIs CORE
  */
 async function initKpisCore() {
@@ -41,6 +53,20 @@ function initCoreMap() {
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(coreMap);
+
+    // Initialiser le gestionnaire des 4 modes d'affichage.
+    // Pour CORE, la santé est inversée : un packet_loss élevé est mauvais.
+    // On utilise 100 - (packet_loss * 50) comme proxy KPI (0-100) pour la heatmap.
+    // Le rendu choroplèthe est désactivé ; le score reste utilisé pour la heatmap.
+    coreMapModeManager = new MapModeManager(
+        coreMap,
+        (s) => {
+            if (s.kpi_global !== undefined) return Number(s.kpi_global || 0);
+            // Fallback : convertir packet_loss en score (inversé)
+            const pl = Number(s.packet_loss || 0);
+            return Math.max(0, 100 - pl * 50);
+        }
+    );
     
     loadCoreMapMarkers();
 }
@@ -51,19 +77,99 @@ function initCoreMap() {
 async function loadCoreMapMarkers() {
     if (!coreMap) return;
     
+    // Nettoyage complet des couches précédentes
     coreMarkers.forEach(marker => coreMap.removeLayer(marker));
     coreMarkers = [];
+    if (coreMapModeManager) coreMapModeManager.clearManagedLayers();
     
     try {
         const result = await API.getSites({ ...coreFilters, domain: 'CORE' });
         if (!result.success || !result.data) return;
-        
-        result.data.forEach(site => {
+
+        // Mise en cache pour les changements de mode sans re-fetch
+        coreSitesData = result.data;
+        await renderCoreMapMode(coreSitesData);
+        API.updateMapCountBadge({ count: coreMarkers.length, total_count: result.data?.length ?? coreMarkers.length });
+    } catch (error) {
+        console.error('[KPIs CORE] Erreur chargement marqueurs:', error);
+    }
+}
+
+/**
+ * Change le mode d'affichage de la carte KPIs CORE SANS recharger depuis l'API.
+ *
+ * Appelé par le <select id="mapDisplayMode"> dans kpis-core.php.
+ * @param {string} mode - 'cluster' | 'individual' | 'heatmap'
+ */
+async function switchCoreDisplayMode(mode) {
+    currentCoreDisplayMode = mode;
+    coreMarkers.forEach(m => { try { coreMap.removeLayer(m); } catch (_) {} });
+    coreMarkers = [];
+    if (coreMapModeManager) coreMapModeManager.clearManagedLayers();
+
+    if (coreSitesData && coreSitesData.length > 0) {
+        await renderCoreMapMode(coreSitesData);
+    } else {
+        await loadCoreMapMarkers();
+    }
+}
+
+/**
+ * Rend les sites CORE sur la carte selon le mode d'affichage actif.
+ * Les sites CORE sont représentés par des carrés (rotation 45°) pour les distinguer
+ * visuellement des sites RAN (cercles).
+ * @param {Array} sites - Sites CORE à afficher
+ */
+async function renderCoreMapMode(sites) {
+    const mode = currentCoreDisplayMode;
+
+    // ── Mode 1 : Clusters ────────────────────────────────────────────────
+    if (mode === 'cluster') {
+        const clusterGroup = L.markerClusterGroup({
+            maxClusterRadius: 55,
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            iconCreateFunction: (cluster) => {
+                const count = cluster.getChildCount();
+                // Couleur CORE unifiée avec teinte bleue (cyan) = domaine CORE
+                const sizeClass = count < 20 ? 'small' : (count < 80 ? 'medium' : 'large');
+                return L.divIcon({
+                    html: `<div class="cluster-bubble cluster-${sizeClass}" style="background:${API.COLORS.tech['CORE']}"><span class="cluster-count">${count}</span></div>`,
+                    className: 'custom-kpi-cluster',
+                    iconSize: [44, 44]
+                });
+            }
+        });
+        coreMap.addLayer(clusterGroup);
+
+        sites.forEach(site => {
+            // Carré tourné = icône standardisée pour les sites CORE dans tout le projet
             const icon = L.divIcon({
-                html: `<div style="background:${API.COLORS.tech['CORE']}; width:12px; height:12px; border-radius:2px; transform:rotate(45deg); border:2px solid white;"></div>`,
-                iconSize: [12, 12]
+                html: `<div style="background:${API.COLORS.tech['CORE']}; width:10px; height:10px; border-radius:2px; transform:rotate(45deg); border:1px solid white;"></div>`,
+                iconSize: [10, 10]
             });
-            
+            const marker = L.marker([site.latitude, site.longitude], { icon });
+            marker.bindPopup(`
+                <b>${site.name}</b><br>
+                <b>ID:</b> ${site.id}<br>
+                <b>Pays:</b> ${site.country_name}<br>
+                <b>Packet Loss:</b> ${site.packet_loss}%<br>
+                <button class="btn btn-sm btn-primary mt-2" onclick="showCoreSiteDetails('${site.id}')">Voir détails</button>
+            `);
+            clusterGroup.addLayer(marker);
+            coreMarkers.push(marker);
+        });
+
+    } // ─── fin mode cluster ───────────────────────────────────────────────────
+
+    // ── Mode 2 : Individuel ────────────────────────────────────────────────
+    // Carrés CORE individuels, plus grands pour la lisibilité sans clustering.
+    else if (mode === 'individual') {
+        sites.forEach(site => {
+            const icon = L.divIcon({
+                html: `<div style="background:${API.COLORS.tech['CORE']}; width:14px; height:14px; border-radius:2px; transform:rotate(45deg); border:2px solid white; box-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>`,
+                iconSize: [14, 14]
+            });
             const marker = L.marker([site.latitude, site.longitude], { icon }).addTo(coreMap);
             marker.bindPopup(`
                 <b>${site.name}</b><br>
@@ -74,11 +180,15 @@ async function loadCoreMapMarkers() {
             `);
             coreMarkers.push(marker);
         });
-        // Badge : X sites affichés
-        API.updateMapCountBadge({ count: coreMarkers.length, total_count: result.data?.length ?? coreMarkers.length });
-    } catch (error) {
-        console.error('[KPIs CORE] Erreur chargement marqueurs:', error);
     }
+
+    // ── Mode 3 : Heatmap ────────────────────────────────────────────────
+    // Zones rouges = concentrations de sites CORE avec packet_loss élevé.
+    else if (mode === 'heatmap') {
+        if (coreMapModeManager) coreMapModeManager.applyHeatmap(sites);
+    }
+
+    // Le mode choroplèthe a été retiré : aucun traitement supplémentaire.
 }
 
 /**
@@ -221,15 +331,55 @@ async function loadCoreCharts() {
 /**
  * Initialise les filtres
  */
+async function refreshCoreKpiOptions() {
+    const kpiSelect = document.getElementById('filterKpi');
+    if (!kpiSelect) return;
+    const tech = document.getElementById('filterTech')?.value || 'all';
+    const country = document.getElementById('filterCountry')?.value || 'all';
+    const vendor = document.getElementById('filterVendor')?.value || 'all';
+    if (tech === 'all') {
+        kpiSelect.innerHTML = '<option value="all">Tous les KPIs</option>';
+        kpiSelect.value = 'all';
+        kpiSelect.disabled = true;
+        return;
+    }
+    kpiSelect.disabled = true;
+    kpiSelect.innerHTML = '<option value="all">Chargement...</option>';
+    try {
+        const result = await API.getKpisByTechnology({ country, vendor, tech, domain: 'CORE' });
+        const kpis = (result?.success && Array.isArray(result?.data?.kpis)) ? result.data.kpis : [];
+        kpiSelect.innerHTML = '<option value="all">Tous les KPIs</option>' +
+            kpis.map(k => `<option value="${k}">${k}</option>`).join('');
+        kpiSelect.disabled = kpis.length === 0;
+    } catch (e) {
+        kpiSelect.innerHTML = '<option value="all">Tous les KPIs</option>';
+        kpiSelect.disabled = false;
+    }
+}
+
 function initCoreFilters() {
     const applyBtn = document.getElementById('applyFilters');
     const resetBtn = document.getElementById('resetFilters');
+    const techSelect = document.getElementById('filterTech');
+    const countrySelect = document.getElementById('filterCountry');
+    const vendorSelect = document.getElementById('filterVendor');
+
+    techSelect?.addEventListener('change', refreshCoreKpiOptions);
+    countrySelect?.addEventListener('change', () => {
+        if ((techSelect?.value || 'all') !== 'all') refreshCoreKpiOptions();
+    });
+    vendorSelect?.addEventListener('change', () => {
+        if ((techSelect?.value || 'all') !== 'all') refreshCoreKpiOptions();
+    });
     
     if (applyBtn) {
         applyBtn.addEventListener('click', async () => {
+            const kpiSelect = document.getElementById('filterKpi');
             coreFilters = {
                 country: document.getElementById('filterCountry')?.value || 'all',
-                vendor: document.getElementById('filterVendor')?.value || 'all'
+                vendor: document.getElementById('filterVendor')?.value || 'all',
+                tech: document.getElementById('filterTech')?.value || 'all',
+                kpi: (kpiSelect && !kpiSelect.disabled) ? (kpiSelect.value || 'all') : 'all'
             };
             coreCurrentPage = 1;
             await loadCoreStats();
@@ -242,12 +392,18 @@ function initCoreFilters() {
     
     if (resetBtn) {
         resetBtn.addEventListener('click', async () => {
-            const selects = ['filterCountry', 'filterVendor'];
+            const selects = ['filterCountry', 'filterVendor', 'filterTech'];
             selects.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = 'all';
             });
-            coreFilters = { country: 'all', vendor: 'all' };
+            const kpiSelect = document.getElementById('filterKpi');
+            if (kpiSelect) {
+                kpiSelect.innerHTML = '<option value="all">Tous les KPIs</option>';
+                kpiSelect.value = 'all';
+                kpiSelect.disabled = true;
+            }
+            coreFilters = { country: 'all', vendor: 'all', tech: 'all', kpi: 'all' };
             const searchInput = document.getElementById('searchSite');
             if (searchInput) searchInput.value = '';
             coreCurrentPage = 1;

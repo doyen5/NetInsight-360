@@ -22,6 +22,15 @@ let fullCountryBorderLayer = null; // Couche Leaflet GeoJSON des frontières du 
 let fullCurrentPage = 1;
 let fullItemsPerPage = 10;
 
+/**
+ * Mode d'affichage actif sur la carte de cartographie.
+ * Valeurs possibles : 'cluster' | 'individual' | 'heatmap'
+ */
+let currentFullDisplayMode = 'cluster';
+
+/** Instance du gestionnaire de modes (initialisée dans initFullMap) */
+let fullMapModeManager = null;
+
 function getSiteRiskLevel(site) {
     return site?.risk_level || site?.status || 'good';
 }
@@ -169,21 +178,32 @@ function initFullMap() {
     // Longitude: de -17° (Mauritanie ouest) à 55° (Somalie est)
     const africaBounds = L.latLngBounds([[37, -17], [-35, 55]]);
     fullMap.fitBounds(africaBounds, { padding: [30, 30] });
+
+    // Initialiser le gestionnaire des modes d'affichage.
+    // La fonction getHealth retourne le score de santé (0-100) d'un site.
+    // On préfère health_score (mode dynamique) sinon kpi_global (mode fixe).
+    fullMapModeManager = new MapModeManager(
+        fullMap,
+        (s) => Number(s.health_score || s.kpi_global || 0)
+    );
 }
 
 /**
- * Charge les marqueurs sur la carte
+ * Charge les marqueurs sur la carte (appel API + rendu selon le mode actif).
+ * Stocke les données dans fullSitesData pour permettre le changement de mode
+ * sans re-fetcher depuis l'API.
  */
 async function loadFullMapMarkers() {
     if (!fullMap) return;
 
-    // Nettoyage complet avant redraw pour éviter les doublons et états obsolètes.
-    if (fullClusterLayer) {
-        fullMap.removeLayer(fullClusterLayer);
-        fullClusterLayer = null;
-    }
-    fullMarkers.forEach(marker => fullMap.removeLayer(marker));
+    // ── Nettoyage complet avant redraw ──────────────────────────────────────
+    // 1. Supprimer le cluster si actif
+    if (fullClusterLayer) { fullMap.removeLayer(fullClusterLayer); fullClusterLayer = null; }
+    // 2. Supprimer les marqueurs individuels précédents
+    fullMarkers.forEach(marker => { try { fullMap.removeLayer(marker); } catch (_) {} });
     fullMarkers = [];
+    // 3. Supprimer la heatmap gérée par le manager
+    if (fullMapModeManager) fullMapModeManager.clearManagedLayers();
     
     try {
         // Si une option "Top by Tech" existe sur la page, transmettre le flag
@@ -199,31 +219,74 @@ async function loadFullMapMarkers() {
         updateLegendModeHint(result.score_mode || fullFilters.score_mode || 'fixed');
         
         const sites = result.data;
-        fullSitesData = sites; // mise en cache pour les graphiques
+        // Mise en cache des données pour permettre le changement de mode
+        // sans recharger depuis l'API (voir switchFullDisplayMode)
+        fullSitesData = sites;
 
-        // Construire le layer de cluster (phases 1, 2, 3)
-        fullClusterLayer = buildClusterLayer();
-        if (fullClusterLayer) {
-            fullMap.addLayer(fullClusterLayer);
-        }
-        
         // Afficher les frontières GeoJSON du pays sélectionné et zoomer dessus
         await showFullCountryBorder(fullFilters.country);
-        
+
+        // Déléguer le rendu à la fonction de mode
+        await renderFullMapMode(sites);
+
+        updateLegendStats(sites);
+        API.updateMapCountBadge(result);
+    } catch (error) {
+        console.error('[MapView] Erreur chargement marqueurs:', error);
+    }
+}
+
+/**
+ * Change le mode d'affichage de la carte SANS recharger depuis l'API.
+ * Utilise le cache fullSitesData pour re-rendre instantanément.
+ *
+ * Appelé par le <select id="mapDisplayMode"> dans map-view.php.
+ * @param {string} mode - 'cluster' | 'individual' | 'heatmap'
+ */
+async function switchFullDisplayMode(mode) {
+    currentFullDisplayMode = mode;
+
+    // Nettoyer toutes les couches actives
+    if (fullClusterLayer) { fullMap.removeLayer(fullClusterLayer); fullClusterLayer = null; }
+    fullMarkers.forEach(m => { try { fullMap.removeLayer(m); } catch (_) {} });
+    fullMarkers = [];
+    if (fullMapModeManager) fullMapModeManager.clearManagedLayers();
+
+    if (fullSitesData && fullSitesData.length > 0) {
+        // Données déjà en cache : re-rendre immédiatement
+        await renderFullMapMode(fullSitesData);
+    } else {
+        // Pas encore de données : déclencher un chargement complet
+        await loadFullMapMarkers();
+    }
+}
+
+/**
+ * Rend les sites sur la carte selon currentFullDisplayMode.
+ * Cette fonction est le point central du système de modes :
+ * elle dispatche vers le bon rendu sans re-fetcher les données.
+ *
+ * @param {Array} sites - Sites à afficher (depuis fullSitesData)
+ */
+async function renderFullMapMode(sites) {
+    const mode = currentFullDisplayMode;
+
+    // ── Mode 1 : Clusters (défaut) ───────────────────────────────────────────
+    // Regroupement intelligent avec icône colorée par dominance KPI du groupe.
+    if (mode === 'cluster') {
+        fullClusterLayer = buildClusterLayer();
+        if (fullClusterLayer) fullMap.addLayer(fullClusterLayer);
+
         sites.forEach(site => {
-            // Skip sites without valid coordinates
             const lat = Number(site.latitude);
             const lng = Number(site.longitude);
-            if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) {
-                return;
-            }
-            const color = getRiskColor(site);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) return;
+
+            const color     = getRiskColor(site);
             const riskLevel = getSiteRiskLevel(site);
             const riskLabel = getRiskLabel(riskLevel);
-            
-            // Créer une icône avec taille réduite (6px au lieu de 12px)
-            // Réduit la surcharge visuelle quand de nombreux sites sont affichés sur la carte
-            // Les points CORE sont des carrés rotés, les autres sont des cercles colorés par statut
+
+            // Icône compacte 6px — les clusters regroupent visuellement les sites proches
             const icon = L.divIcon({
                 html: `<div style="background:${color}; width:6px; height:6px; ${site.domain === 'CORE' ? 'border-radius:1px; transform:rotate(45deg);' : 'border-radius:50%;'} border:1px solid white;"></div>`,
                 iconSize: [6, 6]
@@ -283,13 +346,61 @@ async function loadFullMapMarkers() {
                 e.layer.bindPopup(html).openPopup();
             });
         }
-        
-        updateLegendStats(sites);
-        // Badge : X affichés / Y total
-        API.updateMapCountBadge(result);
-    } catch (error) {
-        console.error('[MapView] Erreur chargement marqueurs:', error);
+
+    } // ─── fin mode cluster ───────────────────────────────────────────────────
+
+    // ── Mode 2 : Individuel ────────────────────────────────────────────────────
+    // Chaque site = un marqueur visible indépendant, sans regroupement.
+    // Idéal pour zoomer sur une zone et inspecter chaque site distinctement.
+    else if (mode === 'individual') {
+        sites.forEach(site => {
+            const lat = Number(site.latitude);
+            const lng = Number(site.longitude);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) return;
+
+            const color     = getRiskColor(site);
+            const riskLabel = getRiskLabel(getSiteRiskLevel(site));
+
+            // Marqueur 14px (plus grand qu'en mode cluster) pour rester lisible
+            // CORE → carré tourné 45°, RAN → cercle coloré par statut KPI
+            const icon = L.divIcon({
+                html: `<div style="background:${color};width:14px;height:14px;
+                    ${site.domain === 'CORE' ? 'border-radius:2px;transform:rotate(45deg);' : 'border-radius:50%;'}
+                    border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.35)"></div>`,
+                iconSize: [14, 14]
+            });
+
+            const worstLine    = site.worst_kpi_name
+                ? `<b>KPI dégradant:</b> ${site.worst_kpi_name} = ${site.worst_kpi_value}%<br>` : '';
+            const baselineLine = site.dynamic_baseline
+                ? `<b>Seuils dyn.:</b> alerte ${site.dynamic_baseline.warn_threshold}% | critique ${site.dynamic_baseline.crit_threshold}%<br>` : '';
+
+            const marker = L.marker([lat, lng], { icon, siteData: site });
+            marker.bindPopup(`
+                <b>${site.name}</b> <span style="font-size:0.8em;background:#e0e7ff;padding:1px 5px;border-radius:4px">${site.technology}</span><br>
+                <b>Pays:</b> ${site.country_name}<br>
+                <b>Vendor:</b> <span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:3px;vertical-align:middle"></span>${site.vendor}<br>
+                <b>KPI Global:</b> ${site.kpi_global}%<br>
+                <b>Score santé:</b> ${Number(site.health_score || site.kpi_global || 0).toFixed(2)}%<br>
+                <b>Niveau:</b> <span style="color:${color};font-weight:700">${riskLabel}</span><br>
+                ${baselineLine}${worstLine}
+                <b>Action:</b> ${site.recommendation || 'Suivi standard'}<br>
+                <button class="btn btn-sm btn-primary mt-2" onclick="showFullSiteDetails('${site.id}')">Voir détails</button>
+            `);
+            marker.addTo(fullMap);
+            fullMarkers.push(marker);
+        });
     }
+
+    // ── Mode 3 : Heatmap ──────────────────────────────────────────────────────
+    // Carte de chaleur où les zones rouges indiquent une concentration de sites
+    // avec des KPIs dégradés. Requires Leaflet.heat (chargé dans les pages PHP).
+    // L'intensité de chaque point = (100 - kpi) / 100 → rouge = mauvais.
+    else if (mode === 'heatmap') {
+        if (fullMapModeManager) fullMapModeManager.applyHeatmap(sites);
+    }
+
+    // Le mode choroplèthe a été retiré : aucun traitement supplémentaire.
 }
 
 /**
@@ -533,20 +644,60 @@ async function loadFullCharts() {
 /**
  * Initialise les filtres
  */
+async function refreshMapKpiOptions() {
+    const kpiSelect = document.getElementById('filterKpi');
+    if (!kpiSelect) return;
+    const tech = document.getElementById('filterTech')?.value || 'all';
+    const country = document.getElementById('filterCountry')?.value || 'all';
+    const vendor = document.getElementById('filterVendor')?.value || 'all';
+    const domain = document.getElementById('filterDomain')?.value || 'all';
+    if (tech === 'all') {
+        kpiSelect.innerHTML = '<option value="all">Tous les KPIs</option>';
+        kpiSelect.value = 'all';
+        kpiSelect.disabled = true;
+        return;
+    }
+    kpiSelect.disabled = true;
+    kpiSelect.innerHTML = '<option value="all">Chargement...</option>';
+    try {
+        const result = await API.getKpisByTechnology({ country, vendor, tech, domain: domain !== 'all' ? domain : 'RAN' });
+        const kpis = (result?.success && Array.isArray(result?.data?.kpis)) ? result.data.kpis : [];
+        kpiSelect.innerHTML = '<option value="all">Tous les KPIs</option>' +
+            kpis.map(k => `<option value="${k}">${k}</option>`).join('');
+        kpiSelect.disabled = kpis.length === 0;
+    } catch (e) {
+        kpiSelect.innerHTML = '<option value="all">Tous les KPIs</option>';
+        kpiSelect.disabled = false;
+    }
+}
+
 function initFullFilters() {
     const applyBtn = document.getElementById('applyFilters');
     const resetBtn = document.getElementById('resetFilters');
     const fitBoundsBtn = document.getElementById('fitBoundsBtn');
+    const techSelect = document.getElementById('filterTech');
+    const countrySelect = document.getElementById('filterCountry');
+    const vendorSelect = document.getElementById('filterVendor');
+
+    techSelect?.addEventListener('change', refreshMapKpiOptions);
+    countrySelect?.addEventListener('change', () => {
+        if ((techSelect?.value || 'all') !== 'all') refreshMapKpiOptions();
+    });
+    vendorSelect?.addEventListener('change', () => {
+        if ((techSelect?.value || 'all') !== 'all') refreshMapKpiOptions();
+    });
     
     if (applyBtn) {
         applyBtn.addEventListener('click', async () => {
+            const kpiSelect = document.getElementById('filterKpi');
             fullFilters = {
                 country: document.getElementById('filterCountry')?.value || 'all',
                 vendor: document.getElementById('filterVendor')?.value || 'all',
                 tech: document.getElementById('filterTech')?.value || 'all',
                 domain: document.getElementById('filterDomain')?.value || 'all',
                 status: document.getElementById('filterStatus')?.value || 'all',
-                score_mode: document.getElementById('filterScoreMode')?.value || 'fixed'
+                score_mode: document.getElementById('filterScoreMode')?.value || 'fixed',
+                kpi: (kpiSelect && !kpiSelect.disabled) ? (kpiSelect.value || 'all') : 'all'
             };
             fullCurrentPage = 1;
             // Carte + tableau rechargés en parallèle (sources indépendantes)
@@ -567,7 +718,13 @@ function initFullFilters() {
             });
             const scoreModeSelect = document.getElementById('filterScoreMode');
             if (scoreModeSelect) scoreModeSelect.value = 'fixed';
-            fullFilters = { country: 'all', vendor: 'all', tech: 'all', domain: 'all', status: 'all', score_mode: 'fixed' };
+            const kpiSelect = document.getElementById('filterKpi');
+            if (kpiSelect) {
+                kpiSelect.innerHTML = '<option value="all">Tous les KPIs</option>';
+                kpiSelect.value = 'all';
+                kpiSelect.disabled = true;
+            }
+            fullFilters = { country: 'all', vendor: 'all', tech: 'all', domain: 'all', status: 'all', score_mode: 'fixed', kpi: 'all' };
             const searchInput = document.getElementById('searchSite');
             if (searchInput) searchInput.value = '';
             fullCurrentPage = 1;

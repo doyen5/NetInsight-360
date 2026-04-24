@@ -12,6 +12,18 @@ let dashboardCharts = {};
 let countryBorderLayer = null; // Couche Leaflet GeoJSON affichant les frontières du pays sélectionné
 
 /**
+ * Mode d'affichage actif sur la carte du dashboard.
+ * Valeurs possibles : 'cluster' | 'individual' | 'heatmap'
+ */
+let currentDashDisplayMode = 'cluster';
+
+/** Instance du gestionnaire de modes (initialisée dans initDashboardMap) */
+let dashMapModeManager = null;
+
+/** Cache des données de la carte — évite un re-fetch lors du changement de mode */
+let dashSitesData = [];
+
+/**
  * Affiche un toast en bas à droite avec la date/heure de la dernière connexion
  */
 function showLastLoginToast() {
@@ -89,6 +101,13 @@ function initDashboardMap() {
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(dashboardMap);
+
+    // Initialiser le gestionnaire des 4 modes d'affichage.
+    // getHealth retourne kpi_global (0-100) comme indicateur de santé du site.
+    dashMapModeManager = new MapModeManager(
+        dashboardMap,
+        (s) => Number(s.kpi_global || s.health_score || 0)
+    );
     
     loadMapMarkers();
 }
@@ -142,12 +161,12 @@ async function showCountryBorder(countryCode) {
 async function loadMapMarkers(filters = {}) {
     if (!dashboardMap) return;
     
-    // Supprimer les anciens marqueurs
+    // ── Nettoyage des couches actives ──────────────────────────────────────
     dashboardMarkers.forEach(marker => dashboardMap.removeLayer(marker));
     dashboardMarkers = [];
+    if (dashMapModeManager) dashMapModeManager.clearManagedLayers();
     
     try {
-        // Transmettre top_by_tech=1 si l'option est présente et cochée
         const queryFilters = { ...filters };
         try {
             const topCb = document.getElementById('topByTechCheckbox');
@@ -156,25 +175,91 @@ async function loadMapMarkers(filters = {}) {
 
         const result = await API.getMapMarkers(queryFilters);
         if (!result.success || !result.data) return;
-        
-        result.data.forEach(site => {
-            // Ignorer les sites sans coordonnées valides
+
+        // Mise en cache pour les changements de mode sans re-fetch
+        dashSitesData = result.data;
+
+        // Rendre selon le mode actif
+        await renderDashMapMode(dashSitesData);
+
+        API.updateMapCountBadge(result);
+    } catch (error) {
+        console.error('[Dashboard] Erreur chargement marqueurs:', error);
+    }
+
+    await showCountryBorder(filters.country || 'all');
+}
+
+/**
+ * Change le mode d'affichage de la carte dashboard SANS recharger depuis l'API.
+ * Utilise dashSitesData (cache) pour un re-rendu instantané.
+ *
+ * Appelé par le <select id="mapDisplayMode"> dans dashboard.php.
+ * @param {string} mode - 'cluster' | 'individual' | 'heatmap'
+ */
+async function switchDashDisplayMode(mode) {
+    currentDashDisplayMode = mode;
+
+    // Nettoyer toutes les couches
+    dashboardMarkers.forEach(m => { try { dashboardMap.removeLayer(m); } catch (_) {} });
+    dashboardMarkers = [];
+    if (dashMapModeManager) dashMapModeManager.clearManagedLayers();
+
+    if (dashSitesData && dashSitesData.length > 0) {
+        await renderDashMapMode(dashSitesData);
+    } else {
+        await loadMapMarkers();
+    }
+}
+
+/**
+ * Rend les sites sur la carte dashboard selon le mode d'affichage actif.
+ * @param {Array} sites - Sites à afficher (depuis dashSitesData)
+ */
+async function renderDashMapMode(sites) {
+    const mode = currentDashDisplayMode;
+
+    // ── Mode 1 : Clusters ────────────────────────────────────────────────
+    if (mode === 'cluster') {
+        // Créer un layer de cluster personnalisé avec coloration par statut dominant
+        const clusterGroup = L.markerClusterGroup({
+            maxClusterRadius: 55,
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            iconCreateFunction: (cluster) => {
+                const children = cluster.getAllChildMarkers();
+                const count    = children.length;
+                // Déterminer la couleur dominante selon le statut des sites du cluster
+                const critCount = children.filter(m => m.options?.siteStatus === 'critical').length;
+                const warnCount = children.filter(m => m.options?.siteStatus === 'warning').length;
+                let color = API.COLORS.status.good;
+                if (critCount >= Math.max(1, Math.ceil(count * 0.25))) color = API.COLORS.status.bad;
+                else if ((critCount + warnCount) >= Math.max(1, Math.ceil(count * 0.35))) color = API.COLORS.status.warning;
+                const sizeClass = count < 20 ? 'small' : (count < 80 ? 'medium' : 'large');
+                return L.divIcon({
+                    html: `<div class="cluster-bubble cluster-${sizeClass}" style="background:${color}"><span class="cluster-count">${count}</span></div>`,
+                    className: 'custom-kpi-cluster',
+                    iconSize: [44, 44]
+                });
+            }
+        });
+        dashboardMap.addLayer(clusterGroup);
+
+        sites.forEach(site => {
             const lat = Number(site.latitude);
             const lng = Number(site.longitude);
             if (lat === 0 && lng === 0) return;
 
             const color = API.statusColor(site.status);
-            const icon = L.divIcon({
-                html: `<div style="background:${color}; width:12px; height:12px; border-radius:50%; border:2px solid white;"></div>`,
-                iconSize: [12, 12]
+            const icon  = L.divIcon({
+                html: `<div style="background:${color}; width:8px; height:8px; border-radius:50%; border:2px solid white;"></div>`,
+                iconSize: [8, 8]
             });
-            
+
             const safeSiteId = escapeJsSingleQuoted(site.id);
-            const marker = L.marker([lat, lng], { icon }).addTo(dashboardMap);
-            // Afficher technologie + KPI dégradant dans le popup
-            const worstLine = site.worst_kpi_name
-                ? `<b>KPI dégradant (${escapeHtml(site.technology)}):</b> ${escapeHtml(site.worst_kpi_name)} = ${site.worst_kpi_value}%<br>`
-                : '';
+            const worstLine  = site.worst_kpi_name
+                ? `<b>KPI dégradant (${escapeHtml(site.technology)}):</b> ${escapeHtml(site.worst_kpi_name)} = ${site.worst_kpi_value}%<br>` : '';
+            const marker = L.marker([lat, lng], { icon, siteStatus: site.status });
             marker.bindPopup(`
                 <b>${escapeHtml(site.name)}</b> <span style="font-size:0.8em;background:#e0e7ff;padding:1px 5px;border-radius:4px">${escapeHtml(site.technology)}</span><br>
                 <b>Pays:</b> ${escapeHtml(site.country_name)}<br>
@@ -183,16 +268,50 @@ async function loadMapMarkers(filters = {}) {
                 ${worstLine}
                 <button class="btn btn-sm btn-primary mt-2" onclick="showSiteDetails('${safeSiteId}')">Voir détails</button>
             `);
+            clusterGroup.addLayer(marker);
             dashboardMarkers.push(marker);
         });
-        // Badge : X affichés / Y total
-        API.updateMapCountBadge(result);
-    } catch (error) {
-        console.error('[Dashboard] Erreur chargement marqueurs:', error);
+
+    } // ─── fin mode cluster ───────────────────────────────────────────────────
+
+    // ── Mode 2 : Individuel ────────────────────────────────────────────────
+    // Un marqueur distinct par site, sans regroupement.
+    else if (mode === 'individual') {
+        sites.forEach(site => {
+            const lat = Number(site.latitude);
+            const lng = Number(site.longitude);
+            if (lat === 0 && lng === 0) return;
+
+            const color = API.statusColor(site.status);
+            // Marqueur 12px pour une meilleure visibilité sans clustering
+            const icon = L.divIcon({
+                html: `<div style="background:${color}; width:12px; height:12px; border-radius:50%; border:2px solid white; box-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>`,
+                iconSize: [12, 12]
+            });
+            const safeSiteId = escapeJsSingleQuoted(site.id);
+            const worstLine  = site.worst_kpi_name
+                ? `<b>KPI dégradant (${escapeHtml(site.technology)}):</b> ${escapeHtml(site.worst_kpi_name)} = ${site.worst_kpi_value}%<br>` : '';
+            const marker = L.marker([lat, lng], { icon });
+            marker.bindPopup(`
+                <b>${escapeHtml(site.name)}</b> <span style="font-size:0.8em;background:#e0e7ff;padding:1px 5px;border-radius:4px">${escapeHtml(site.technology)}</span><br>
+                <b>Pays:</b> ${escapeHtml(site.country_name)}<br>
+                <b>Vendor:</b> <span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:3px;vertical-align:middle"></span>${escapeHtml(site.vendor)}<br>
+                <b>KPI Global:</b> ${site.kpi_global}%<br>
+                ${worstLine}
+                <button class="btn btn-sm btn-primary mt-2" onclick="showSiteDetails('${safeSiteId}')">Voir détails</button>
+            `);
+            marker.addTo(dashboardMap);
+            dashboardMarkers.push(marker);
+        });
     }
 
-    // Afficher les frontières GeoJSON du pays sélectionné et zoomer dessus
-    await showCountryBorder(filters.country || 'all');
+    // ── Mode 3 : Heatmap ────────────────────────────────────────────────
+    // Zones colorées selon la densité et la gravité des problèmes KPI.
+    else if (mode === 'heatmap') {
+        if (dashMapModeManager) dashMapModeManager.applyHeatmap(sites);
+    }
+
+    // Le mode choroplèthe a été retiré : aucun traitement supplémentaire.
 }
 
 /**
@@ -542,17 +661,56 @@ async function loadDashboardCharts() {
 /**
  * Initialise les filtres du dashboard
  */
+async function refreshDashboardKpiOptions() {
+    const kpiSelect = document.getElementById('filterKpi');
+    if (!kpiSelect) return;
+    const tech = document.getElementById('filterTech')?.value || 'all';
+    const country = document.getElementById('filterCountry')?.value || 'all';
+    const vendor = document.getElementById('filterVendor')?.value || 'all';
+    if (tech === 'all') {
+        kpiSelect.innerHTML = '<option value="all">Tous les KPIs</option>';
+        kpiSelect.value = 'all';
+        kpiSelect.disabled = true;
+        return;
+    }
+    kpiSelect.disabled = true;
+    kpiSelect.innerHTML = '<option value="all">Chargement...</option>';
+    try {
+        const result = await API.getKpisByTechnology({ country, vendor, tech, domain: 'RAN' });
+        const kpis = (result?.success && Array.isArray(result?.data?.kpis)) ? result.data.kpis : [];
+        kpiSelect.innerHTML = '<option value="all">Tous les KPIs</option>' +
+            kpis.map(k => `<option value="${k}">${k}</option>`).join('');
+        kpiSelect.disabled = kpis.length === 0;
+    } catch (e) {
+        kpiSelect.innerHTML = '<option value="all">Tous les KPIs</option>';
+        kpiSelect.disabled = false;
+    }
+}
+
 function initDashboardFilters() {
     const applyBtn = document.getElementById('applyFilters');
     const resetBtn = document.getElementById('resetFilters');
+    const techSelect = document.getElementById('filterTech');
+    const countrySelect = document.getElementById('filterCountry');
+    const vendorSelect = document.getElementById('filterVendor');
+
+    techSelect?.addEventListener('change', refreshDashboardKpiOptions);
+    countrySelect?.addEventListener('change', () => {
+        if ((techSelect?.value || 'all') !== 'all') refreshDashboardKpiOptions();
+    });
+    vendorSelect?.addEventListener('change', () => {
+        if ((techSelect?.value || 'all') !== 'all') refreshDashboardKpiOptions();
+    });
     
     if (applyBtn) {
         applyBtn.addEventListener('click', async () => {
+            const kpiSelect = document.getElementById('filterKpi');
             const filters = {
                 country: document.getElementById('filterCountry')?.value || 'all',
                 vendor: document.getElementById('filterVendor')?.value || 'all',
                 tech: document.getElementById('filterTech')?.value || 'all',
-                domain: document.getElementById('filterDomain')?.value || 'all'
+                domain: document.getElementById('filterDomain')?.value || 'all',
+                kpi: (kpiSelect && !kpiSelect.disabled) ? (kpiSelect.value || 'all') : 'all'
             };
             
             await loadTopWorstSites(filters);
@@ -568,6 +726,12 @@ function initDashboardFilters() {
                 const el = document.getElementById(id);
                 if (el) el.value = 'all';
             });
+            const kpiSelect = document.getElementById('filterKpi');
+            if (kpiSelect) {
+                kpiSelect.innerHTML = '<option value="all">Tous les KPIs</option>';
+                kpiSelect.value = 'all';
+                kpiSelect.disabled = true;
+            }
             
             await loadTopWorstSites({});
             await loadMapMarkers({});

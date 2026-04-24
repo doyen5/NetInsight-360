@@ -128,9 +128,12 @@ $kpiColClass = ($userRole === 'ADMIN') ? 'col-md-3 col-sm-6' : 'col-md-4 col-sm-
             <div class="filter-group"><label><i class="bi bi-flag"></i> Pays</label><select id="filterCountry"><option value="all">Tous</option><option value="CI">Côte d'Ivoire</option><option value="NE">Niger</option><option value="TG">Togo</option><option value="BJ">Bénin</option></select></div>
             <div class="filter-group"><label><i class="bi bi-building"></i> Vendor</label><select id="filterVendor"><option value="all">Tous</option><option value="Huawei">Huawei</option><option value="Ericsson">Ericsson</option></select></div>
             <div class="filter-group"><label><i class="bi bi-signal"></i> Technologie</label><select id="filterTech"><option value="all">Toutes</option><option value="2G">2G</option><option value="3G">3G</option><option value="4G">4G</option></select></div>
+            <div class="filter-group"><label><i class="bi bi-bar-chart"></i> KPI</label><select id="filterKpi" disabled><option value="all">Tous les KPIs</option></select></div>
             <div class="filter-group"><label><i class="bi bi-diagram-3"></i> Domaine</label><select id="filterDomain"><option value="all">Tous</option><option value="RAN">RAN</option><option value="CORE">CORE</option></select></div>
             <div class="search-box"><i class="bi bi-search"></i><input type="text" id="searchSite" placeholder="Rechercher un site..."><button id="searchBtn"><i class="bi bi-arrow-right"></i></button></div>
             <div class="small text-warning" id="searchNotice" style="display:none" aria-live="polite"></div>
+            <!-- Sélecteur du mode d'affichage de la carte (cluster/individuel/heatmap/choroplèthe) -->
+            <div class="filter-group"><label><i class="bi bi-layers"></i> Affichage</label><select id="mapDisplayMode" onchange="switchDashDisplayMode(this.value)"><option value="cluster">🔵 Clusters</option><option value="individual">📍 Individuel</option><option value="heatmap">🔥 Heatmap</option></select></div>
             <button class="btn btn-primary btn-sm" id="applyFilters"><i class="bi bi-funnel"></i> Appliquer</button>
             <button class="btn btn-secondary btn-sm" id="resetFilters"><i class="bi bi-arrow-repeat"></i> Réinitialiser</button>
         </div>
@@ -213,6 +216,9 @@ $kpiColClass = ($userRole === 'ADMIN') ? 'col-md-3 col-sm-6' : 'col-md-4 col-sm-
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Plugins Leaflet requis pour les modes cluster et heatmap -->
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <!-- Toast : dernière connexion -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:9999">
         <div id="lastLoginToast" class="toast align-items-center text-bg-dark border-0" role="alert" aria-live="assertive" data-bs-autohide="true" data-bs-delay="6000">
@@ -231,6 +237,8 @@ $kpiColClass = ($userRole === 'ADMIN') ? 'col-md-3 col-sm-6' : 'col-md-4 col-sm-
     <script src="js/logout.js?v=2"></script>
     <script src="js/app.js?v=2"></script>
     <script src="js/charts.js?v=2"></script>
+    <!-- Utilitaire partagé des 4 modes d'affichage — doit précéder dashboard.js -->
+    <script src="js/map-modes.js"></script>
     <script src="js/dashboard.js?v=<?= $dashboardJsVersion ?>"></script>
 
 </body>

@@ -123,9 +123,12 @@ $mapViewJsVersion = @filemtime(__DIR__ . '/js/map-view.js') ?: time();
             <div class="filter-group"><label><i class="bi bi-flag"></i> Pays</label><select id="filterCountry"><option value="all">Tous les pays</option><option value="CI">🇨🇮 Côte d'Ivoire</option><option value="NE">🇳🇪 Niger</option><option value="BJ">🇧🇯 Bénin</option><option value="TG">🇹🇬 Togo</option></select></div>
             <div class="filter-group"><label><i class="bi bi-building"></i> Vendor</label><select id="filterVendor"><option value="all">Tous</option><option value="Huawei">Huawei</option><option value="Ericsson">Ericsson</option></select></div>
             <div class="filter-group"><label><i class="bi bi-signal"></i> Technologie</label><select id="filterTech"><option value="all">Toutes</option><option value="2G">2G</option><option value="3G">3G</option><option value="4G">4G</option></select></div>
+            <div class="filter-group"><label><i class="bi bi-bar-chart"></i> KPI</label><select id="filterKpi" disabled><option value="all">Tous les KPIs</option></select></div>
             <div class="filter-group"><label><i class="bi bi-diagram-3"></i> Domaine</label><select id="filterDomain"><option value="all">Tous</option><option value="RAN">RAN</option><option value="CORE">CORE</option></select></div>
             <div class="filter-group"><label><i class="bi bi-bar-chart"></i> Statut KPI</label><select id="filterStatus"><option value="all">Tous</option><option value="good">✅ Bon (≥95%)</option><option value="warning">⚠️ Alerte (90-95%)</option><option value="critical">🔴 Critique (<90%)</option></select></div>
             <div class="filter-group"><label><i class="bi bi-palette"></i> Couleurs KPI</label><select id="filterScoreMode"><option value="fixed">Seuils fixes</option><option value="dynamic">Seuils dynamiques</option></select></div>
+            <!-- Sélecteur du mode d'affichage de la carte (cluster/individuel/heatmap/choroplèthe) -->
+            <div class="filter-group"><label><i class="bi bi-layers"></i> Affichage</label><select id="mapDisplayMode" onchange="switchFullDisplayMode(this.value)"><option value="cluster">🔵 Clusters</option><option value="individual">📍 Individuel</option><option value="heatmap">🔥 Heatmap</option></select></div>
             <button class="btn btn-primary btn-sm" id="applyFilters"><i class="bi bi-funnel"></i> Appliquer</button>
             <button class="btn btn-secondary btn-sm" id="resetFilters"><i class="bi bi-arrow-repeat"></i> Réinitialiser</button>
             <button class="btn btn-info btn-sm" id="fitBoundsBtn"><i class="bi bi-arrows-fullscreen"></i> Voir tout</button>
@@ -166,10 +169,14 @@ $mapViewJsVersion = @filemtime(__DIR__ . '/js/map-view.js') ?: time();
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <!-- Leaflet.heat — requis pour le mode heatmap -->
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script src="js/api.js?v=<?= $apiJsVersion ?>"></script>
     <script src="js/logout.js?v=2"></script>
     <script src="js/app.js"></script>
     <script src="js/charts.js?v=2"></script>
+    <!-- Utilitaire partagé des 4 modes d'affichage — doit précéder map-view.js -->
+    <script src="js/map-modes.js"></script>
     <script src="js/map-view.js?v=<?= $mapViewJsVersion ?>"></script>
 </body>
 </html>

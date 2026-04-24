@@ -130,6 +130,8 @@ $kpisRanJsVersion = @filemtime(__DIR__ . '/js/kpis-ran.js') ?: time();
                 </select>
                 <label style="margin:0">par techno</label>
             </div>
+            <!-- Sélecteur du mode d'affichage de la carte (cluster/individuel/heatmap/choroplèthe) -->
+            <div class="filter-group"><label><i class="bi bi-layers"></i> Affichage</label><select id="mapDisplayMode" onchange="switchRanDisplayMode(this.value)"><option value="cluster">🔵 Clusters</option><option value="individual">📍 Individuel</option><option value="heatmap">🔥 Heatmap</option></select></div>
             <button class="btn btn-primary btn-sm" id="applyFilters"><i class="bi bi-funnel"></i> Appliquer</button>
             <button class="btn btn-secondary btn-sm" id="resetFilters"><i class="bi bi-arrow-repeat"></i> Réinitialiser</button>
             <div class="search-box"><i class="bi bi-search"></i><input type="text" id="searchSite" placeholder="Rechercher un site..."><button id="searchBtn"><i class="bi bi-arrow-right"></i></button></div>
@@ -170,10 +172,15 @@ $kpisRanJsVersion = @filemtime(__DIR__ . '/js/kpis-ran.js') ?: time();
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Plugins Leaflet requis pour les modes cluster et heatmap -->
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script src="js/api.js?v=<?= $apiJsVersion ?>"></script>
     <script src="js/logout.js?v=2"></script>
     <script src="js/app.js?v=2"></script>
     <script src="js/charts.js?v=2"></script>
+    <!-- Utilitaire partagé des 4 modes d'affichage — doit précéder kpis-ran.js -->
+    <script src="js/map-modes.js"></script>
     <script src="js/kpis-ran.js?v=<?= $kpisRanJsVersion ?>"></script>
 </body>
 </html>
