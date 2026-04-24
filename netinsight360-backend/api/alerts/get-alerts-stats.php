@@ -11,6 +11,21 @@ require_once __DIR__ . '/../../config/database.php';
 try {
     $pdo = Database::getLocalConnection();
 
+    // Cache court pour amortir les rafraîchissements front fréquents.
+    $cacheTtl = 30;
+    $cacheDir = realpath(__DIR__ . '/../../data') . DIRECTORY_SEPARATOR . 'cache';
+    if (!is_dir($cacheDir)) {
+        @mkdir($cacheDir, 0755, true);
+    }
+    $cacheFile = $cacheDir . DIRECTORY_SEPARATOR . 'alerts_stats.json';
+    if (is_file($cacheFile) && (time() - filemtime($cacheFile) <= $cacheTtl)) {
+        $cached = @file_get_contents($cacheFile);
+        if ($cached !== false && $cached !== '') {
+            echo $cached;
+            exit;
+        }
+    }
+
     // --- Compteurs globaux ---
     $counts = $pdo->query("
         SELECT
@@ -84,7 +99,7 @@ try {
         FROM alerts WHERE status = 'resolved' AND resolved_at IS NOT NULL
     ")->fetch(PDO::FETCH_ASSOC);
 
-    echo json_encode([
+    $response = json_encode([
         'success' => true,
         'data' => [
             'active'               => (int)($counts['active']         ?? 0),
@@ -98,6 +113,13 @@ try {
             'avg_resolution_hours' => (float)($avgRow['avg_hours'] ?? 0),
         ]
     ]);
+
+    if ($response === false) {
+        throw new Exception('Erreur de serialisation JSON');
+    }
+
+    @file_put_contents($cacheFile, $response, LOCK_EX);
+    echo $response;
 
 } catch (Exception $e) {
     error_log('[get-alerts-stats] ' . $e->getMessage());

@@ -314,7 +314,7 @@ async function loadFullSitesTable() {
             tech: fullFilters.tech,
             domain: fullFilters.domain,
             status: fullFilters.status,
-            limit: 1000
+            limit: 500
         };
         const result = await API.getSites(tableFilters);
         if (!result.success || !result.data) return;
@@ -433,10 +433,15 @@ async function loadFullCharts() {
         });
         
         // Répartition par technologie — Couleurs distinctes par tech
-        const twoG = data.filter(s => s.technology === '2G').length;
-        const threeG = data.filter(s => s.technology === '3G').length;
-        const fourG = data.filter(s => s.technology === '4G').length;
-        const core = data.filter(s => s.technology === 'CORE').length;
+        const techCounts = { '2G': 0, '3G': 0, '4G': 0, 'CORE': 0 };
+        data.forEach((s) => {
+            const t = s.technology;
+            if (techCounts[t] !== undefined) techCounts[t] += 1;
+        });
+        const twoG = techCounts['2G'];
+        const threeG = techCounts['3G'];
+        const fourG = techCounts['4G'];
+        const core = techCounts['CORE'];
         
         chartManager.createBarChart('techChart', {
             labels: ['2G', '3G', '4G', 'CORE'],
@@ -755,20 +760,19 @@ function initFullReports() {
     const downloadSnapshotBtn = document.getElementById('downloadSnapshotBtn');
     if (downloadSnapshotBtn) {
         downloadSnapshotBtn.addEventListener('click', () => {
+            const statusCounts = { good: 0, warning: 0, critical: 0 };
+            const techCounts = { '2G': 0, '3G': 0, '4G': 0 };
+            (fullTableData || []).forEach((s) => {
+                if (statusCounts[s.status] !== undefined) statusCounts[s.status] += 1;
+                if (techCounts[s.technology] !== undefined) techCounts[s.technology] += 1;
+            });
+
             const snapshot = {
                 timestamp: new Date().toISOString(),
                 filters: fullFilters,
                 sitesCount: fullTableData?.length || 0,
-                statusCounts: {
-                    good: fullTableData?.filter(s => s.status === 'good').length || 0,
-                    warning: fullTableData?.filter(s => s.status === 'warning').length || 0,
-                    critical: fullTableData?.filter(s => s.status === 'critical').length || 0,
-                },
-                techCounts: {
-                    '2G': fullTableData?.filter(s => s.technology === '2G').length || 0,
-                    '3G': fullTableData?.filter(s => s.technology === '3G').length || 0,
-                    '4G': fullTableData?.filter(s => s.technology === '4G').length || 0,
-                }
+                statusCounts,
+                techCounts
             };
             
             const json = JSON.stringify(snapshot, null, 2);

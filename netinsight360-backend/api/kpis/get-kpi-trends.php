@@ -136,35 +136,71 @@ try {
 
     $labels = [];
     $values = [];
+    $valueMap = [];
+    if (!empty($dates)) {
+        if ($useHour) {
+            $clauses = [];
+            $params = [$siteId];
+            foreach ($dates as $date) {
+                if (strpos($date, ' ') === false) {
+                    $clauses[] = '(kpi_date = ? AND kpi_hour IS NULL)';
+                    $params[] = $date;
+                    continue;
+                }
+                [$dPart, $tPart] = explode(' ', $date);
+                $hour = intval(explode(':', $tPart)[0]);
+                $clauses[] = '(kpi_date = ? AND kpi_hour = ?)';
+                $params[] = $dPart;
+                $params[] = $hour;
+            }
+            if (!empty($clauses)) {
+                $sqlValues = "
+                    SELECT kpi_date, kpi_hour, ROUND(AVG(`$kpiName`), 2) AS val
+                    FROM kpis_ran
+                    WHERE site_id = ?
+                      AND (" . implode(' OR ', $clauses) . ")
+                      " . ($technology ? ' AND technology = ?' : '') . "
+                    GROUP BY kpi_date, kpi_hour
+                ";
+                if ($technology) $params[] = $technology;
+                $stmtVals = $pdo->prepare($sqlValues);
+                $stmtVals->execute($params);
+                foreach ($stmtVals->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                    if ($row['kpi_hour'] === null || $row['kpi_hour'] === '') {
+                        $key = $row['kpi_date'];
+                    } else {
+                        $key = $row['kpi_date'] . ' ' . str_pad((string)$row['kpi_hour'], 2, '0', STR_PAD_LEFT) . ':00:00';
+                    }
+                    $valueMap[$key] = $row['val'] !== null ? floatval($row['val']) : null;
+                }
+            }
+        } else {
+            $placeholders = implode(',', array_fill(0, count($dates), '?'));
+            $params = array_merge([$siteId], $dates);
+            if ($technology) $params[] = $technology;
+            $sqlValues = "
+                SELECT kpi_date, ROUND(AVG(`$kpiName`), 2) AS val
+                FROM kpis_ran
+                WHERE site_id = ?
+                  AND kpi_date IN ($placeholders)
+                  " . ($technology ? ' AND technology = ?' : '') . "
+                GROUP BY kpi_date
+            ";
+            $stmtVals = $pdo->prepare($sqlValues);
+            $stmtVals->execute($params);
+            foreach ($stmtVals->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $valueMap[$row['kpi_date']] = $row['val'] !== null ? floatval($row['val']) : null;
+            }
+        }
+    }
 
     foreach ($dates as $date) {
         if ($useHour && strpos($date, ' ') !== false) {
             $labels[] = date('d/m H:i', strtotime($date));
-
-            $stmt = $pdo->prepare(
-                "SELECT ROUND(AVG(`$kpiName`), 2) AS val
-                 FROM kpis_ran
-                 WHERE site_id = ? AND kpi_date = ? AND kpi_hour = ? $techFilter"
-            );
-            // extraire date et hour
-            [$dPart, $tPart] = explode(' ', $date);
-            $hour = intval(explode(':', $tPart)[0]);
-            $params = $technology ? [$siteId, $dPart, $hour, $technology] : [$siteId, $dPart, $hour];
-            $stmt->execute($params);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            $values[] = $row['val'] !== null ? floatval($row['val']) : null;
+            $values[] = $valueMap[$date] ?? null;
         } else {
             $labels[] = date('d/m', strtotime($date));
-
-            $stmt = $pdo->prepare(
-                "SELECT ROUND(AVG(`$kpiName`), 2) AS val
-                 FROM kpis_ran
-                 WHERE site_id = ? AND kpi_date = ? $techFilter"
-            );
-            $params = $technology ? [$siteId, $date, $technology] : [$siteId, $date];
-            $stmt->execute($params);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            $values[] = $row['val'] !== null ? floatval($row['val']) : null;
+            $values[] = $valueMap[$date] ?? null;
         }
     }
 

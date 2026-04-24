@@ -30,18 +30,34 @@ const KPI_LABEL_TO_COLUMN = {
 
 let ranMap = null;
 let ranMarkers = [];
-let ranFilters = { country: 'all', vendor: 'all', tech: 'all' };
+let ranFilters = { country: 'all', vendor: 'all', tech: 'all', worstKpi: 'all' };
 let ranCountryBorderLayer = null; // Couche Leaflet GeoJSON des frontières du pays sélectionné
 let ranCurrentPage = 1;
 let ranItemsPerPage = 10;
 let ranKpisCacheKey = '';
 let ranKpisCacheData = null;
 
+function getBaseRanFilters() {
+    return {
+        country: ranFilters.country || 'all',
+        vendor: ranFilters.vendor || 'all',
+        tech: ranFilters.tech || 'all'
+    };
+}
+
+function getWorstSitesFilters() {
+    return {
+        ...getBaseRanFilters(),
+        domain: 'RAN',
+        worst_kpi: ranFilters.worstKpi || 'all'
+    };
+}
+
 /**
  * Construit une clé de cache stable pour la combinaison de filtres RAN.
  */
 function buildRanKpisCacheKey() {
-    return JSON.stringify(ranFilters || {});
+    return JSON.stringify(getBaseRanFilters());
 }
 
 /**
@@ -56,7 +72,7 @@ async function fetchRanKpisPayload(forceRefresh = false) {
         return { success: true, data: ranKpisCacheData };
     }
 
-    const result = await API.getRanKpis(ranFilters);
+    const result = await API.getRanKpis(getBaseRanFilters());
     if (result?.success && result.data) {
         ranKpisCacheData = result.data;
         ranKpisCacheKey = key;
@@ -171,7 +187,7 @@ async function loadRanMapMarkers() {
                     const sel = document.getElementById('topByTechNSelect');
                     if (sel) topN = parseInt(sel.value) || 10;
                 } catch (_) { topN = 10; }
-                const res = await API.getTopWorstSitesByTech({ ...ranFilters, domain: 'RAN', top_n: topN });
+                const res = await API.getTopWorstSitesByTech({ ...getWorstSitesFilters(), top_n: topN });
             if (!res.success || !res.data) return;
             // Fusionner les listes par techno pour afficher sur la carte
             const combined = [];
@@ -211,7 +227,7 @@ async function loadRanMapMarkers() {
 
         // Mode normal : récupérer les marqueurs standards (tous les sites selon filtre)
         // Construire les filtres de requête et transmettre top_by_tech si la checkbox est présente
-        const queryFilters = { ...ranFilters, domain: 'RAN' };
+        const queryFilters = { ...getBaseRanFilters(), domain: 'RAN' };
         try {
             const topCb = document.getElementById('topByTechCheckbox');
             if (topCb && topCb.checked) queryFilters.top_by_tech = '1';
@@ -280,6 +296,7 @@ async function loadRanStats() {
 async function loadWorstSitesTable() {
     try {
         const topByTech = document.getElementById('topByTechCheckbox')?.checked;
+        const worstFilters = getWorstSitesFilters();
         let worst = [];
 
         if (topByTech) {
@@ -289,7 +306,7 @@ async function loadWorstSitesTable() {
             const topSelect = document.getElementById('topByTechNSelect');
             if (topSelect) topN = parseInt(topSelect.value, 10) || 10;
 
-            const byTechRes = await API.getTopWorstSitesByTech({ ...ranFilters, domain: 'RAN', top_n: topN });
+            const byTechRes = await API.getTopWorstSitesByTech({ ...worstFilters, top_n: topN });
             if (!byTechRes.success || !byTechRes.data) return;
 
             Object.entries(byTechRes.data.per_tech || {}).forEach(([techGroup, rows]) => {
@@ -298,7 +315,7 @@ async function loadWorstSitesTable() {
                 });
             });
         } else {
-            const result = await API.getTopWorstSites({ ...ranFilters, domain: 'RAN' });
+            const result = await API.getTopWorstSites(worstFilters);
             if (!result.success) return;
             worst = result.data.worst || [];
         }
@@ -321,16 +338,17 @@ async function loadWorstSitesTable() {
             const worstLabel = site.worst_kpi_name
                 ? `<span style="font-size:0.8rem">${escapeHtml(site.worst_kpi_name)}</span><br><strong>${site.worst_kpi_value}%</strong>`
                 : `<strong>${site.kpi_global}%</strong>`;
+            const safeSiteId = escapeJsSingleQuoted(site.id);
             return `<tr class="site-row-${site.status}">
                 <td>${start + idx + 1}</td>
                 <td><strong>${escapeHtml(site.id)}</strong></td>
                 <td>${escapeHtml(site.name)}</td>
                 <td><i class="bi bi-flag"></i> ${escapeHtml(site.country_name)}</td>
-                <td><span class="badge-tech">${site.technology}</span></td>
-                <td><span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:4px;vertical-align:middle"></span>${site.vendor}</td>
+                <td><span class="badge-tech">${escapeHtml(site.technology)}</span></td>
+                <td><span style="width:9px;height:9px;border-radius:50%;background:${API.vendorColor(site.vendor)};display:inline-block;margin-right:4px;vertical-align:middle"></span>${escapeHtml(site.vendor)}</td>
                 <td>${worstLabel}</td>
                 <td><span class="status-badge status-${site.status}">${site.status === 'good' ? '✓ OK' : (site.status === 'warning' ? '⚠️ Alerte' : '🔴 Critique')}</span></td>
-                <td><button class="btn-details" onclick="showRanSiteDetails('${site.id}')"><i class="bi bi-eye-fill"></i></button></td>
+                <td><button class="btn-details" onclick="showRanSiteDetails('${safeSiteId}')"><i class="bi bi-eye-fill"></i></button></td>
             </tr>`;
         }).join('');
         
@@ -427,13 +445,34 @@ async function loadRanCharts() {
 function initRanFilters() {
     const applyBtn = document.getElementById('applyFilters');
     const resetBtn = document.getElementById('resetFilters');
+    const countrySelect = document.getElementById('filterCountry');
+    const vendorSelect = document.getElementById('filterVendor');
+    const techSelect = document.getElementById('filterTech');
+    const worstKpiSelect = document.getElementById('filterWorstKpi');
+
+    const refreshKpiOptions = async () => {
+        await refreshWorstKpiOptions({
+            country: countrySelect?.value || 'all',
+            vendor: vendorSelect?.value || 'all',
+            tech: techSelect?.value || 'all'
+        });
+    };
+
+    techSelect?.addEventListener('change', refreshKpiOptions);
+    countrySelect?.addEventListener('change', () => {
+        if ((techSelect?.value || 'all') !== 'all') refreshKpiOptions();
+    });
+    vendorSelect?.addEventListener('change', () => {
+        if ((techSelect?.value || 'all') !== 'all') refreshKpiOptions();
+    });
     
     if (applyBtn) {
         applyBtn.addEventListener('click', async () => {
             ranFilters = {
-                country: document.getElementById('filterCountry')?.value || 'all',
-                vendor: document.getElementById('filterVendor')?.value || 'all',
-                tech: document.getElementById('filterTech')?.value || 'all'
+                country: countrySelect?.value || 'all',
+                vendor: vendorSelect?.value || 'all',
+                tech: techSelect?.value || 'all',
+                worstKpi: (worstKpiSelect && !worstKpiSelect.disabled) ? (worstKpiSelect.value || 'all') : 'all'
             };
             // Invalider le cache KPIs après changement de filtres.
             ranKpisCacheData = null;
@@ -458,7 +497,12 @@ function initRanFilters() {
                 const el = document.getElementById(id);
                 if (el) el.value = 'all';
             });
-            ranFilters = { country: 'all', vendor: 'all', tech: 'all' };
+            if (worstKpiSelect) {
+                worstKpiSelect.innerHTML = '<option value="all">Tous les KPIs</option>';
+                worstKpiSelect.value = 'all';
+                worstKpiSelect.disabled = true;
+            }
+            ranFilters = { country: 'all', vendor: 'all', tech: 'all', worstKpi: 'all' };
             ranKpisCacheData = null;
             ranKpisCacheKey = '';
             const searchInput = document.getElementById('searchSite');
@@ -493,6 +537,59 @@ function initRanFilters() {
             ranCurrentPage = 1;
             await Promise.all([loadWorstSitesTable(), loadRanMapMarkers()]);
         });
+    }
+
+    refreshWorstKpiOptions({
+        country: countrySelect?.value || 'all',
+        vendor: vendorSelect?.value || 'all',
+        tech: techSelect?.value || 'all'
+    });
+}
+
+async function refreshWorstKpiOptions(filters = {}) {
+    const kpiSelect = document.getElementById('filterWorstKpi');
+    if (!kpiSelect) return;
+
+    const selectedTech = filters.tech || 'all';
+    const previousValue = kpiSelect.value || 'all';
+
+    if (selectedTech === 'all') {
+        kpiSelect.innerHTML = '<option value="all">Tous les KPIs</option>';
+        kpiSelect.value = 'all';
+        kpiSelect.disabled = true;
+        return;
+    }
+
+    kpiSelect.disabled = true;
+    kpiSelect.innerHTML = '<option value="all">Chargement des KPIs...</option>';
+
+    try {
+        const result = await API.getKpisByTechnology({
+            country: filters.country || 'all',
+            vendor: filters.vendor || 'all',
+            domain: 'RAN',
+            tech: selectedTech
+        });
+
+        const kpis = (result?.success && Array.isArray(result?.data?.kpis)) ? result.data.kpis : [];
+        const options = ['<option value="all">Tous les KPIs</option>'];
+        kpis.forEach((kpiName) => {
+            options.push(`<option value="${escapeHtml(kpiName)}">${escapeHtml(kpiName)}</option>`);
+        });
+
+        kpiSelect.innerHTML = options.join('');
+        kpiSelect.disabled = false;
+
+        if (kpis.includes(previousValue)) {
+            kpiSelect.value = previousValue;
+        } else {
+            kpiSelect.value = 'all';
+        }
+    } catch (error) {
+        console.error('[KPIs RAN] Erreur chargement liste KPIs:', error);
+        kpiSelect.innerHTML = '<option value="all">Tous les KPIs</option>';
+        kpiSelect.value = 'all';
+        kpiSelect.disabled = false;
     }
 }
 
@@ -739,7 +836,8 @@ function initRanReports() {
                         domain: 'RAN',
                         start_date: startDate,
                         end_date: endDate,
-                        ...ranFilters,
+                        ...getBaseRanFilters(),
+                        worst_kpi: ranFilters.worstKpi || 'all',
                     });
 
                     if (result.success && result.url) {
@@ -767,7 +865,11 @@ function initRanReports() {
             await runButtonAction(shareWorstBtn, 'Partage...', async () => {
                 setActionMessage('worstSitesActionMsg', 'info', 'Préparation du message WhatsApp...');
                 try {
-                    const result = await API.generateWhatsAppReport({ domain: 'RAN', ...ranFilters });
+                    const result = await API.generateWhatsAppReport({
+                        domain: 'RAN',
+                        ...getBaseRanFilters(),
+                        worst_kpi: ranFilters.worstKpi || 'all'
+                    });
                     if (result.success && result.report) {
                         const w = window.open(`https://wa.me/?text=${encodeURIComponent(result.report)}`, '_blank');
                         if (!w) {
@@ -793,7 +895,11 @@ function initRanReports() {
             await runButtonAction(shareAllBtn, 'Partage...', async () => {
                 setActionMessage('reportActionMsg', 'info', 'Préparation du rapport WhatsApp...');
                 try {
-                    const result = await API.generateWhatsAppReport({ domain: 'RAN', ...ranFilters });
+                    const result = await API.generateWhatsAppReport({
+                        domain: 'RAN',
+                        ...getBaseRanFilters(),
+                        worst_kpi: ranFilters.worstKpi || 'all'
+                    });
                     if (result.success && result.report) {
                         const w = window.open(`https://wa.me/?text=${encodeURIComponent(result.report)}`, '_blank');
                         if (!w) {
@@ -843,7 +949,11 @@ function initRanReports() {
             await runButtonAction(exportExcelBtn, 'Export Excel...', async () => {
                 setActionMessage('reportActionMsg', 'info', 'Génération du fichier Excel en cours...');
                 try {
-                    const result = await API.exportExcel('worst_sites', { domain: 'RAN', ...ranFilters });
+                    const result = await API.exportExcel('worst_sites', {
+                        domain: 'RAN',
+                        ...getBaseRanFilters(),
+                        worst_kpi: ranFilters.worstKpi || 'all'
+                    });
                     if (result.success && result.url) {
                         const w = window.open(result.url, '_blank');
                         if (!w) {

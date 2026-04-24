@@ -118,6 +118,7 @@ $kpisRanJsVersion = @filemtime(__DIR__ . '/js/kpis-ran.js') ?: time();
             <div class="filter-group"><label><i class="bi bi-flag"></i> Pays</label><select id="filterCountry"><option value="all">Tous les pays</option><option value="CI">🇨🇮 Côte d'Ivoire</option><option value="NE">🇳🇪 Niger</option><option value="BJ">🇧🇯 Bénin</option><option value="TG">🇹🇬 Togo</option></select></div>
             <div class="filter-group"><label><i class="bi bi-building"></i> Vendor</label><select id="filterVendor"><option value="all">Tous</option><option value="Huawei">Huawei</option><option value="Ericsson">Ericsson</option></select></div>
             <div class="filter-group"><label><i class="bi bi-signal"></i> Technologie</label><select id="filterTech"><option value="all">Toutes</option><option value="2G">2G</option><option value="3G">3G</option><option value="4G">4G</option></select></div>
+            <div class="filter-group"><label><i class="bi bi-bar-chart"></i> KPI</label><select id="filterWorstKpi" disabled><option value="all">Tous les KPIs</option></select></div>
             <!-- Option pour n'afficher que les X pires sites par technologie (utile après import) -->
             <div class="filter-group" style="display:flex;align-items:center;gap:8px">
                 <input type="checkbox" id="topByTechCheckbox">

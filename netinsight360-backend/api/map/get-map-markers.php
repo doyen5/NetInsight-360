@@ -29,6 +29,9 @@ try {
     $tech    = $_GET['tech']    ?? 'all';
     $domain  = $_GET['domain']  ?? 'all';
     $status  = $_GET['status']  ?? 'all';
+    $limit   = isset($_GET['limit']) ? (int)$_GET['limit'] : 1200;
+    if ($limit < 100) $limit = 100;
+    if ($limit > 5000) $limit = 5000;
     // Mode de scoring: fixed (seuils métiers statiques) ou dynamic (baseline pays+tech)
     $scoreMode = strtolower(trim((string)($_GET['score_mode'] ?? 'fixed')));
     if (!in_array($scoreMode, ['fixed', 'dynamic'], true)) {
@@ -42,6 +45,7 @@ try {
                 s.id,
                 s.name,
                 s.country_code,
+                COALESCE(c.country_name, s.country_code)                 AS country_name,
                 s.vendor,
                 COALESCE(k.technology, s.technology, 'N/A')              AS technology,
                 s.domain,
@@ -63,6 +67,7 @@ try {
                     ON k1.site_id = k2.site_id AND k1.technology = k2.technology AND k1.kpi_date = k2.max_date
             ) k ON k.site_id = s.id
             LEFT JOIN site_mapping sm ON sm.remote_id = s.id
+            LEFT JOIN countries c ON c.country_code = s.country_code AND c.is_active = 1
             WHERE 1=1";
 
     $params = [];
@@ -75,9 +80,8 @@ try {
     $sql .= " HAVING latitude IS NOT NULL AND latitude != 0 AND longitude != 0"
           . " AND latitude BETWEEN -5.0 AND 25.0"
           . " AND longitude BETWEEN -18.0 AND 30.0";
-    // Augmenter la limite à 5000 pour afficher plus de sites par pays
-    // (limite de 2000 était trop restrictive pour les grands pays comme la CI)
-    $sql .= " ORDER BY kpi_global ASC LIMIT 5000";
+    // Limite configurable: plus basse par défaut pour réduire la latence perçue.
+    $sql .= " ORDER BY kpi_global ASC LIMIT $limit";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
@@ -103,15 +107,7 @@ try {
         $limited = true;
     }
 
-    // --- Enrichissement : nom du pays ---
-    $countries = [];
-    $cStmt = $pdo->query("SELECT country_code, country_name FROM countries WHERE is_active = 1");
-    while ($row = $cStmt->fetch(PDO::FETCH_ASSOC)) {
-        $countries[$row['country_code']] = $row['country_name'];
-    }
-
     foreach ($sites as &$site) {
-        $site['country_name']   = $countries[$site['country_code']] ?? $site['country_code'];
         $site['latitude']       = floatval($site['latitude']);
         $site['longitude']      = floatval($site['longitude']);
         $site['kpi_global']     = round(floatval($site['kpi_global']), 2);
@@ -143,42 +139,44 @@ try {
     unset($site);
 
     // PHASE 2 — Seuils dynamiques par pays+technologie (baseline locale)
-    // Calcul d'une baseline (moyenne, écart-type) pour adapter la couleur au contexte.
+    // On évite ce calcul coûteux quand le mode fixe est demandé.
     $groupStats = [];
-    $groupBuckets = [];
-    foreach ($sites as $s) {
-        $kpi = floatval($s['kpi_global'] ?? 0);
-        if ($kpi <= 0) continue;
-        $groupKey = ($s['country_code'] ?? 'NA') . '|' . ($s['technology'] ?? 'NA');
-        if (!isset($groupBuckets[$groupKey])) $groupBuckets[$groupKey] = [];
-        $groupBuckets[$groupKey][] = $kpi;
-    }
-
-    foreach ($groupBuckets as $groupKey => $vals) {
-        $n = count($vals);
-        if ($n === 0) continue;
-        $avg = array_sum($vals) / $n;
-        $var = 0.0;
-        foreach ($vals as $v) {
-            $d = $v - $avg;
-            $var += $d * $d;
-        }
-        $std = $n > 1 ? sqrt($var / ($n - 1)) : 0.0;
-
-        // Seuils dynamiques bornés pour éviter les extrêmes visuels.
-        $warn = max(85.0, min(98.5, $avg - max(0.6, 1.0 * $std)));
-        $crit = max(75.0, min(95.0, $avg - max(1.2, 2.0 * $std)));
-        if ($crit >= $warn) {
-            $crit = max(75.0, $warn - 2.0);
+    if ($scoreMode === 'dynamic') {
+        $groupBuckets = [];
+        foreach ($sites as $s) {
+            $kpi = floatval($s['kpi_global'] ?? 0);
+            if ($kpi <= 0) continue;
+            $groupKey = ($s['country_code'] ?? 'NA') . '|' . ($s['technology'] ?? 'NA');
+            if (!isset($groupBuckets[$groupKey])) $groupBuckets[$groupKey] = [];
+            $groupBuckets[$groupKey][] = $kpi;
         }
 
-        $groupStats[$groupKey] = [
-            'count' => $n,
-            'avg' => round($avg, 2),
-            'std' => round($std, 3),
-            'warn_threshold' => round($warn, 2),
-            'crit_threshold' => round($crit, 2),
-        ];
+        foreach ($groupBuckets as $groupKey => $vals) {
+            $n = count($vals);
+            if ($n === 0) continue;
+            $avg = array_sum($vals) / $n;
+            $var = 0.0;
+            foreach ($vals as $v) {
+                $d = $v - $avg;
+                $var += $d * $d;
+            }
+            $std = $n > 1 ? sqrt($var / ($n - 1)) : 0.0;
+
+            // Seuils dynamiques bornés pour éviter les extrêmes visuels.
+            $warn = max(85.0, min(98.5, $avg - max(0.6, 1.0 * $std)));
+            $crit = max(75.0, min(95.0, $avg - max(1.2, 2.0 * $std)));
+            if ($crit >= $warn) {
+                $crit = max(75.0, $warn - 2.0);
+            }
+
+            $groupStats[$groupKey] = [
+                'count' => $n,
+                'avg' => round($avg, 2),
+                'std' => round($std, 3),
+                'warn_threshold' => round($warn, 2),
+                'crit_threshold' => round($crit, 2),
+            ];
+        }
     }
 
     foreach ($sites as &$site) {

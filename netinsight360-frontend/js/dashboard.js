@@ -289,11 +289,13 @@ async function loadDashboardCharts() {
             }
         };
 
-        const trends = await safeGetTrend('RNA');
-        const tchDrop = await safeGetTrend('tch_drop_rate');
-        const cssr = await safeGetTrend('cssr');
-        const erab = await safeGetTrend('lte_erab_sr');
-        const packetLoss = await safeGetTrend('packet_loss');
+        const [trends, tchDrop, cssr, erab, packetLoss] = await Promise.all([
+            safeGetTrend('RNA'),
+            safeGetTrend('tch_drop_rate'),
+            safeGetTrend('cssr'),
+            safeGetTrend('lte_erab_sr'),
+            safeGetTrend('packet_loss')
+        ]);
 
         if (trends.success) {
             // Calcul dynamique de l'axe Y : min arrondi à la dizaine inf. - 2, max 100

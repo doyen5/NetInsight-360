@@ -2,7 +2,7 @@
 /**
  * API: get-top-worst-sites-by-tech.php
  * Retourne pour chaque technologie la liste des X pires sites
- * Filtres GET acceptés : country, vendor, domain, top_n
+ * Filtres GET acceptés : country, vendor, domain, tech, top_n, worst_kpi
  * Usage recommandé : appelé après un import pour afficher rapidement
  * les pires sites par technologie (ex: top_n=10).
  */
@@ -18,6 +18,7 @@ try {
     $vendor  = $_GET['vendor']  ?? 'all';
     $domain  = $_GET['domain']  ?? 'all';
     $tech    = $_GET['tech']    ?? 'all';
+    $worstKpi = trim((string)($_GET['worst_kpi'] ?? 'all'));
     $topN    = intval($_GET['top_n'] ?? 10);
     if ($topN <= 0) $topN = 10;
     if ($topN > 50) $topN = 50;
@@ -59,6 +60,10 @@ try {
         if ($country !== 'all') { $where[] = 's.country_code = ?'; $params[] = $country; }
         if ($vendor !== 'all')  { $where[] = 's.vendor = ?';       $params[] = $vendor; }
         if ($domain !== 'all')  { $where[] = 's.domain = ?';       $params[] = $domain; }
+        if ($worstKpi !== '' && strcasecmp($worstKpi, 'all') !== 0) {
+            $where[] = 'k.worst_kpi_name = ?';
+            $params[] = $worstKpi;
+        }
 
         $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
         $having = 'HAVING kpi_global >= 0';

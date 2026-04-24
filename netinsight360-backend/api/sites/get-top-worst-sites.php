@@ -3,7 +3,7 @@
  * NetInsight 360 - API: Top 5 meilleurs et 35 pires sites (Option A)
  *
  * Option A : chaque ligne = combinaison site + technologie.
- * Filtres acceptés (GET) : country, vendor, tech, domain
+ * Filtres acceptés (GET) : country, vendor, tech, domain, worst_kpi
  */
 
 require_once __DIR__ . '/../cors.php';
@@ -18,6 +18,7 @@ try {
     $vendor  = $_GET['vendor']  ?? 'all';
     $tech    = $_GET['tech']    ?? 'all';
     $domain  = $_GET['domain']  ?? 'all';
+    $worstKpi = trim((string)($_GET['worst_kpi'] ?? 'all'));
 
     // Dernière date disponible (pas forcément aujourd'hui si l'import tourne en H-2)
     $lastDate = $pdo->query("SELECT MAX(kpi_date) FROM kpis_ran")->fetchColumn() ?: date('Y-m-d');
@@ -47,6 +48,10 @@ try {
     if ($vendor  !== 'all') { $where[] = 's.vendor = ?';       $params[] = $vendor;  }
     if ($tech    !== 'all') { $where[] = 'k.technology = ?';   $params[] = $tech;    }
     if ($domain  !== 'all') { $where[] = 's.domain = ?';       $params[] = $domain;  }
+    if ($worstKpi !== '' && strcasecmp($worstKpi, 'all') !== 0) {
+        $where[] = 'k.worst_kpi_name = ?';
+        $params[] = $worstKpi;
+    }
 
     $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
     // Pas de filtre lat/lng pour la liste : les sites sans coords sont quand même pertinents

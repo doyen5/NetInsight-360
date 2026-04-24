@@ -186,6 +186,12 @@ class API {
         const suffix = params ? `?${params}` : '';
         return this.request(`/sites/get-top-worst-sites-by-tech.php${suffix}`);
     }
+
+    static async getKpisByTechnology(filters = {}) {
+        const params = new URLSearchParams(filters).toString();
+        const suffix = params ? `?${params}` : '';
+        return this.request(`/sites/get-kpis-by-tech.php${suffix}`);
+    }
     
     // ============================================
     // KPIs
