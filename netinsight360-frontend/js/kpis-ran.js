@@ -49,6 +49,9 @@ let ranMapModeManager = null;
 /** Cache des données carte pour les changements de mode sans re-fetch */
 let ranSitesData = [];
 
+/** Référence au layer cluster actif — supprimé avant chaque changement de mode */
+let ranClusterLayer = null;
+
 function getBaseRanFilters() {
     return {
         country: ranFilters.country || 'all',
@@ -192,6 +195,7 @@ async function loadRanMapMarkers() {
     if (!ranMap) return;
     
     // Nettoyage complet des couches précédentes
+    if (ranClusterLayer) { ranMap.removeLayer(ranClusterLayer); ranClusterLayer = null; }
     ranMarkers.forEach(marker => ranMap.removeLayer(marker));
     ranMarkers = [];
     if (ranMapModeManager) ranMapModeManager.clearManagedLayers();
@@ -238,6 +242,7 @@ async function loadRanMapMarkers() {
  */
 async function switchRanDisplayMode(mode) {
     currentRanDisplayMode = mode;
+    if (ranClusterLayer) { ranMap.removeLayer(ranClusterLayer); ranClusterLayer = null; }
     ranMarkers.forEach(m => { try { ranMap.removeLayer(m); } catch (_) {} });
     ranMarkers = [];
     if (ranMapModeManager) ranMapModeManager.clearManagedLayers();
@@ -282,6 +287,7 @@ async function renderRanMapMode(sites) {
                 });
             }
         });
+        ranClusterLayer = clusterGroup;
         ranMap.addLayer(clusterGroup);
 
         sites.forEach(site => {
@@ -853,11 +859,13 @@ async function runButtonAction(btn, runningLabel, action) {
 function initRanReports() {
     const exportWorstBtn = document.getElementById('exportWorstSites');
     const exportPdfBtn = document.getElementById('exportPdf');
+    const exportSitePdfBtn = document.getElementById('exportSitePdf');
     const worstPdfMenu = document.getElementById('kpisRanWorstPdfMenu');
     const mainPdfMenu = document.getElementById('kpisRanMainPdfMenu');
+    const sitePdfMenu = document.getElementById('kpisRanSitePdfMenu');
 
     const closeAllPdfMenus = () => {
-        [worstPdfMenu, mainPdfMenu].forEach(menu => menu?.classList.remove('show'));
+        [worstPdfMenu, mainPdfMenu, sitePdfMenu].forEach(menu => menu?.classList.remove('show'));
     };
 
     const togglePdfMenu = (menu) => {
@@ -884,6 +892,14 @@ function initRanReports() {
         });
     }
 
+    if (exportSitePdfBtn && sitePdfMenu) {
+        exportSitePdfBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            togglePdfMenu(sitePdfMenu);
+        });
+    }
+
     // Fermer les menus si clic en dehors.
     document.addEventListener('click', (e) => {
         const clickedInside = e.target.closest('.dropdown-pdf-wrapper');
@@ -891,7 +907,7 @@ function initRanReports() {
     });
 
     // Gestion des options de période pour les deux menus PDF.
-    document.querySelectorAll('#kpisRanWorstPdfMenu .pdf-option, #kpisRanMainPdfMenu .pdf-option').forEach(option => {
+    document.querySelectorAll('#kpisRanWorstPdfMenu .pdf-option, #kpisRanMainPdfMenu .pdf-option, #kpisRanSitePdfMenu .pdf-option').forEach(option => {
         option.addEventListener('click', async (e) => {
             e.stopPropagation();
             const period = option.getAttribute('data-period') || 'day';
@@ -902,8 +918,9 @@ function initRanReports() {
             closeAllPdfMenus();
 
             const isWorst = exportKind === 'worst';
-            const btn = isWorst ? exportWorstBtn : exportPdfBtn;
-            const messageTarget = isWorst ? 'worstSitesActionMsg' : 'reportActionMsg';
+            const isSite = exportKind === 'site';
+            const btn = isWorst ? exportWorstBtn : (isSite ? exportSitePdfBtn : exportPdfBtn);
+            const messageTarget = isWorst ? 'worstSitesActionMsg' : (isSite ? 'modalSiteActionMsg' : 'reportActionMsg');
             const exportType = isWorst ? 'worst_sites' : 'ran';
 
             // Afficher immédiatement la période choisie dans le bouton concerné.
@@ -912,14 +929,19 @@ function initRanReports() {
             await runButtonAction(btn, 'Export PDF...', async () => {
                 setActionMessage(messageTarget, 'info', `Génération du PDF (${periodLabel}) en cours...`);
                 try {
-                    const result = await API.exportPdf({
-                        type: exportType,
-                        domain: 'RAN',
-                        start_date: startDate,
-                        end_date: endDate,
-                        ...getBaseRanFilters(),
-                        worst_kpi: ranFilters.worstKpi || 'all',
-                    });
+                    const result = isSite
+                        ? await API.exportSite(window.currentSiteForModal?.id, 'pdf', {
+                            start_date: startDate,
+                            end_date: endDate,
+                        })
+                        : await API.exportPdf({
+                            type: exportType,
+                            domain: 'RAN',
+                            start_date: startDate,
+                            end_date: endDate,
+                            ...getBaseRanFilters(),
+                            worst_kpi: ranFilters.worstKpi || 'all',
+                        });
 
                     if (result.success && result.url) {
                         const w = window.open(result.url, '_blank');
@@ -1081,17 +1103,38 @@ async function showRanSiteDetails(siteId) {
         const subtitle = document.getElementById('modalSiteSubtitle');
         if (subtitle) subtitle.innerText = `${site.country_name} — ${site.vendor} — ${site.technology}`;
 
-        // Barre de stats (comme image 2)
-        const statusLabel = site.status === 'good' ? 'Bon' : (site.status === 'warning' ? 'Alerte' : 'Critique');
-        const statusColor = API.statusColor(site.status);
+        // Le backend fournit désormais un "incident principal" et un KPI global effectif
+        // pour éviter les incohérences (ex: KPI global à 0% alors que les technos sont à 99%+).
+        const incident = site.incident || null;
+        const incidentStatus = incident?.status || site.effective_status || site.status;
+        const statusLabel = incidentStatus === 'good' ? 'Bon' : (incidentStatus === 'warning' ? 'Alerte' : 'Critique');
+        const statusColor = API.statusColor(incidentStatus);
+        const effectiveKpiGlobal = Number(site.effective_kpi_global ?? site.kpi_global ?? 0);
         const lastDate = site.latest_kpis?.kpi_date ?? 'N/A';
         const lastImport = site.latest_kpis?.imported_at ? site.latest_kpis.imported_at.substring(0, 16).replace('T', ' ') : 'N/A';
-        const worstKpiName = site.worst_kpi?.worst_kpi_name ?? (site.kpis_by_tech?.[0]?.worst_kpi_name ?? 'N/A');
+        const incidentTech = incident?.technology || site.kpis_by_tech?.[0]?.technology || site.technology || 'N/A';
+        const worstKpiName = incident?.worst_kpi_name ?? site.worst_kpi?.worst_kpi_name ?? (site.kpis_by_tech?.[0]?.worst_kpi_name ?? 'N/A');
+        const worstKpiValue = incident?.worst_kpi_value ?? site.worst_kpi?.worst_kpi_value ?? null;
+        const thresholdTarget = incident?.worst_kpi_threshold_target ?? null;
+        const thresholdGap = incident?.worst_kpi_gap_to_target ?? null;
+
+        const formatPct = (value) => {
+            const n = Number(value);
+            return Number.isFinite(n) ? `${n.toFixed(2)}%` : 'N/A';
+        };
+        const formatGap = (value) => {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return 'N/A';
+            return `${n >= 0 ? '+' : ''}${n.toFixed(2)} pts`;
+        };
+
         const statsBar = document.getElementById('modalStatsBar');
         if (statsBar) statsBar.innerHTML = [
-            `<div><span class="text-muted">KPI dégradant</span><br><strong>${escapeHtml(worstKpiName)}</strong></div>`,
-            `<div><span class="text-muted">KPI Global</span><br><strong style="color:${statusColor};font-size:1.1rem">${site.kpi_global}%</strong></div>`,
-            `<div><span class="text-muted">Statut</span><br><strong style="color:${statusColor}">${statusLabel}</strong></div>`,
+            `<div><span class="text-muted">Incident actuel</span><br><strong style="color:${statusColor}">${escapeHtml(incidentTech)} • ${statusLabel}</strong></div>`,
+            `<div><span class="text-muted">KPI incident</span><br><strong>${escapeHtml(worstKpiName)}</strong>${worstKpiValue !== null ? `: <strong style="color:#ef4444">${formatPct(worstKpiValue)}</strong>` : ''}</div>`,
+            `<div><span class="text-muted">KPI Global (cohérent)</span><br><strong style="color:${statusColor};font-size:1.1rem">${formatPct(effectiveKpiGlobal)}</strong></div>`,
+            `<div><span class="text-muted">Référence techno site</span><br><strong>${escapeHtml(site.technology || 'N/A')}</strong></div>`,
+            `${thresholdTarget !== null ? `<div><span class="text-muted">Seuil / écart</span><br><strong>${formatPct(thresholdTarget)}</strong> • <strong style="color:${Number(thresholdGap) < 0 ? '#dc2626' : '#059669'}">${formatGap(thresholdGap)}</strong></div>` : ''}`,
             `<div><span class="text-muted">Dernière date KPI</span><br><strong>${lastDate}</strong></div>`,
             `<div><span class="text-muted">Dernier import</span><br><strong>${lastImport}</strong></div>`,
         ].join('');
@@ -1121,16 +1164,29 @@ async function showRanSiteDetails(siteId) {
                 worstDiv.innerHTML = techs.map(t => {
                     const tc = techColors[t.technology] || '#6c757d';
                     const kpiGlobalColor = API.statusColor(t.status);
+                    const isIncidentTech = t.technology === incidentTech;
+                    const severityLabel = t.status === 'good' ? 'Sain' : (t.status === 'warning' ? 'A surveiller' : 'Critique');
+                    const target = t.worst_kpi_threshold_target;
+                    const gap = t.worst_kpi_gap_to_target;
+
                     const worstLine = t.worst_kpi_name
-                        ? `<div style="font-size:0.78rem;color:#ef4444"><i class="bi bi-arrow-down-short"></i> <strong>${escapeHtml(t.worst_kpi_name)}</strong> : ${t.worst_kpi_value}%</div>`
+                        ? `<div style="font-size:0.78rem;color:#ef4444"><i class="bi bi-arrow-down-short"></i> <strong>${escapeHtml(t.worst_kpi_name)}</strong> : ${formatPct(t.worst_kpi_value)}</div>`
                         : `<div style="font-size:0.78rem" class="text-muted">Aucun KPI dégradant</div>`;
+
+                    // Montrer seuil + écart métier quand disponible pour justifier la criticité.
+                    const thresholdLine = (target !== null && target !== undefined)
+                        ? `<div style="font-size:0.76rem;color:${Number(gap) < 0 ? '#dc2626' : '#64748b'}">Seuil: <strong>${formatPct(target)}</strong> • Écart: <strong>${formatGap(gap)}</strong></div>`
+                        : '';
+
                     return `<div class="mb-2 p-2 rounded" style="background:#f8f9fa;border-left:3px solid ${tc}">
                         <div class="d-flex justify-content-between align-items-center">
                             <span class="badge" style="background:${tc}">${escapeHtml(t.technology)}</span>
-                            <span style="font-size:0.85rem">KPI Global : <strong style="color:${kpiGlobalColor}">${t.kpi_global}%</strong></span>
-                            <small class="text-muted">${t.kpi_date ?? ''}</small>
+                            <span class="badge" style="background:${kpiGlobalColor}">${severityLabel}</span>
+                            <span style="font-size:0.85rem">KPI Global : <strong style="color:${kpiGlobalColor}">${formatPct(t.kpi_global)}</strong></span>
+                            ${isIncidentTech ? '<span class="badge bg-danger">Incident principal</span>' : ''}
                         </div>
                         ${worstLine}
+                        ${thresholdLine}
                     </div>`;
                 }).join('');
             }
@@ -1140,22 +1196,25 @@ async function showRanSiteDetails(siteId) {
         const modalEl = document.getElementById('siteDetailsModal');
         bootstrap.Modal.getOrCreateInstance(modalEl).show();
 
-        // Charger la tendance du KPI le plus dégradant (pas kpi_global)
+        // Charger la tendance du KPI incident (techno + KPI réellement responsables).
         try {
-            // Trouver la techno avec le kpi_global le plus bas
-            const worstTech = (site.kpis_by_tech || []).reduce(
-                (min, t) => (!min || parseFloat(t.kpi_global) < parseFloat(min.kpi_global)) ? t : min,
-                null
-            );
+            const worstTech = (site.kpis_by_tech || []).find(t => t.technology === incidentTech)
+                || (site.kpis_by_tech || []).reduce(
+                    (min, t) => (!min || parseFloat(t.kpi_global) < parseFloat(min.kpi_global)) ? t : min,
+                    null
+                );
             const worstLabel  = worstTech?.worst_kpi_name ?? null;
             const kpiColumn   = KPI_LABEL_TO_COLUMN[worstLabel] ?? 'kpi_global';
             const kpiDisplay  = worstLabel ?? 'KPI Global';
+            const trendLabel = document.getElementById('trendKpiLabel');
+            if (trendLabel) trendLabel.innerText = kpiDisplay;
 
             const trends = await API.getKpiTrends(siteId, kpiColumn, 14, worstTech?.technology ?? null);
             if (trends.success && trends.data) {
-                const trendColor = API.statusColor(site.status);
+                const trendColor = API.statusColor(incidentStatus);
                 // Si les colonnes KPI individuelles sont vides en DB, l'API bascule sur kpi_global
                 const usedLabel = trends.data.used_fallback ? 'KPI Global' : kpiDisplay;
+                if (trendLabel) trendLabel.innerText = usedLabel;
 
                 // Options par défaut pour le graphique
                 const chartOptions = {
@@ -1176,7 +1235,7 @@ async function showRanSiteDetails(siteId) {
                 // afficher l'heure dans les labels et ajuster les tooltips/axe X.
                 if (trends.data.used_hour) {
                     chartOptions.scales.x = {
-                        ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 }
+                        ticks: { autoSkip: true, maxTicksLimit: 8, maxRotation: 45, minRotation: 0 }
                     };
                     chartOptions.plugins.tooltip.callbacks.title = function(items) {
                         if (!items || items.length === 0) return '';
@@ -1205,7 +1264,8 @@ async function showRanSiteDetails(siteId) {
             shareBtn.onclick = () => {
                 const s = window.currentSiteForModal;
                 if (!s) return;
-                const msg = `📡 *Site: ${s.name} (${s.country_name})*\nID: ${s.id}\nKPI Global: ${s.kpi_global}%\nVendor: ${s.vendor}\nTechno: ${s.technology}\nStatut: ${s.status}`;
+                const inc = s.incident || {};
+                const msg = `*Site: ${s.name} (${s.country_name})*\nID: ${s.id}\nKPI Global: ${(s.effective_kpi_global ?? s.kpi_global)}%\nIncident: ${inc.technology || s.technology} / ${inc.worst_kpi_name || 'N/A'} (${inc.worst_kpi_value ?? 'N/A'}%)\nVendor: ${s.vendor}\nTechno de référence: ${s.technology}\nStatut: ${s.effective_status || s.status}`;
                 window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
             };
         }
@@ -1224,15 +1284,8 @@ async function showRanSiteDetails(siteId) {
         }
 
         const exportSitePdfBtn = document.getElementById('exportSitePdf');
-        if (exportSitePdfBtn) {
-            exportSitePdfBtn.onclick = async () => {
-                const s = window.currentSiteForModal;
-                if (!s) return;
-                try {
-                    const result = await API.exportSite(s.id, 'pdf');
-                    if (result.success && result.url) window.open(result.url, '_blank');
-                } catch (e) { console.error('[KPIs RAN] Export PDF site:', e); }
-            };
+        if (exportSitePdfBtn && !exportSitePdfBtn.dataset.defaultHtml) {
+            exportSitePdfBtn.dataset.defaultHtml = exportSitePdfBtn.innerHTML;
         }
     } catch (error) {
         console.error('[KPIs RAN] Erreur chargement détails:', error);

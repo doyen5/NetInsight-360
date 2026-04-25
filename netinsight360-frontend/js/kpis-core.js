@@ -25,6 +25,9 @@ let coreMapModeManager = null;
 /** Cache des données carte pour les changements de mode sans re-fetch */
 let coreSitesData = [];
 
+/** Référence au layer cluster actif — supprimé avant chaque changement de mode */
+let coreClusterLayer = null;
+
 /**
  * Initialise la page KPIs CORE
  */
@@ -78,6 +81,7 @@ async function loadCoreMapMarkers() {
     if (!coreMap) return;
     
     // Nettoyage complet des couches précédentes
+    if (coreClusterLayer) { coreMap.removeLayer(coreClusterLayer); coreClusterLayer = null; }
     coreMarkers.forEach(marker => coreMap.removeLayer(marker));
     coreMarkers = [];
     if (coreMapModeManager) coreMapModeManager.clearManagedLayers();
@@ -103,6 +107,7 @@ async function loadCoreMapMarkers() {
  */
 async function switchCoreDisplayMode(mode) {
     currentCoreDisplayMode = mode;
+    if (coreClusterLayer) { coreMap.removeLayer(coreClusterLayer); coreClusterLayer = null; }
     coreMarkers.forEach(m => { try { coreMap.removeLayer(m); } catch (_) {} });
     coreMarkers = [];
     if (coreMapModeManager) coreMapModeManager.clearManagedLayers();
@@ -140,6 +145,7 @@ async function renderCoreMapMode(sites) {
                 });
             }
         });
+        coreClusterLayer = clusterGroup;
         coreMap.addLayer(clusterGroup);
 
         sites.forEach(site => {

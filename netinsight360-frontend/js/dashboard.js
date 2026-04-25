@@ -23,6 +23,9 @@ let dashMapModeManager = null;
 /** Cache des données de la carte — évite un re-fetch lors du changement de mode */
 let dashSitesData = [];
 
+/** Référence au layer cluster actif — supprimé avant chaque changement de mode */
+let dashClusterLayer = null;
+
 /**
  * Affiche un toast en bas à droite avec la date/heure de la dernière connexion
  */
@@ -162,6 +165,7 @@ async function loadMapMarkers(filters = {}) {
     if (!dashboardMap) return;
     
     // ── Nettoyage des couches actives ──────────────────────────────────────
+    if (dashClusterLayer) { dashboardMap.removeLayer(dashClusterLayer); dashClusterLayer = null; }
     dashboardMarkers.forEach(marker => dashboardMap.removeLayer(marker));
     dashboardMarkers = [];
     if (dashMapModeManager) dashMapModeManager.clearManagedLayers();
@@ -201,6 +205,7 @@ async function switchDashDisplayMode(mode) {
     currentDashDisplayMode = mode;
 
     // Nettoyer toutes les couches
+    if (dashClusterLayer) { dashboardMap.removeLayer(dashClusterLayer); dashClusterLayer = null; }
     dashboardMarkers.forEach(m => { try { dashboardMap.removeLayer(m); } catch (_) {} });
     dashboardMarkers = [];
     if (dashMapModeManager) dashMapModeManager.clearManagedLayers();
@@ -243,6 +248,7 @@ async function renderDashMapMode(sites) {
                 });
             }
         });
+        dashClusterLayer = clusterGroup;
         dashboardMap.addLayer(clusterGroup);
 
         sites.forEach(site => {

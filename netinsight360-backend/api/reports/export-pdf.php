@@ -211,12 +211,23 @@ HTML;
         $cRow = $cStmt->fetch(PDO::FETCH_ASSOC);
         $site['country_name'] = $cRow['country_name'] ?? $site['country_code'];
 
+        $siteConds = ["site_id = ?"];
+        $siteParams = [$siteId];
+        $periodLabel = '30 derniers enregistrements';
+        if ($startDate && $endDate) {
+          $siteConds[] = "kpi_date BETWEEN ? AND ?";
+          $siteParams[] = $startDate;
+          $siteParams[] = $endDate;
+          $periodLabel = sprintf('Période : %s → %s', htmlspecialchars($startDate), htmlspecialchars($endDate));
+        }
+        $siteWhere = implode(' AND ', $siteConds);
+
         $kpiStmt = $pdo->prepare("
-            SELECT technology, kpi_date, kpi_global, status, worst_kpi_name, worst_kpi_value
-            FROM kpis_ran WHERE site_id = ?
-            ORDER BY kpi_date DESC, kpi_global ASC LIMIT 30
+          SELECT technology, kpi_date, kpi_global, status, worst_kpi_name, worst_kpi_value
+          FROM kpis_ran WHERE $siteWhere
+          ORDER BY kpi_date DESC, kpi_global ASC LIMIT 30
         ");
-        $kpiStmt->execute([$siteId]);
+        $kpiStmt->execute($siteParams);
         $kpiRows = $kpiStmt->fetchAll(PDO::FETCH_ASSOC);
 
         $latestKpi  = $kpiRows[0] ?? null;
@@ -300,6 +311,7 @@ HTML;
       <div style="font-size:0.72em;opacity:0.7;margin-bottom:3px">📡 FICHE TECHNIQUE SITE</div>
       <h1>{$siteName}</h1>
       <div style="font-size:0.82em;opacity:0.85;margin-top:3px">{$countryName} — {$vendor} — {$technology}</div>
+      <div style="font-size:0.75em;opacity:0.75;margin-top:4px">{$periodLabel}</div>
     </div>
     <div class="meta">
       <div style="font-size:0.95em;font-weight:700">{$date}</div>
@@ -339,7 +351,7 @@ HTML;
     </div>
   </div>
 
-  <div class="section-title">📊 Historique des KPIs (30 derniers enregistrements)</div>
+  <div class="section-title">📊 Historique des KPIs ({$periodLabel})</div>
   <table>
     <thead><tr><th>Date</th><th>Techno</th><th>KPI Global</th><th>Statut</th><th>KPI Dégradant</th></tr></thead>
     <tbody>{$kpiTableRows}</tbody>
@@ -471,6 +483,22 @@ HTML;
     $stTopAll->execute($params);
     $topGlobalKpis = $stTopAll->fetchAll(PDO::FETCH_ASSOC);
 
+    // Sites récurrents en dégradation (kpi_global < 95) sur la période demandée.
+    // Si aucun intervalle explicite n'est fourni, on prend une fenêtre glissante de 14 jours.
+    $recStart = $startDate ?: date('Y-m-d', strtotime($maxDate . ' -13 days'));
+    $recEnd   = $endDate   ?: $maxDate;
+
+    $recConds = ["k.kpi_date BETWEEN ? AND ?", "k.kpi_global < 95"];
+    $recParams = [$recStart, $recEnd];
+    if ($country !== 'all') { $recConds[] = "s.country_code = ?"; $recParams[] = $country; }
+    if ($domain  !== 'all') { $recConds[] = "s.domain = ?";       $recParams[] = $domain;  }
+    if ($tech    !== 'all') { $recConds[] = "k.technology = ?";   $recParams[] = $tech;    }
+    $recWhere = implode(' AND ', $recConds);
+
+    $stRecurring = $pdo->prepare("\n        SELECT\n            s.id,\n            s.name,\n            s.country_code,\n            COUNT(*) AS degraded_points,\n            COUNT(DISTINCT k.kpi_date) AS degraded_days,\n            ROUND(AVG(k.kpi_global), 2) AS avg_kpi,\n            ROUND(MIN(k.kpi_global), 2) AS worst_kpi,\n            MAX(k.kpi_date) AS last_degraded_date\n        FROM sites s\n        INNER JOIN kpis_ran k ON k.site_id = s.id\n        WHERE $recWhere\n        GROUP BY s.id, s.name, s.country_code\n        HAVING COUNT(DISTINCT k.kpi_date) >= 2\n        ORDER BY degraded_days DESC, worst_kpi ASC\n        LIMIT 15\n    ");
+    $stRecurring->execute($recParams);
+    $recurringSites = $stRecurring->fetchAll(PDO::FETCH_ASSOC);
+
     // Nom de pays
     $countries = [];
     foreach ($pdo->query("SELECT country_code, country_name FROM countries") as $r) {
@@ -514,21 +542,27 @@ HTML;
         $techRowsHtml .= '<tr><td>' . htmlspecialchars($t['technology']) . '</td><td>' . $t['cnt'] . '</td></tr>';
     }
 
-    // Générer bloc KPI par technologie (most frequent worst KPIs)
-    $techKpiHtml = '';
+    // Générer un bloc horizontal compact KPI par techno (top 3 par techno + compteur des autres).
+    $techKpiHtml = '<div class="tech-kpi-horizontal">';
     foreach ($techKpiMap as $tech => $rows) {
-      $techKpiHtml .= '<h4 style="margin-top:12px">' . htmlspecialchars($tech) . '</h4>';
+      $techKpiHtml .= '<div class="tech-kpi-col">';
+      $techKpiHtml .= '<div class="tech-kpi-title">' . htmlspecialchars($tech) . '</div>';
       if (empty($rows)) {
-        $techKpiHtml .= '<p style="color:#94a3b8;font-size:0.85em">Aucune KPI dégradant fréquent identifié</p>';
+        $techKpiHtml .= '<div class="tech-kpi-empty">Aucun KPI fréquent</div>';
       } else {
-        $techKpiHtml .= '<ul>';
-        foreach ($rows as $r) {
+        $topRows = array_slice($rows, 0, 3);
+        foreach ($topRows as $r) {
           $name = htmlspecialchars($r['worst_kpi_name']);
-          $techKpiHtml .= '<li>' . $name . ' — ' . (int)$r['cnt'] . ' occurrences</li>';
+          $techKpiHtml .= '<div class="kpi-pill">' . $name . ' <strong>' . (int)$r['cnt'] . '</strong></div>';
         }
-        $techKpiHtml .= '</ul>';
+        $remaining = count($rows) - count($topRows);
+        if ($remaining > 0) {
+          $techKpiHtml .= '<div class="tech-kpi-more">+' . $remaining . ' autres KPI</div>';
+        }
       }
+      $techKpiHtml .= '</div>';
     }
+    $techKpiHtml .= '</div>';
 
     // Préparer commentaire de prévention basé sur topGlobalKpis
     $preventionComment = '';
@@ -542,6 +576,27 @@ HTML;
     $good    = (int)($dist['good']    ?? 0);
     $warning = (int)($dist['warning'] ?? 0);
     $crit    = (int)($dist['critical'] ?? 0);
+
+    // Tableau des sites récurrents dégradés.
+    $recurringRowsHtml = '';
+    foreach ($recurringSites as $idx => $r) {
+      $country_name = $countries[$r['country_code']] ?? $r['country_code'];
+      $recurringRowsHtml .= '<tr>'
+        . '<td>' . ($idx + 1) . '</td>'
+        . '<td><strong>' . htmlspecialchars($r['id']) . '</strong></td>'
+        . '<td>' . htmlspecialchars($r['name']) . '</td>'
+        . '<td>' . htmlspecialchars($country_name) . '</td>'
+        . '<td><strong>' . (int)$r['degraded_days'] . '</strong></td>'
+        . '<td>' . (int)$r['degraded_points'] . '</td>'
+        . '<td><strong>' . number_format((float)$r['worst_kpi'], 2) . '%</strong></td>'
+        . '<td>' . number_format((float)$r['avg_kpi'], 2) . '%</td>'
+        . '<td>' . htmlspecialchars($r['last_degraded_date']) . '</td>'
+        . '</tr>';
+    }
+
+    $recurringTableHtml = $recurringRowsHtml
+      ? '<table><thead><tr><th>#</th><th>Site ID</th><th>Nom</th><th>Pays</th><th>Jours dégradés</th><th>Points dégradés</th><th>Pire KPI</th><th>KPI moyen</th><th>Dernière date</th></tr></thead><tbody>' . $recurringRowsHtml . '</tbody></table>'
+      : '<p style="color:#94a3b8;font-size:0.85em">Aucun site avec dégradation récurrente (>= 2 jours) sur la période ' . htmlspecialchars($recStart) . ' → ' . htmlspecialchars($recEnd) . '.</p>';
 
     // Bloc HTML technologie (pré-calculé pour éviter une expression dans heredoc)
     $techTableHtml = $techRowsHtml
@@ -581,7 +636,7 @@ HTML;
   .value-yellow { color: #f59e0b; }
   .value-red    { color: #ef4444; }
   /* Distribution */
-  .distrib-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; }
+  .distrib-grid { display: grid; grid-template-columns: 0.95fr 1.05fr; gap: 14px; margin-bottom: 18px; align-items: start; }
   .stat-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px 20px; }
   .stat-card h3 { font-size: 0.9em; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
   .dist-item { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #f1f5f9; }
@@ -590,6 +645,13 @@ HTML;
   .dist-bar-wrap { display: flex; align-items: center; gap: 8px; }
   .dist-bar { height: 8px; border-radius: 4px; min-width: 4px; }
   .dist-count { font-weight: 700; font-size: 0.9em; min-width: 30px; text-align: right; }
+  .tech-kpi-horizontal { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 8px; }
+  .tech-kpi-col { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; min-height: 92px; }
+  .tech-kpi-title { font-size: 0.88em; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
+  .kpi-pill { display: inline-block; margin: 0 6px 6px 0; padding: 4px 7px; border-radius: 999px; background: #eef2ff; color: #1e293b; font-size: 0.72em; }
+  .kpi-pill strong { color: #312e81; }
+  .tech-kpi-more { font-size: 0.72em; color: #64748b; margin-top: 4px; }
+  .tech-kpi-empty { font-size: 0.78em; color: #94a3b8; }
   /* Table */
   .section-title { font-size: 1em; font-weight: 700; color: #1e293b; margin-bottom: 12px; padding: 10px 14px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #00a3c4; }
   table { width: 100%; border-collapse: collapse; font-size: 0.83em; }
@@ -612,6 +674,9 @@ HTML;
     thead th { font-size: 7.5pt; padding: 6px 7px; }
     tbody td  { padding: 5px 7px; }
     .kpi-card .value { font-size: 1.5em; }
+    .tech-kpi-horizontal { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+    .tech-kpi-col { min-height: 74px; padding: 6px; }
+    .kpi-pill { font-size: 0.66em; padding: 3px 6px; margin: 0 4px 4px 0; }
     @page { margin: 15mm; }
   }
 </style>
@@ -684,9 +749,9 @@ HTML;
     <div class="stat-card">
       <h3>📶 Répartition par technologie</h3>
       {$techTableHtml}
-      <!-- Analyse détaillée par technologie -->
+      <!-- Analyse KPI compacte en disposition horizontale -->
       <div style="margin-top:12px">
-        <h4 style="margin-bottom:8px">🔍 Analyse détaillée par technologie et KPIs</h4>
+        <h4 style="margin-bottom:8px">🔍 Top KPI dégradants (vue horizontale)</h4>
         {$techKpiHtml}
       </div>
     </div>
@@ -697,6 +762,9 @@ HTML;
     <strong>💡 Commentaire de prévention</strong>
     <p style="margin-top:8px;color:#475569;font-size:0.95em;white-space:pre-wrap">{$preventionComment}</p>
   </div>
+
+  <div class="section-title" style="margin-top:14px">🔁 Sites récurrents en dégradation (KPI &lt; 95%)</div>
+  {$recurringTableHtml}
 
   <!-- Table pires sites -->
   <div class="section-title">⚠️ Top 20 — Pires sites du réseau</div>

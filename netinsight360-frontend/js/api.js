@@ -347,9 +347,10 @@ class API {
         return this.request(`/reports/export-excel.php?${params}`);
     }
 
-    static async exportSite(siteId, format = 'csv') {
+    static async exportSite(siteId, format = 'csv', options = {}) {
         if (format === 'pdf') {
-            return this.request(`/reports/export-pdf.php?site_id=${encodeURIComponent(siteId)}`);
+            const params = new URLSearchParams({ site_id: siteId, ...options }).toString();
+            return this.request(`/reports/export-pdf.php?${params}`);
         }
         return this.request(`/reports/export-excel.php?type=site&site_id=${encodeURIComponent(siteId)}`);
     }

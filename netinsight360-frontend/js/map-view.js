@@ -31,6 +31,29 @@ let currentFullDisplayMode = 'cluster';
 /** Instance du gestionnaire de modes (initialisée dans initFullMap) */
 let fullMapModeManager = null;
 
+// Correspondance libellé KPI (worst_kpi_name) -> colonne SQL pour l'API de tendance.
+// Evite de demander un libellé humain directement à l'API, ce qui force sinon un fallback imprévisible.
+const KPI_LABEL_TO_COLUMN = {
+    'Disponibilité TCH':  'tch_availability',
+    'Taux de chute appel':'tch_drop_rate',
+    'Succès Handover':    'handover_sr_2g',
+    'SDCCH Congestion':   'sdcch_cong',
+    'SDCCH Chute':        'sdcch_drop',
+    'RRC CS SR':          'rrc_cs_sr',
+    'RAB CS SR':          'rab_cs_sr',
+    'RRC PS SR':          'rrc_ps_sr',
+    'Chute CS':           'cs_drop_rate',
+    'Soft HO':            'soft_ho_rate',
+    'S1 SR':              'lte_s1_sr',
+    'RRC SR':             'lte_rrc_sr',
+    'ERAB SR':            'lte_erab_sr',
+    'Session SR':         'lte_session_sr',
+    'CSFB SR':            'lte_csfb_sr',
+    'Chute ERAB':         'lte_erab_drop_rate',
+    'HO Intra-freq':      'lte_intra_freq_sr',
+    'HO Inter-freq':      'lte_inter_freq_sr',
+};
+
 function getSiteRiskLevel(site) {
     return site?.risk_level || site?.status || 'good';
 }
@@ -1008,18 +1031,37 @@ async function showFullSiteDetails(siteId) {
         const subtitle = document.getElementById('modalSiteSubtitle');
         if (subtitle) subtitle.innerText = `${site.country_name} — ${site.vendor} — ${site.technology}`;
 
-        // Barre de stats (pire KPI, statut, dates)
-        const statusLabel = site.status === 'good' ? 'Bon' : (site.status === 'warning' ? 'Alerte' : 'Critique');
-        const statusColor = API.statusColor(site.status);
+        // Même logique que KPIs RAN: incident principal + KPI global effectif.
+        const incident = site.incident || null;
+        const incidentStatus = incident?.status || site.effective_status || site.status;
+        const statusLabel = incidentStatus === 'good' ? 'Bon' : (incidentStatus === 'warning' ? 'Alerte' : 'Critique');
+        const statusColor = API.statusColor(incidentStatus);
+        const effectiveKpiGlobal = Number(site.effective_kpi_global ?? site.kpi_global ?? 0);
         const lastDate = site.latest_kpis?.kpi_date ?? site.kpi_date ?? 'N/A';
         const lastImport = site.latest_kpis?.imported_at ? site.latest_kpis.imported_at.substring(0,16).replace('T',' ') : 'N/A';
-        const worstKpiName = site.worst_kpi?.worst_kpi_name ?? (site.kpis_by_tech?.[0]?.worst_kpi_name ?? 'N/A');
-        const worstKpiValue = site.worst_kpi?.worst_kpi_value ?? (site.kpis_by_tech?.[0]?.worst_kpi_value ?? 0);
+        const incidentTech = incident?.technology || site.kpis_by_tech?.[0]?.technology || site.technology || 'N/A';
+        const worstKpiName = incident?.worst_kpi_name ?? site.worst_kpi?.worst_kpi_name ?? (site.kpis_by_tech?.[0]?.worst_kpi_name ?? 'N/A');
+        const worstKpiValue = incident?.worst_kpi_value ?? site.worst_kpi?.worst_kpi_value ?? (site.kpis_by_tech?.[0]?.worst_kpi_value ?? null);
+        const thresholdTarget = incident?.worst_kpi_threshold_target ?? null;
+        const thresholdGap = incident?.worst_kpi_gap_to_target ?? null;
+
+        const formatPct = (value) => {
+            const n = Number(value);
+            return Number.isFinite(n) ? `${n.toFixed(2)}%` : 'N/A';
+        };
+        const formatGap = (value) => {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return 'N/A';
+            return `${n >= 0 ? '+' : ''}${n.toFixed(2)} pts`;
+        };
+
         const statsBar = document.getElementById('modalStatsBar');
         if (statsBar) statsBar.innerHTML = [
-            `<div><span class="text-muted">Pire KPI du site</span><br><strong style="color:#ef4444">${escapeHtml(worstKpiName)}</strong></div>`,
-            `<div><span class="text-muted">Valeur</span><br><strong style="color:#ef4444;font-size:1.1rem">${worstKpiValue}%</strong></div>`,
-            `<div><span class="text-muted">Statut global</span><br><strong style="color:${statusColor}">${statusLabel}</strong></div>`,
+            `<div><span class="text-muted">Incident actuel</span><br><strong style="color:${statusColor}">${escapeHtml(incidentTech)} • ${statusLabel}</strong></div>`,
+            `<div><span class="text-muted">KPI incident</span><br><strong>${escapeHtml(worstKpiName)}</strong>${worstKpiValue !== null ? `: <strong style="color:#ef4444">${formatPct(worstKpiValue)}</strong>` : ''}</div>`,
+            `<div><span class="text-muted">KPI Global (cohérent)</span><br><strong style="color:${statusColor};font-size:1.1rem">${formatPct(effectiveKpiGlobal)}</strong></div>`,
+            `<div><span class="text-muted">Référence techno site</span><br><strong>${escapeHtml(site.technology || 'N/A')}</strong></div>`,
+            `${thresholdTarget !== null ? `<div><span class="text-muted">Seuil / écart</span><br><strong>${formatPct(thresholdTarget)}</strong> • <strong style="color:${Number(thresholdGap) < 0 ? '#dc2626' : '#059669'}">${formatGap(thresholdGap)}</strong></div>` : ''}`,
             `<div><span class="text-muted">Dernière date KPI</span><br><strong>${lastDate}</strong></div>`,
             `<div><span class="text-muted">Dernier import</span><br><strong>${lastImport}</strong></div>`,
         ].join('');
@@ -1049,16 +1091,28 @@ async function showFullSiteDetails(siteId) {
                 worstDiv.innerHTML = techs.map(t => {
                     const tc = techColors[t.technology] || '#6c757d';
                     const kpiGlobalColor = API.statusColor(t.status);
+                    const isIncidentTech = t.technology === incidentTech;
+                    const severityLabel = t.status === 'good' ? 'Sain' : (t.status === 'warning' ? 'A surveiller' : 'Critique');
+                    const target = t.worst_kpi_threshold_target;
+                    const gap = t.worst_kpi_gap_to_target;
+
                     const worstLine = t.worst_kpi_name
-                        ? `<div style="font-size:0.78rem;color:#ef4444"><i class="bi bi-arrow-down-short"></i> <strong>${escapeHtml(t.worst_kpi_name)}</strong> : ${t.worst_kpi_value}%</div>`
+                        ? `<div style="font-size:0.78rem;color:#ef4444"><i class="bi bi-arrow-down-short"></i> <strong>${escapeHtml(t.worst_kpi_name)}</strong> : ${formatPct(t.worst_kpi_value)}</div>`
                         : `<div style="font-size:0.78rem" class="text-muted">Aucun KPI dégradant</div>`;
+
+                    const thresholdLine = (target !== null && target !== undefined)
+                        ? `<div style="font-size:0.76rem;color:${Number(gap) < 0 ? '#dc2626' : '#64748b'}">Seuil: <strong>${formatPct(target)}</strong> • Écart: <strong>${formatGap(gap)}</strong></div>`
+                        : '';
+
                     return `<div class="mb-2 p-2 rounded" style="background:#f8f9fa;border-left:3px solid ${tc}">
                         <div class="d-flex justify-content-between align-items-center">
                             <span class="badge" style="background:${tc}">${escapeHtml(t.technology)}</span>
-                            <span style="font-size:0.85rem">KPI Global : <strong style="color:${kpiGlobalColor}">${t.kpi_global}%</strong></span>
-                            <small class="text-muted">${t.kpi_date ?? ''}</small>
+                            <span class="badge" style="background:${kpiGlobalColor}">${severityLabel}</span>
+                            <span style="font-size:0.85rem">KPI Global : <strong style="color:${kpiGlobalColor}">${formatPct(t.kpi_global)}</strong></span>
+                            ${isIncidentTech ? '<span class="badge bg-danger">Incident principal</span>' : ''}
                         </div>
                         ${worstLine}
+                        ${thresholdLine}
                     </div>`;
                 }).join('');
             }
@@ -1074,9 +1128,12 @@ async function showFullSiteDetails(siteId) {
 
         // Charger la tendance du pire KPI (14 jours)
         try {
-            // Utiliser le nom du pire KPI au lieu de 'kpi_global'
-            const trends = await API.getKpiTrends(siteId, worstKpiName, 14, site.technology);
+            // Utiliser la colonne SQL du KPI incident pour éviter les fallback silencieux.
+            const kpiColumn = KPI_LABEL_TO_COLUMN[worstKpiName] ?? 'kpi_global';
+            const trends = await API.getKpiTrends(siteId, kpiColumn, 14, incidentTech);
             if (trends.success && trends.data) {
+                const usedLabel = trends.data.used_fallback ? 'KPI Global' : worstKpiName;
+                if (trendLabel) trendLabel.innerText = usedLabel;
                 const defaultOptions = {
                     scales: { y: { min: 0, max: 100, ticks: { callback: v => v + '%' } } },
                     plugins: { 
@@ -1095,12 +1152,12 @@ async function showFullSiteDetails(siteId) {
                 };
 
                 if (trends.data.used_hour) {
-                    defaultOptions.scales.x = { ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } };
+                    defaultOptions.scales.x = { ticks: { autoSkip: true, maxTicksLimit: 8, maxRotation: 45, minRotation: 0 } };
                 }
 
                 chartManager.createLineChart('trend5DaysChart', {
                     labels: trends.data.labels,
-                    datasets: [{ label: `${site.name} — ${worstKpiName} (%)`, data: trends.data.values, borderColor: API.COLORS.status.bad, backgroundColor: 'rgba(239,68,68,0.1)', fill: true }]
+                    datasets: [{ label: `${site.name} — ${usedLabel} (%)`, data: trends.data.values, borderColor: API.COLORS.status.bad, backgroundColor: 'rgba(239,68,68,0.1)', fill: true }]
                 }, defaultOptions);
             }
         } catch (trendErr) {
@@ -1114,7 +1171,7 @@ async function showFullSiteDetails(siteId) {
                 const s = window.currentSiteForModal;
                 if (!s) return;
                 const worstKpiInfo = s.worst_kpi?.worst_kpi_name ? `\nPire KPI: ${s.worst_kpi.worst_kpi_name} (${s.worst_kpi.worst_kpi_value}%)` : '';
-                const msg = `📡 *Site: ${s.name} (${s.country_name})*\nID: ${s.id}${worstKpiInfo}\nVendor: ${s.vendor}\nTechno: ${s.technology}\nStatut: ${s.status}`;
+                const msg = `*Site: ${s.name} (${s.country_name})*\nID: ${s.id}${worstKpiInfo}\nVendor: ${s.vendor}\nTechno: ${s.technology}\nStatut: ${s.status}`;
                 window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
             };
         }
