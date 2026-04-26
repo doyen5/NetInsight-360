@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../netinsight360-backend/app/helpers/AuthHelper.php';
 
 AuthHelper::requireLogin();
+AuthHelper::requireRole(AuthHelper::ROLE_ADMIN);
 
 $user = AuthHelper::getUser();
 $userRole = AuthHelper::getUserRole();

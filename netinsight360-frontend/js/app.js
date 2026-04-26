@@ -292,7 +292,7 @@ async function updateUserInterface() {
     const headerUserRoleEl = document.getElementById('headerUserRole');
     if (headerUserRoleEl) headerUserRoleEl.innerText = roleMap[user.role] || 'Utilisateur';
 
-    ensureSecurityNavigation();
+    ensureSecurityNavigation(user.role);
     
     // Afficher la dernière connexion
     const lastLoginEl = document.getElementById('lastLogin');
@@ -402,10 +402,15 @@ function setupGlobalSearch() {
  * Injecte un accès unique vers la page de sécurité 2FA.
  * Cette approche évite de recopier un lien dans chaque page PHP déjà existante.
  */
-function ensureSecurityNavigation() {
+function ensureSecurityNavigation(userRole) {
     const currentPage = window.location.pathname.split('/').pop();
+    const isAdmin = userRole === 'ADMIN';
     const sidebarNav = document.querySelector('#sidebar .nav');
-    if (sidebarNav && !document.getElementById('securitySettingsLink')) {
+    const existingSidebarLink = document.getElementById('securitySettingsLink');
+    if (!isAdmin && existingSidebarLink) {
+        existingSidebarLink.remove();
+    }
+    if (isAdmin && sidebarNav && !existingSidebarLink) {
         const link = document.createElement('a');
         link.id = 'securitySettingsLink';
         link.href = 'security-settings.php';
@@ -415,7 +420,11 @@ function ensureSecurityNavigation() {
     }
 
     const headerRight = document.querySelector('.header-right');
-    if (headerRight && !document.getElementById('securityShortcutBtn')) {
+    const existingHeaderButton = document.getElementById('securityShortcutBtn');
+    if (!isAdmin && existingHeaderButton) {
+        existingHeaderButton.remove();
+    }
+    if (isAdmin && headerRight && !existingHeaderButton) {
         const button = document.createElement('a');
         button.id = 'securityShortcutBtn';
         button.href = 'security-settings.php';
