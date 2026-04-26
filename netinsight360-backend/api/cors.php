@@ -6,6 +6,10 @@
  */
 header('Content-Type: application/json');
 
+require_once __DIR__ . '/../app/helpers/EnvHelper.php';
+EnvHelper::load(__DIR__ . '/../.env.local');
+EnvHelper::load(__DIR__ . '/../.env');
+
 // Origines autorisées : même hôte (toutes variantes de port local + production)
 $allowedOrigins = [
     'http://localhost',
@@ -16,10 +20,18 @@ $allowedOrigins = [
     'http://127.0.0.1:8080',
 ];
 
-// Ajouter l'origine de production si définie dans l'environnement
-if (!empty($_SERVER['APP_ORIGIN'])) {
-    $allowedOrigins[] = $_SERVER['APP_ORIGIN'];
+// Ajouter les origines explicites définies dans l'environnement
+$configuredOrigins = trim((string) EnvHelper::get('APP_ORIGIN', ''));
+if ($configuredOrigins !== '') {
+    foreach (explode(',', $configuredOrigins) as $configuredOrigin) {
+        $configuredOrigin = trim($configuredOrigin);
+        if ($configuredOrigin !== '') {
+            $allowedOrigins[] = $configuredOrigin;
+        }
+    }
 }
+
+$allowedOrigins = array_values(array_unique($allowedOrigins));
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if (in_array($origin, $allowedOrigins, true)) {
@@ -31,6 +43,7 @@ if (in_array($origin, $allowedOrigins, true)) {
     header('Access-Control-Allow-Origin: ' . $scheme . '://' . $host);
 }
 
+header('Vary: Origin');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-CSRF-Token');
 header('Access-Control-Allow-Credentials: true');

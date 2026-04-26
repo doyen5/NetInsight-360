@@ -10,10 +10,10 @@
  * Emplacement: netinsight360-backend/app/helpers/AuthHelper.php
  */
 
+require_once __DIR__ . '/../../api/auth/session-bootstrap.php';
+
 // Démarrer la session si elle n'est pas déjà active
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+ni360_start_session();
 
 class AuthHelper
 {

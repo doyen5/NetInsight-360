@@ -6,11 +6,17 @@
  */
 
 document.addEventListener('DOMContentLoaded', function() {
+    const MIN_PASSWORD_LENGTH = 12;
     const loginForm = document.getElementById('loginForm');
+    const primaryLoginFields = document.getElementById('primaryLoginFields');
     const loginBtn = document.getElementById('loginBtn');
     const errorMessage = document.getElementById('errorMessage');
     const errorText = document.getElementById('errorText');
     const forgotLink = document.getElementById('forgotPassword');
+    const twoFactorPanel = document.getElementById('twoFactorPanel');
+    const twoFactorCodeInput = document.getElementById('twoFactorCode');
+    const verifyTwoFactorBtn = document.getElementById('verifyTwoFactorBtn');
+    const cancelTwoFactorBtn = document.getElementById('cancelTwoFactorBtn');
     
     console.log('✅ auth.js chargé - formulaire trouvé:', !!loginForm);
     
@@ -67,6 +73,52 @@ document.addEventListener('DOMContentLoaded', function() {
             errorMessage.classList.remove('show');
         }, 3000);
     }
+
+    function isValidEmail(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    function persistAuthenticatedUser(result) {
+        sessionStorage.setItem('currentUser', JSON.stringify(result.user));
+
+        if (result.user.lastLogin) {
+            sessionStorage.setItem('lastLoginToast', result.user.lastLogin);
+        }
+
+        const remember = document.getElementById('rememberMe')?.checked || false;
+        if (remember) {
+            localStorage.setItem('rememberedUser', JSON.stringify({
+                email: result.user.email,
+                name: result.user.name,
+                role: result.user.role
+            }));
+        }
+
+        loginBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i> Connexion réussie...';
+        loginBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+        showPanda('happy', 'Bienvenue ! 🎉');
+
+        setTimeout(() => {
+            window.location.href = 'dashboard.php';
+        }, 800);
+    }
+
+    function showTwoFactorStep() {
+        if (primaryLoginFields) primaryLoginFields.style.display = 'none';
+        if (twoFactorPanel) twoFactorPanel.style.display = 'block';
+        if (loginBtn) loginBtn.style.display = 'none';
+        if (twoFactorCodeInput) {
+            twoFactorCodeInput.value = '';
+            twoFactorCodeInput.focus();
+        }
+    }
+
+    function hideTwoFactorStep() {
+        if (primaryLoginFields) primaryLoginFields.style.display = 'block';
+        if (twoFactorPanel) twoFactorPanel.style.display = 'none';
+        if (loginBtn) loginBtn.style.display = '';
+        if (twoFactorCodeInput) twoFactorCodeInput.value = '';
+    }
     
     /**
      * Réinitialise le bouton de connexion
@@ -92,34 +144,16 @@ document.addEventListener('DOMContentLoaded', function() {
             // Appel API
             const result = await API.login(email, password, remember);
             console.log('[Auth] Réponse API:', result);
+
+            if (result.requires_2fa) {
+                resetLoginButton();
+                showTwoFactorStep();
+                showPanda('happy', 'Second facteur requis');
+                return;
+            }
             
             if (result.success && result.user) {
-                // Sauvegarder les infos utilisateur
-                sessionStorage.setItem('currentUser', JSON.stringify(result.user));
-                
-                // Mémoriser la dernière connexion pour affichage toast sur le dashboard
-                if (result.user.lastLogin) {
-                    sessionStorage.setItem('lastLoginToast', result.user.lastLogin);
-                }
-                
-                // Sauvegarder "Rester connecté"
-                if (remember) {
-                    localStorage.setItem('rememberedUser', JSON.stringify({
-                        email: result.user.email,
-                        name: result.user.name,
-                        role: result.user.role
-                    }));
-                }
-                
-                // Animation de succès
-                loginBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i> Connexion réussie...';
-                loginBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
-                showPanda('happy', 'Bienvenue ! 🎉');
-                
-                // Redirection
-                setTimeout(() => {
-                    window.location.href = 'dashboard.php';
-                }, 800);
+                persistAuthenticatedUser(result);
             } else {
                 showError(result.error || 'Identifiants incorrects');
                 resetLoginButton();
@@ -146,6 +180,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 showError('Veuillez remplir tous les champs');
                 return;
             }
+
+            if (!isValidEmail(email)) {
+                showError('Veuillez saisir une adresse email valide');
+                return;
+            }
             
             await handleLogin(email, password, remember);
         });
@@ -161,6 +200,11 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (!email) {
                 showError('Veuillez saisir votre email');
+                return;
+            }
+
+            if (!isValidEmail(email)) {
+                showError('Veuillez saisir une adresse email valide');
                 return;
             }
             
@@ -192,11 +236,53 @@ document.addEventListener('DOMContentLoaded', function() {
     const passwordInput = document.getElementById('password');
     const eyeIcon = document.getElementById('eyeIcon');
     if (togglePasswordBtn && passwordInput && eyeIcon) {
+        passwordInput.setAttribute('maxlength', '72');
+        passwordInput.setAttribute('data-password-min-length', String(MIN_PASSWORD_LENGTH));
         togglePasswordBtn.addEventListener('click', () => {
             const isHidden = passwordInput.type === 'password';
             passwordInput.type = isHidden ? 'text' : 'password';
             eyeIcon.className = isHidden ? 'bi bi-eye-fill' : 'bi bi-eye-slash-fill';
             passwordInput.focus();
+        });
+    }
+
+    if (verifyTwoFactorBtn && twoFactorCodeInput) {
+        verifyTwoFactorBtn.addEventListener('click', async () => {
+            const code = twoFactorCodeInput.value.trim();
+            if (!code) {
+                showError('Veuillez saisir votre code 2FA');
+                return;
+            }
+
+            verifyTwoFactorBtn.disabled = true;
+            try {
+                const result = await API.verifyTwoFactor(code);
+                if (result.success && result.user) {
+                    persistAuthenticatedUser(result);
+                    return;
+                }
+
+                showError(result.error || 'Code 2FA invalide');
+            } catch (error) {
+                console.error('[Auth] Erreur 2FA:', error);
+                showError('Impossible de vérifier le second facteur');
+            } finally {
+                verifyTwoFactorBtn.disabled = false;
+            }
+        });
+
+        twoFactorCodeInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                verifyTwoFactorBtn.click();
+            }
+        });
+    }
+
+    if (cancelTwoFactorBtn) {
+        cancelTwoFactorBtn.addEventListener('click', () => {
+            hideTwoFactorStep();
+            resetLoginButton();
         });
     }
 

@@ -65,6 +65,9 @@ try {
     $verify = readText($root . '/api/auth/verify.php');
     $requireAuth = readText($root . '/api/auth/require-auth.php');
     $csrfTokenEndpoint = readText($root . '/api/auth/csrf-token.php');
+    $sessionBootstrap = readText($root . '/api/auth/session-bootstrap.php');
+    $resetPassword = readText($root . '/api/auth/reset-password.php');
+    $forgotPassword = readText($root . '/api/auth/forgot-password.php');
     $runImport = readText($root . '/api/admin/run-import.php');
     $runImportTech = readText($root . '/api/admin/run-import-tech.php');
     $getImportStatus = readText($root . '/api/admin/get-import-status.php');
@@ -77,13 +80,20 @@ try {
 
     // Auth/login/session
     assertContains('Login: rate limit actif', $login, 'MAX_LOGIN_ATTEMPTS', $failures);
-    assertContains('Login: session démarrée', $login, 'session_start();', $failures);
+    assertContains('Login: session sécurisée démarrée', $login, 'AuthSessionHelper::storePendingTwoFactor(', $failures);
     assertContains('Login: token CSRF session', $login, "\$_SESSION['csrf_token']", $failures);
     assertContains('Verify: renvoi du token CSRF', $verify, "'csrf_token'", $failures);
     assertContains('Require-auth: timeout session', $requireAuth, 'SESSION_EXPIRY_HOURS', $failures);
     assertContains('Require-auth: contrôle méthodes mutatrices', $requireAuth, "['POST', 'PUT', 'PATCH', 'DELETE']", $failures);
     assertContains('Require-auth: erreur CSRF explicite', $requireAuth, 'CSRF_INVALID', $failures);
     assertContains('Endpoint CSRF dédié présent', $csrfTokenEndpoint, "csrf_token", $failures);
+    assertContains('Session bootstrap: SameSite activé', $sessionBootstrap, "'samesite' =>", $failures);
+    assertContains('Login: rotation de session', $login, 'AuthSessionHelper::finalizeLogin(', $failures);
+    assertContains('Require-auth: suivi inactivité réel', $requireAuth, "last_activity_at", $failures);
+    assertContains('Forgot password: rate limit actif', $forgotPassword, 'password_reset_attempts', $failures);
+    assertContains('Reset password: rate limit actif', $resetPassword, 'password_reset_attempts', $failures);
+    assertContains('Reset password: hash sha256 vérifié', $resetPassword, "hash('sha256'", $failures);
+    assertContains('Create user: mot de passe min renforcé', $createUser, 'MIN_PASSWORD_LENGTH', $failures);
 
     // Endpoints admin sensibles
     assertContains('Admin import global: auth requise', $runImport, "require-auth.php", $failures);

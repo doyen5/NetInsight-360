@@ -16,9 +16,9 @@ if ($userRole !== 'ADMIN') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>NetInsight 360 - Gestion Utilisateurs</title>
     <link rel="icon" type="image/png" href="assets/img/logo.PNG">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
@@ -174,7 +174,7 @@ if ($userRole !== 'ADMIN') {
                             <option value="inactive">Inactif</option>
                         </select>
                     </div>
-                    <div class="mb-3"><label class="form-label">Mot de passe <small class="text-muted">(laisser vide pour ne pas changer)</small></label><input type="password" class="form-control" id="userPassword" autocomplete="new-password"></div>
+                    <div class="mb-3"><label class="form-label">Mot de passe <small class="text-muted">(laisser vide pour ne pas changer, minimum 12 caractères)</small></label><input type="password" class="form-control" id="userPassword" autocomplete="new-password" minlength="12" maxlength="72"></div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -213,7 +213,7 @@ if ($userRole !== 'ADMIN') {
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
     <script src="js/api.js"></script>
     <script src="js/logout.js?v=2"></script>
     <script src="js/app.js"></script>

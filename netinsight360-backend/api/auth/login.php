@@ -6,35 +6,48 @@
 
 // Headers CORS
 require_once __DIR__ . '/../cors.php';
+require_once __DIR__ . '/session-bootstrap.php';
+require_once __DIR__ . '/../../app/helpers/ApiResponse.php';
+require_once __DIR__ . '/../../app/helpers/RequestHelper.php';
+require_once __DIR__ . '/../../app/helpers/SecuritySchemaHelper.php';
+require_once __DIR__ . '/../../app/helpers/AuthSessionHelper.php';
 
 // Vérifier que la méthode est POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Méthode non autorisée']);
-    exit();
+    ApiResponse::error('Méthode non autorisée', 405);
 }
 
-// Récupérer les données JSON envoyées par le frontend
-$input = json_decode(file_get_contents('php://input'), true);
+// Le corps JSON est désormais parsé via un helper partagé afin d'aligner
+// les erreurs et de réduire les duplications sur les endpoints sensibles.
+$input = RequestHelper::requireJsonBody();
 
 // Vérifier que les données sont présentes
 if (!$input || !isset($input['email']) || !isset($input['password'])) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Email et mot de passe requis']);
-    exit();
+    ApiResponse::error('Email et mot de passe requis', 400);
 }
 
 // Récupérer les variables
-$email = trim($input['email']);
-$password = $input['password'];
+$email = RequestHelper::string($input, 'email');
+$password = RequestHelper::password($input, 'password');
 $remember = isset($input['remember']) ? (bool)$input['remember'] : false;
+
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    ApiResponse::error('Format email invalide', 400);
+}
+
+if (!is_string($password) || $password === '') {
+    ApiResponse::error('Email et mot de passe requis', 400);
+}
 
 // Connexion à la base de données
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/constants.php';
 
+$invalidCredentialsMessage = 'Email ou mot de passe incorrect';
+
 try {
     $pdo = Database::getLocalConnection();
+    SecuritySchemaHelper::ensureSecuritySchema($pdo);
     $ip  = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
     // ---------------------------------------------------------------
@@ -56,109 +69,60 @@ try {
     ");
     $cntStmt->execute([$ip, $email, $window]);
     if ((int)$cntStmt->fetchColumn() >= MAX_LOGIN_ATTEMPTS) {
-        http_response_code(429);
-        echo json_encode([
-            'success' => false,
-            'error'   => 'Trop de tentatives de connexion. Réessayez dans ' . LOGIN_ATTEMPT_TIMEOUT . ' minutes.',
-        ]);
-        exit();
+        ApiResponse::error('Trop de tentatives de connexion. Réessayez dans ' . LOGIN_ATTEMPT_TIMEOUT . ' minutes.', 429);
     }
 
     // Nettoyer les vieilles tentatives (> 1 heure) pour éviter la croissance infinie
     $pdo->exec("DELETE FROM login_attempts WHERE attempted_at < DATE_SUB(NOW(), INTERVAL 1 HOUR)");
 
     // Récupérer l'utilisateur
-    $stmt = $pdo->prepare("SELECT id, name, email, password, role, status, last_login FROM users WHERE email = ?");
+    $stmt = $pdo->prepare("SELECT id, name, email, password, role, status, last_login, two_factor_enabled, two_factor_secret_enc, two_factor_recovery_codes_json FROM users WHERE email = ?");
     $stmt->execute([$email]);
     $user = $stmt->fetch();
 
     if (!$user) {
         // Enregistrer la tentative (email inexistant)
         $pdo->prepare("INSERT INTO login_attempts (ip_address, email) VALUES (?, ?)")->execute([$ip, $email]);
-        echo json_encode(['success' => false, 'error' => 'Email ou mot de passe incorrect']);
-        exit();
+        ApiResponse::error($invalidCredentialsMessage, 401);
     }
     
     // Vérifier le statut du compte
     if ($user['status'] !== 'active') {
-        echo json_encode(['success' => false, 'error' => 'Compte désactivé. Contactez l\'administrateur.']);
-        exit();
+        $pdo->prepare("INSERT INTO login_attempts (ip_address, email) VALUES (?, ?)")->execute([$ip, $email]);
+        ApiResponse::error($invalidCredentialsMessage, 401);
     }
     
     // Vérifier le mot de passe
     if (!password_verify($password, $user['password'])) {
         // Enregistrer la tentative échouée
         $pdo->prepare("INSERT INTO login_attempts (ip_address, email) VALUES (?, ?)")->execute([$ip, $email]);
-        echo json_encode(['success' => false, 'error' => 'Email ou mot de passe incorrect']);
-        exit();
+        ApiResponse::error($invalidCredentialsMessage, 401);
     }
 
     // Connexion réussie : effacer les tentatives précédentes pour cet email
     $pdo->prepare("DELETE FROM login_attempts WHERE email = ?")->execute([$email]);
-    
-    // Démarrer la session
-    session_start();
-    
-    // Stocker les informations utilisateur en session
-    $_SESSION['user_id'] = $user['id'];
-    $_SESSION['user_name'] = $user['name'];
-    $_SESSION['user_email'] = $user['email'];
-    $_SESSION['user_role'] = $user['role'];
-    $_SESSION['logged_in_at'] = time();
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-    
-    // Mettre à jour la dernière connexion
-    $updateStmt = $pdo->prepare("UPDATE users SET last_login = NOW(), last_ip = ? WHERE id = ?");
-    $updateStmt->execute([$_SERVER['REMOTE_ADDR'] ?? null, $user['id']]);
-    
-    // Si "Rester connecté" est coché, créer un token
-    if ($remember) {
-        $token = bin2hex(random_bytes(32));
-        $expires = date('Y-m-d H:i:s', strtotime('+30 days'));
-        
-        // Vérifier si la table user_tokens existe
-        $tableExists = $pdo->query("SHOW TABLES LIKE 'user_tokens'")->rowCount() > 0;
-        
-        if ($tableExists) {
-            // Supprimer l'ancien token
-            $deleteStmt = $pdo->prepare("DELETE FROM user_tokens WHERE user_id = ?");
-            $deleteStmt->execute([$user['id']]);
-            
-            // Créer le nouveau token
-            $insertStmt = $pdo->prepare("INSERT INTO user_tokens (user_id, token, expires_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?)");
-            $insertStmt->execute([
-                $user['id'],
-                hash('sha256', $token),
-                $expires,
-                $_SERVER['REMOTE_ADDR'] ?? null,
-                $_SERVER['HTTP_USER_AGENT'] ?? null
-            ]);
-            
-            // Définir le cookie (secure=true si HTTPS, false en dev HTTP local)
-            $isSecure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
-            setcookie('remember_token', $token, time() + 86400 * 30, '/', '', $isSecure, true);
-        }
+
+    // Si le compte a un secret TOTP confirmé, on bascule dans un état de pré-authentification.
+    // Aucun cookie de session durable n'est émis tant que le second facteur n'est pas validé.
+    if (!empty($user['two_factor_enabled']) && !empty($user['two_factor_secret_enc'])) {
+        AuthSessionHelper::storePendingTwoFactor($user, $remember);
+        ApiResponse::success([
+            'requires_2fa' => true,
+            'message' => 'Code de vérification requis.',
+            'two_factor_method' => 'totp',
+        ]);
     }
-    
-    // Retourner la réponse de succès
-    echo json_encode([
-        'success' => true,
+
+    $authenticatedUser = AuthSessionHelper::finalizeLogin($pdo, $user, $remember);
+    ApiResponse::success([
         'csrf_token' => $_SESSION['csrf_token'],
-        'user' => [
-            'id'          => $user['id'],
-            'name'        => $user['name'],
-            'email'       => $user['email'],
-            'role'        => $user['role'],
-            'loggedInAt'  => date('Y-m-d H:i:s'),
-            // Dernière connexion AVANT celle-ci (null si c'est la première)
-            'lastLogin'   => $user['last_login'] ?? null
-        ]
+        'user' => $authenticatedUser,
     ]);
     
 } catch (PDOException $e) {
     error_log($e->getMessage());
-    echo json_encode(['success' => false, 'error' => 'Erreur de base de données']);
+    ApiResponse::error('Erreur de base de données', 500);
 } catch (Exception $e) {
     error_log($e->getMessage());
-    echo json_encode(['success' => false, 'error' => 'Erreur serveur']);
+    ApiResponse::error('Erreur serveur', 500);
 }

@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/../cors.php';
+require_once __DIR__ . '/session-bootstrap.php';
 
 // Gérer OPTIONS
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -18,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit();
 }
 
-session_start();
+ni360_start_session();
 
 if (!isset($_SESSION['user_id'])) {
     echo json_encode(['success' => false, 'error' => 'Non authentifié']);
@@ -47,6 +48,6 @@ $insertStmt->execute([
 ]);
 
 // Définir le cookie
-setcookie('remember_token', $newToken, time() + 86400 * 30, '/', '', false, true);
+setcookie('remember_token', $newToken, ni360_remember_cookie_options(time() + 86400 * 30));
 
 echo json_encode(['success' => true, 'message' => 'Token rafraîchi avec succès']);

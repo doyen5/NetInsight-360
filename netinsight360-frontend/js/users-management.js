@@ -277,6 +277,7 @@ function editUser(userId) {
  * Sauvegarde un utilisateur (création ou modification)
  */
 async function saveUser() {
+    const MIN_PASSWORD_LENGTH = 12;
     const userId = document.getElementById('userId').value;
     const name = document.getElementById('userName').value.trim();
     const email = document.getElementById('userEmail').value.trim();
@@ -286,6 +287,21 @@ async function saveUser() {
     
     if (!name || !email) {
         alert('Veuillez remplir tous les champs obligatoires.');
+        return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        alert('Veuillez saisir une adresse email valide.');
+        return;
+    }
+
+    if (password && password.length < MIN_PASSWORD_LENGTH) {
+        alert(`Le mot de passe doit contenir au moins ${MIN_PASSWORD_LENGTH} caractères.`);
+        return;
+    }
+
+    if (password && password.length > 72) {
+        alert('Le mot de passe est trop long.');
         return;
     }
     

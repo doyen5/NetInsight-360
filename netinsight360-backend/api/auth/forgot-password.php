@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/../cors.php';
+require_once __DIR__ . '/../../config/constants.php';
 
 // Gérer OPTIONS
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -18,7 +19,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit();
 }
 
-$input = json_decode(file_get_contents('php://input'), true);
+$rawInput = file_get_contents('php://input');
+$input = json_decode($rawInput, true);
+
+if (json_last_error() !== JSON_ERROR_NONE) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'Requête JSON invalide']);
+    exit();
+}
 
 if (!isset($input['email']) || empty($input['email'])) {
     echo json_encode(['success' => false, 'error' => 'Email requis']);
@@ -27,8 +35,38 @@ if (!isset($input['email']) || empty($input['email'])) {
 
 $email = trim($input['email']);
 
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'Format email invalide']);
+    exit();
+}
+
 require_once __DIR__ . '/../../config/database.php';
 $pdo = Database::getLocalConnection();
+
+$pdo->exec("CREATE TABLE IF NOT EXISTS password_reset_attempts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    ip_address VARCHAR(45) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    action_type ENUM('request', 'confirm') NOT NULL,
+    attempted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_reset_attempt_lookup (ip_address, email, action_type),
+    INDEX idx_reset_attempted_at (attempted_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+$ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+$window = date('Y-m-d H:i:s', strtotime('-' . PASSWORD_RESET_ATTEMPT_TIMEOUT . ' minutes'));
+$attemptStmt = $pdo->prepare("SELECT COUNT(*) FROM password_reset_attempts WHERE action_type = 'request' AND (ip_address = ? OR email = ?) AND attempted_at > ?");
+$attemptStmt->execute([$ip, $email, $window]);
+if ((int) $attemptStmt->fetchColumn() >= MAX_PASSWORD_RESET_REQUEST_ATTEMPTS) {
+    http_response_code(429);
+    echo json_encode(['success' => false, 'error' => 'Trop de demandes de réinitialisation. Réessayez plus tard.']);
+    exit();
+}
+
+$pdo->prepare("INSERT INTO password_reset_attempts (ip_address, email, action_type) VALUES (?, ?, 'request')")
+    ->execute([$ip, $email]);
+$pdo->exec("DELETE FROM password_reset_attempts WHERE attempted_at < DATE_SUB(NOW(), INTERVAL 1 DAY)");
 
 // Vérifier si l'email existe
 $stmt = $pdo->prepare("SELECT id, name FROM users WHERE email = ? AND status = 'active'");

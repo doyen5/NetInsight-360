@@ -13,6 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 require_once __DIR__ . '/../auth/require-auth.php';
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../config/constants.php';
 
 try {
     $input       = json_decode(file_get_contents('php://input'), true);
@@ -23,9 +24,13 @@ try {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Ancien et nouveau mot de passe requis']); exit();
     }
-    if (strlen($newPassword) < 8) {
+    if (strlen($newPassword) < MIN_PASSWORD_LENGTH) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Le nouveau mot de passe doit contenir au moins 8 caractères']); exit();
+        echo json_encode(['success' => false, 'error' => 'Le nouveau mot de passe doit contenir au moins ' . MIN_PASSWORD_LENGTH . ' caractères']); exit();
+    }
+    if (strlen($newPassword) > MAX_PASSWORD_LENGTH) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Le nouveau mot de passe est trop long']); exit();
     }
 
     $pdo  = Database::getLocalConnection();

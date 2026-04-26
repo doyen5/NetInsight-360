@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     const protectedPages = ['dashboard.html', 'kpis-ran.html', 'kpis-core.html', 
                             'map-view.html', 'users-management.html', 'alerts.html', 'admin-tools.html',
                             'dashboard.php', 'kpis-ran.php', 'kpis-core.php',
-                            'map-view.php', 'users-management.php', 'alerts.php', 'admin-tools.php'];
+                            'map-view.php', 'users-management.php', 'alerts.php', 'admin-tools.php', 'security-settings.php'];
     const currentPage = window.location.pathname.split('/').pop();
     
     // Si on est sur une page protégée
@@ -291,6 +291,8 @@ async function updateUserInterface() {
     };
     const headerUserRoleEl = document.getElementById('headerUserRole');
     if (headerUserRoleEl) headerUserRoleEl.innerText = roleMap[user.role] || 'Utilisateur';
+
+    ensureSecurityNavigation();
     
     // Afficher la dernière connexion
     const lastLoginEl = document.getElementById('lastLogin');
@@ -394,4 +396,32 @@ function setupGlobalSearch() {
             resultsEl.style.display = 'none';
         }
     });
+}
+
+/**
+ * Injecte un accès unique vers la page de sécurité 2FA.
+ * Cette approche évite de recopier un lien dans chaque page PHP déjà existante.
+ */
+function ensureSecurityNavigation() {
+    const currentPage = window.location.pathname.split('/').pop();
+    const sidebarNav = document.querySelector('#sidebar .nav');
+    if (sidebarNav && !document.getElementById('securitySettingsLink')) {
+        const link = document.createElement('a');
+        link.id = 'securitySettingsLink';
+        link.href = 'security-settings.php';
+        link.className = `nav-link ${currentPage === 'security-settings.php' ? 'active' : ''}`;
+        link.innerHTML = '<i class="bi bi-shield-lock"></i> Sécurité';
+        sidebarNav.appendChild(link);
+    }
+
+    const headerRight = document.querySelector('.header-right');
+    if (headerRight && !document.getElementById('securityShortcutBtn')) {
+        const button = document.createElement('a');
+        button.id = 'securityShortcutBtn';
+        button.href = 'security-settings.php';
+        button.className = 'btn btn-outline-secondary btn-sm';
+        button.style.borderRadius = '999px';
+        button.innerHTML = '<i class="bi bi-shield-lock"></i> Sécurité';
+        headerRight.insertBefore(button, document.getElementById('logoutBtn'));
+    }
 }

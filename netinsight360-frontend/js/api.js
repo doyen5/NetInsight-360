@@ -6,14 +6,24 @@
  * Gère les requêtes HTTP, les erreurs et les tokens d'authentification
  */
 
-// Configuration de l'API - CORRIGÉ
-const API_BASE_URL = '/NetInsight%20360/netinsight360-backend/api';
+// Configuration de l'API
+const API_BASE_URL = (() => {
+    const marker = '/netinsight360-frontend/';
+    const pathname = window.location.pathname || '';
+    const markerIndex = pathname.indexOf(marker);
+    const basePath = markerIndex >= 0
+        ? pathname.slice(0, markerIndex)
+        : pathname.replace(/\/[^/]*$/, '');
+
+    return `${window.location.origin}${basePath}/netinsight360-backend/api`;
+})();
 
 class API {
     static csrfToken = null;
     static isLocalDebug = ['localhost', '127.0.0.1'].includes(window.location.hostname);
     static publicMutationEndpoints = new Set([
         '/auth/login.php',
+        '/auth/verify-2fa.php',
         '/auth/forgot-password.php',
         '/auth/reset-password.php'
     ]);
@@ -129,6 +139,17 @@ class API {
         const data = await this.request('/auth/login.php', {
             method: 'POST',
             body: { email, password, remember }
+        });
+        if (data?.csrf_token) {
+            API.csrfToken = data.csrf_token;
+        }
+        return data;
+    }
+
+    static async verifyTwoFactor(code) {
+        const data = await this.request('/auth/verify-2fa.php', {
+            method: 'POST',
+            body: { code }
         });
         if (data?.csrf_token) {
             API.csrfToken = data.csrf_token;
@@ -325,6 +346,38 @@ class API {
     
     static async getUserStats() {
         return this.request('/users/get-user-stats.php');
+    }
+
+    static async getTwoFactorStatus() {
+        return this.request('/users/get-2fa-status.php');
+    }
+
+    static async setupTwoFactor(currentPassword) {
+        return this.request('/users/setup-2fa.php', {
+            method: 'POST',
+            body: { current_password: currentPassword }
+        });
+    }
+
+    static async confirmTwoFactor(code) {
+        return this.request('/users/confirm-2fa.php', {
+            method: 'POST',
+            body: { code }
+        });
+    }
+
+    static async disableTwoFactor(currentPassword, code) {
+        return this.request('/users/disable-2fa.php', {
+            method: 'POST',
+            body: { current_password: currentPassword, code }
+        });
+    }
+
+    static async regenerateTwoFactorRecoveryCodes(currentPassword, code) {
+        return this.request('/users/regenerate-2fa-recovery-codes.php', {
+            method: 'POST',
+            body: { current_password: currentPassword, code }
+        });
     }
     
     // ============================================

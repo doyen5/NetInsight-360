@@ -4,6 +4,9 @@
  * Fichier de configuration des constantes utilisées dans toute l'application
  */
 
+require_once __DIR__ . '/../app/helpers/EnvHelper.php';
+EnvHelper::load();
+
 // ============================================
 // CONSTANTES DE L'APPLICATION
 // ============================================
@@ -11,9 +14,9 @@
 define('APP_NAME', 'NetInsight 360');
 define('APP_VERSION', '1.0.0');
 define('APP_TAGLINE', 'Supervisez. Analysez. Optimisez.');
-define('APP_ENV', getenv('APP_ENV') ?: 'development');
-define('APP_URL', getenv('APP_URL') ?: 'http://localhost:8080/NetInsight%20360');
-define('APP_TIMEZONE', getenv('APP_TIMEZONE') ?: 'Africa/Abidjan');
+define('APP_ENV', EnvHelper::get('APP_ENV', 'development'));
+define('APP_URL', EnvHelper::get('APP_URL', 'http://localhost:8080/NetInsight%20360'));
+define('APP_TIMEZONE', EnvHelper::get('APP_TIMEZONE', 'Africa/Abidjan'));
 
 // ============================================
 // CONSTANTES DE PERFORMANCE
@@ -23,6 +26,13 @@ define('ITEMS_PER_PAGE', 10);
 define('SESSION_EXPIRY_HOURS', 8);
 define('MAX_LOGIN_ATTEMPTS', 5);
 define('LOGIN_ATTEMPT_TIMEOUT', 15); // minutes
+define('MIN_PASSWORD_LENGTH', 12);
+define('MAX_PASSWORD_LENGTH', 72);
+define('MAX_PASSWORD_RESET_REQUEST_ATTEMPTS', 5);
+define('MAX_PASSWORD_RESET_CONFIRM_ATTEMPTS', 5);
+define('PASSWORD_RESET_ATTEMPT_TIMEOUT', 15); // minutes
+define('TWO_FACTOR_SETUP_TTL_SECONDS', 600);
+define('TWO_FACTOR_CHALLENGE_TTL_SECONDS', 300);
 
 // ============================================
 // CONSTANTES DES KPIs
@@ -78,7 +88,7 @@ define('COUNTRIES', [
 // COORDONNÉES DE SUPPORT
 // ============================================
 
-define('SUPPORT_EMAIL', getenv('SUPPORT_EMAIL') ?: 'support@netinsight360.app');
+define('SUPPORT_EMAIL', EnvHelper::get('SUPPORT_EMAIL', 'support@netinsight360.app'));
 
 // ============================================
 // FUSEAU HORAIRE

@@ -1,8 +1,11 @@
 ﻿<?php
 /**
- * NetInsight 360 - API: Top 5 meilleurs et 35 pires sites (Option A)
+ * NetInsight 360 - API: Top/Pires sites (version dédupliquée par site)
  *
- * Option A : chaque ligne = combinaison site + technologie.
+ * Cette version retourne des sites uniques (id site unique), triés selon leur
+ * meilleure/pire performance. Si un site a plusieurs lignes KPI (plusieurs
+ * technos/KPIs), seule la ligne la plus pertinente pour le tri est conservée.
+ *
  * Filtres acceptés (GET) : country, vendor, tech, domain, worst_kpi
  */
 
@@ -57,15 +60,43 @@ try {
     // Pas de filtre lat/lng pour la liste : les sites sans coords sont quand même pertinents
     $having = "HAVING kpi_global > 0";
 
-    // Top 5 meilleurs (kpi_global DESC)
-    $stmtTop = $pdo->prepare("$baseSelect $whereClause $having ORDER BY kpi_global DESC LIMIT 5");
-    $stmtTop->execute($params);
-    $top = $stmtTop->fetchAll(PDO::FETCH_ASSOC);
+    // On récupère un volume suffisant de lignes triées, puis on déduplique par site.
+    // Cela garantit des "vrais" top/worst sites (sans répétition du même site).
+    $scanLimit = 1000;
 
-    // 35 pires (kpi_global ASC)
-    $stmtWorst = $pdo->prepare("$baseSelect $whereClause $having ORDER BY kpi_global ASC LIMIT 35");
+    // Top (lignes triées du meilleur vers le moins bon)
+    $stmtTop = $pdo->prepare("$baseSelect $whereClause $having ORDER BY kpi_global DESC LIMIT $scanLimit");
+    $stmtTop->execute($params);
+    $topRows = $stmtTop->fetchAll(PDO::FETCH_ASSOC);
+
+    // Worst (lignes triées du pire vers le moins pire)
+    $stmtWorst = $pdo->prepare("$baseSelect $whereClause $having ORDER BY kpi_global ASC LIMIT $scanLimit");
     $stmtWorst->execute($params);
-    $worst = $stmtWorst->fetchAll(PDO::FETCH_ASSOC);
+    $worstRows = $stmtWorst->fetchAll(PDO::FETCH_ASSOC);
+
+    $pickUniqueSites = function (array $rows, int $limit): array {
+        $seen = [];
+        $result = [];
+
+        foreach ($rows as $row) {
+            $siteId = (string)($row['id'] ?? '');
+            if ($siteId === '' || isset($seen[$siteId])) {
+                continue;
+            }
+
+            $seen[$siteId] = true;
+            $result[] = $row;
+
+            if (count($result) >= $limit) {
+                break;
+            }
+        }
+
+        return $result;
+    };
+
+    $top = $pickUniqueSites($topRows, 5);
+    $worst = $pickUniqueSites($worstRows, 35);
 
     $normalize = function (array &$sites): void {
         foreach ($sites as &$site) {

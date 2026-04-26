@@ -14,6 +14,7 @@ if (!in_array($_SERVER['REQUEST_METHOD'], ['PUT', 'POST'])) {
 
 require_once __DIR__ . '/../auth/require-auth.php';
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../config/constants.php';
 
 if ($_SESSION['user_role'] !== 'ADMIN') {
     http_response_code(403);
@@ -65,9 +66,13 @@ try {
     }
 
     if (!empty($password)) {
-        if (strlen($password) < 8) {
+        if (strlen($password) < MIN_PASSWORD_LENGTH) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Le mot de passe doit contenir au moins 8 caractères']); exit();
+            echo json_encode(['success' => false, 'error' => 'Le mot de passe doit contenir au moins ' . MIN_PASSWORD_LENGTH . ' caractères']); exit();
+        }
+        if (strlen($password) > MAX_PASSWORD_LENGTH) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Le mot de passe est trop long']); exit();
         }
         $upd = $pdo->prepare("UPDATE users SET name=?, email=?, role=?, status=?, password=?, updated_at=NOW() WHERE id=?");
         $upd->execute([$name, $email, $role, $status, password_hash($password, PASSWORD_DEFAULT), $userId]);

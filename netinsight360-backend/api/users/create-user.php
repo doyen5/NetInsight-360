@@ -14,6 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 require_once __DIR__ . '/../auth/require-auth.php';
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../config/constants.php';
 
 if ($_SESSION['user_role'] !== 'ADMIN') {
     http_response_code(403);
@@ -36,9 +37,13 @@ try {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Format email invalide']); exit();
     }
-    if (strlen($password) < 8) {
+    if (strlen($password) < MIN_PASSWORD_LENGTH) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Le mot de passe doit contenir au moins 8 caractères']); exit();
+        echo json_encode(['success' => false, 'error' => 'Le mot de passe doit contenir au moins ' . MIN_PASSWORD_LENGTH . ' caractères']); exit();
+    }
+    if (strlen($password) > MAX_PASSWORD_LENGTH) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Le mot de passe est trop long']); exit();
     }
 
     $validRoles    = ['ADMIN', 'FO_ANALYSTE', 'CUSTOMER'];
@@ -56,7 +61,7 @@ try {
 
     $ins = $pdo->prepare("
         INSERT INTO users (name, email, password, role, status, email_verified, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, 0, NOW(), NOW())
+        VALUES (?, ?, ?, ?, ?, 1, NOW(), NOW())
     ");
     $ins->execute([$name, $email, password_hash($password, PASSWORD_DEFAULT), $role, $status]);
     $newId = (int)$pdo->lastInsertId();

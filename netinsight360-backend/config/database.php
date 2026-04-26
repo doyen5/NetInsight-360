@@ -12,6 +12,8 @@
  *   $pdo = Database::getRemoteConnection();   // Connexion distante
  */
 
+require_once __DIR__ . '/../app/helpers/EnvHelper.php';
+
 class Database
 {
     /** @var PDO Instance de connexion locale */
@@ -34,47 +36,7 @@ class Database
         if (self::$envLoaded) {
             return;
         }
-        // Priorité: .env.local (non versionné, spécifique à l'env) puis .env
-        $candidates = [
-            __DIR__ . '/../.env.local',
-            __DIR__ . '/../.env',
-        ];
-
-        foreach ($candidates as $envFile) {
-            if (!file_exists($envFile)) {
-                continue;
-            }
-
-            $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-            foreach ($lines as $line) {
-                $line = trim($line);
-                if (strpos($line, '#') === 0 || $line === '') {
-                    continue;
-                }
-
-                $parts = explode('=', $line, 2);
-                if (count($parts) !== 2) {
-                    continue;
-                }
-
-                $key = trim($parts[0]);
-                $value = trim($parts[1]);
-
-                // Retirer guillemets entourant la valeur si présents
-                if ((strpos($value, '"') === 0 && strrpos($value, '"') === strlen($value)-1) ||
-                    (strpos($value, "'") === 0 && strrpos($value, "'") === strlen($value)-1)) {
-                    $value = substr($value, 1, -1);
-                }
-
-                // Ne pas écraser une variable système déjà définie
-                if (getenv($key) !== false) {
-                    continue;
-                }
-
-                putenv("{$key}={$value}");
-                $_ENV[$key] = $value;
-            }
-        }
+        EnvHelper::load();
         
         self::$envLoaded = true;
     }
@@ -93,13 +55,8 @@ class Database
     private static function getEnv(string $key, $default = null)
     {
         self::loadEnv();
-        
-        $value = getenv($key);
-        if ($value !== false) {
-            return $value;
-        }
-        
-        return $_ENV[$key] ?? $default;
+
+        return EnvHelper::get($key, $default);
     }
 
     /**
@@ -107,12 +64,7 @@ class Database
      */
     private static function requireEnv(string $key): string
     {
-        $value = self::getEnv($key, '');
-        if (!is_string($value) || trim($value) === '') {
-            throw new RuntimeException("Variable d'environnement requise absente: {$key}");
-        }
-
-        return $value;
+        return EnvHelper::require($key);
     }
     
     /**
