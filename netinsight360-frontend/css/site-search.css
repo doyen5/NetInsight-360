@@ -1,0 +1,80 @@
+/* Styles spécifiques pour la page de recherche de site */
+
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.filter-group label {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.suggestions-list {
+    position: absolute;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    max-height: 260px;
+    overflow-y: auto;
+    z-index: 1000;
+    width: 100%;
+    display: none;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.suggestion-item {
+    padding: 12px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid #e9ecef;
+    transition: background-color 0.15s ease;
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-item:hover,
+.suggestion-item.active {
+    background-color: #f1f3f5;
+}
+
+.suggestion-item .item-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.suggestion-item .item-meta {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+#kpiChartContainer {
+    position: relative;
+    height: 400px;
+    margin-top: 20px;
+}
+
+#siteInfo {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+#siteInfo h6 {
+    color: #495057;
+    margin-bottom: 10px;
+}
+
+#siteInfo p {
+    margin-bottom: 5px;
+    font-size: 14px;
+}

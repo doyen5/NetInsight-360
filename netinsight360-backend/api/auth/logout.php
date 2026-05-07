@@ -12,7 +12,6 @@
 
 // Headers CORS pour permettre les requêtes depuis le frontend
 require_once __DIR__ . '/../cors.php';
-require_once __DIR__ . '/session-bootstrap.php';
 
 // Vérifier que la méthode HTTP est POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -26,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 // Démarrer la session
 if (session_status() === PHP_SESSION_NONE) {
-    ni360_start_session();
+    session_start();
 }
 
 // CSRF: exiger le jeton uniquement si une session authentifiée existe.
@@ -69,7 +68,11 @@ if (isset($_COOKIE['remember_token'])) {
     setcookie(
         'remember_token',
         '',
-        ni360_remember_cookie_options(time() - 3600)
+        time() - 3600,           // Expiration dans le passé
+        '/',                     // Chemin
+        '',                      // Domaine
+        false,                   // Secure (false en développement)
+        true                     // HttpOnly
     );
 }
 

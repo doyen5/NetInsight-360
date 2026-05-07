@@ -12,10 +12,10 @@
  * Si non authentifié      → HTTP 401 + JSON + exit().
  */
 
-require_once __DIR__ . '/session-bootstrap.php';
-
 // Démarrer la session si pas encore démarrée
-ni360_start_session();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
@@ -35,9 +35,7 @@ if (!isset($_SESSION['csrf_token'])) {
 // SESSION_EXPIRY_HOURS défini dans config/constants.php (défaut : 8h)
 require_once __DIR__ . '/../../config/constants.php';
 $maxIdle = defined('SESSION_EXPIRY_HOURS') ? (SESSION_EXPIRY_HOURS * 3600) : 28800;
-$lastActivity = (int) ($_SESSION['last_activity_at'] ?? $_SESSION['logged_in_at'] ?? 0);
-if ($lastActivity > 0 && (time() - $lastActivity) > $maxIdle) {
-    $_SESSION = [];
+if (isset($_SESSION['logged_in_at']) && (time() - (int)$_SESSION['logged_in_at']) > $maxIdle) {
     session_destroy();
     http_response_code(401);
     echo json_encode([
@@ -48,10 +46,7 @@ if ($lastActivity > 0 && (time() - $lastActivity) > $maxIdle) {
     exit();
 }
 // Rafraîchir le timer d'inactivité à chaque appel API
-$_SESSION['last_activity_at'] = time();
-if (!isset($_SESSION['logged_in_at'])) {
-    $_SESSION['logged_in_at'] = time();
-}
+$_SESSION['logged_in_at'] = time();
 
 // ---- Protection CSRF sur requêtes mutatrices ----
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');

@@ -14,6 +14,7 @@
     "require": {
         "phpoffice/phppresentation": "^0.9.0",
         "spomky-labs/otphp": "11.3",
-        "bacon/bacon-qr-code": "3.0"
+        "bacon/bacon-qr-code": "3.0",
+        "setasign/fpdf": "^1.8"
     }
 }

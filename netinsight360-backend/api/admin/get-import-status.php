@@ -105,12 +105,34 @@ try {
     $lockFile      = realpath(__DIR__ . '/../../logs') . DIRECTORY_SEPARATOR . 'netinsight_import.lock';
     $lockFileOld   = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'netinsight_import.lock';
     $activeLock    = null;
+    $activeLockMtime = null;
     foreach ([$lockFile, $lockFileOld] as $lf) {
-        if (file_exists($lf) && (time() - filemtime($lf)) < 600) {
+        if (!file_exists($lf)) {
+            continue;
+        }
+        $mtime = @filemtime($lf);
+        if ($mtime === false) {
+            continue;
+        }
+        if ((time() - $mtime) < 600) {
             $activeLock = $lf;
+            $activeLockMtime = $mtime;
             break;
         }
     }
+
+    // Réconciliation lock/marker: si un marker de fin est au moins aussi récent
+    // que le lock actif, on considère l'import terminé et on supprime ce lock.
+    // Cela évite un état "Import en cours" persistant en cas de lock résiduel.
+    if ($activeLock && $activeLockMtime && $markerFile && file_exists($markerFile)) {
+        $markerMtime = @filemtime($markerFile);
+        if ($markerMtime !== false && $markerMtime >= $activeLockMtime) {
+            try { @unlink($activeLock); } catch (Exception $e) { /* non bloquant */ }
+            $activeLock = null;
+            $activeLockMtime = null;
+        }
+    }
+
     $isRunning = ($activeLock !== null);
 
     // --- Déterminer si l'import vient de se terminer récemment ---

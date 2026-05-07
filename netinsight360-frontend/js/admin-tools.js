@@ -64,6 +64,8 @@ function initAdminTools() {
     document.getElementById('runImport2GBtn')?.addEventListener('click', () => triggerTechImport('2G'));
     document.getElementById('runImport3GBtn')?.addEventListener('click', () => triggerTechImport('3G'));
     document.getElementById('runImport4GBtn')?.addEventListener('click', () => triggerTechImport('4G'));
+    // Bouton « Forcer déverrouillage » → supprime le lock d'import
+    document.getElementById('forceUnlockBtn')?.addEventListener('click', forceUnlockImport);
 
     // --- Section Qualité des données + Traçabilité imports ---
     loadDataHealth();
@@ -257,10 +259,10 @@ async function triggerImportInternal(mode) {
                 if ((status && status.ok && !status.isRunning) || tries >= 24) {
                     clearInterval(_pollTimer);
                     if (tries >= 24 && status?.isRunning) {
-                        // Import toujours en cours après 2 min : on libère le bouton
-                        // mais on empêche le setInterval(30s) de le re-bloquer
+                        // Après 2 min, on arrête le polling intensif (5s) mais l'import
+                        // peut continuer normalement. Le statut reste surveillé toutes les 30s.
                         _pollingExpired = true;
-                        msg.innerHTML = `<span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Import ${modeLabel}: durée maximale atteinte. Vérifiez les logs.</span>`;
+                        msg.innerHTML = `<span class="text-warning"><i class="bi bi-hourglass-split me-1"></i>Import ${modeLabel} toujours en cours. Suivi automatique maintenu (rafraîchissement toutes les 30s).</span>`;
                     } else if (tries >= 24 && (!status || !status.ok)) {
                         _pollingExpired = false;
                         msg.innerHTML = `<span class="text-danger"><i class="bi bi-wifi-off me-1"></i>Import ${modeLabel}: statut indisponible, vérifiez les logs puis actualisez.</span>`;
@@ -353,6 +355,39 @@ function setImportRunning(running) {
         _activeImportMode = null;
     }
     document.getElementById('importSpinner').classList.toggle('show', running);
+}
+
+/**
+ * forceUnlockImport()
+ *
+ * Appelle l'API pour supprimer le lock d'import bloquant.
+ * Réservé aux administrateurs.
+ */
+async function forceUnlockImport() {
+    const msg = document.getElementById('importMsg');
+    if (!confirm('Voulez-vous vraiment supprimer le lock d\'import ? Cela peut résoudre un blocage.')) {
+        return;
+    }
+    
+    msg.innerHTML = '<span class="text-info"><i class="bi bi-unlock me-1"></i>Suppression du lock en cours...</span>';
+    
+    try {
+        const res = await fetch('./api/admin/force-unlock-import.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            msg.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Lock supprimé avec succès.</span>';
+            // Rafraîchir le statut après déverrouillage
+            loadImportStatus();
+        } else {
+            msg.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle me-1"></i>${data.error || 'Erreur lors de la suppression du lock'}</span>`;
+        }
+    } catch (e) {
+        msg.innerHTML = '<span class="text-danger"><i class="bi bi-wifi-off me-1"></i>Erreur de connexion API</span>';
+    }
 }
 
 /* ============================================================
