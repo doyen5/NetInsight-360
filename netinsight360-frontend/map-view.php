@@ -87,6 +87,7 @@ $mapViewJsVersion = @filemtime(__DIR__ . '/js/map-view.js') ?: time();
             <a href="kpis-ran.php" class="nav-link"><i class="bi bi-wifi"></i> KPIs RAN</a>
             <a href="kpis-core.php" class="nav-link"><i class="bi bi-hdd-stack"></i> KPIs CORE</a>
             <a href="map-view.php" class="nav-link active"><i class="bi bi-map"></i> Cartographie</a>
+            <a href="site-search.php" class="nav-link"><i class="bi bi-search"></i> Recherche Site</a>
             <!--<a href="users-management.php" class="nav-link" data-section="users-management" id="navUsersManagement">
                 <i class="bi bi-people"></i> Gestion Users
             </a>-->
