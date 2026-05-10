@@ -24,15 +24,15 @@ $kpiColClass = ($userRole === 'ADMIN') ? 'col-md-3 col-sm-6' : 'col-md-4 col-sm-
     <link rel="icon" type="image/png" href="assets/img/logo.PNG">
     
     <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="assets/css/bootstrap-icons.min.css">
     <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="assets/css/leaflet.css" />
     <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="assets/js/chart.umd.min.js"></script>
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="assets/css/inter.css" rel="stylesheet">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css?v=<?= $dashboardCssVersion ?>">
@@ -217,11 +217,11 @@ $kpiColClass = ($userRole === 'ADMIN') ? 'col-md-3 col-sm-6' : 'col-md-4 col-sm-
     <div class="modal fade" id="comparisonModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header py-2" style="background:linear-gradient(135deg,#1e3a5f,#00a3c4);color:white"><h6 class="modal-title mb-0"><i class="bi bi-graph-up"></i> Comparaison des KPIs par période</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-3"><div id="comparisonStatsBar" class="d-flex flex-wrap gap-3 mb-3 p-2 rounded" style="background:#f8f9fa;font-size:0.8rem"></div><canvas id="comparisonChart" height="140"></canvas><div class="mt-2" id="comparisonLessons"></div></div></div></div></div>
     <div id="logoutConfirmModal" class="logout-confirm-modal"><div class="logout-confirm-card"><i class="bi bi-box-arrow-right"></i><h3>Déconnexion</h3><p>Êtes-vous sûr de vouloir vous déconnecter ?</p><div class="logout-confirm-buttons"><button class="btn-cancel-logout" id="cancelLogoutBtn"><i class="bi bi-x-lg"></i> Annuler</button><button class="btn-confirm-logout" id="confirmLogoutBtn"><i class="bi bi-check-lg"></i> Déconnecter</button></div></div></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="assets/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/leaflet.js"></script>
     <!-- Plugins Leaflet requis pour les modes cluster et heatmap -->
-    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="assets/js/leaflet.markercluster.js"></script>
+    <script src="assets/js/leaflet-heat.js"></script>
     <!-- Toast : dernière connexion -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:9999">
         <div id="lastLoginToast" class="toast align-items-center text-bg-dark border-0" role="alert" aria-live="assertive" data-bs-autohide="true" data-bs-delay="6000">
@@ -246,3 +246,4 @@ $kpiColClass = ($userRole === 'ADMIN') ? 'col-md-3 col-sm-6' : 'col-md-4 col-sm-
 
 </body>
 </html>
+

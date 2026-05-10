@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/../netinsight360-backend/app/helpers/AuthHelper.php';
 AuthHelper::requireLogin();
 $user = AuthHelper::getUser();
@@ -16,10 +16,10 @@ if ($userRole !== 'ADMIN') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>NetInsight 360 - Gestion Utilisateurs</title>
     <link rel="icon" type="image/png" href="assets/img/logo.PNG">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="assets/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/bootstrap-icons.min.css">
+    <script src="assets/js/chart.umd.min.js"></script>
+    <link href="assets/css/inter.css" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/users-management.css">
@@ -73,7 +73,7 @@ if ($userRole !== 'ADMIN') {
 
     <div class="main-content">
         <div class="header-bar">
-            <div class="welcome-message"><i class="bi bi-person-circle"></i> Bienvenue, <span id="userName">Chargement...</span> 👋</div>
+            <div class="welcome-message"><i class="bi bi-person-circle"></i> Bienvenue, <span id="userName">Chargement...</span> ??</div>
             <div class="header-right">
                 <div class="date-time" id="currentDateTime"><i class="bi bi-calendar3"></i> <span>Chargement...</span></div>
                 <div class="user-info-header">
@@ -83,13 +83,13 @@ if ($userRole !== 'ADMIN') {
                         <div class="user-role" id="headerUserRole">Chargement...</div>
                     </div>
                 </div>
-                <button class="logout-btn-header" id="logoutBtn"><i class="bi bi-box-arrow-right"></i> Déconnexion</button>
+                <button class="logout-btn-header" id="logoutBtn"><i class="bi bi-box-arrow-right"></i> D�connexion</button>
             </div>
         </div>
 
         <div class="page-header mb-4">
             <h2><i class="bi bi-people-fill"></i> Gestion des Utilisateurs</h2>
-            <p class="text-muted">Administration des comptes, rôles et permissions</p>
+            <p class="text-muted">Administration des comptes, r�les et permissions</p>
         </div>
 
         <!-- KPI Cards -->
@@ -103,9 +103,9 @@ if ($userRole !== 'ADMIN') {
         <!-- Filtres + bouton Ajouter -->
         <div class="filter-bar mb-4">
             <div class="d-flex gap-3 flex-wrap align-items-center">
-                <div class="filter-group"><label><i class="bi bi-person-gear"></i> Rôle</label>
+                <div class="filter-group"><label><i class="bi bi-person-gear"></i> R�le</label>
                     <select id="filterRole">
-                        <option value="all">Tous les rôles</option>
+                        <option value="all">Tous les r�les</option>
                         <option value="ADMIN">Administrateur</option>
                         <option value="FO_ANALYSTE">Agent Analyste</option>
                         <option value="CUSTOMER">Agent Visualiseur</option>
@@ -115,7 +115,7 @@ if ($userRole !== 'ADMIN') {
                     <input type="text" id="searchUser" placeholder="Rechercher par nom, email...">
                     <button id="searchBtn"><i class="bi bi-arrow-right"></i></button>
                 </div>
-                <button class="btn btn-outline-secondary" id="resetFiltersBtn"><i class="bi bi-arrow-repeat"></i> Réinitialiser</button>
+                <button class="btn btn-outline-secondary" id="resetFiltersBtn"><i class="bi bi-arrow-repeat"></i> R�initialiser</button>
                 <button class="btn btn-success ms-auto" id="addUserBtn" data-bs-toggle="modal" data-bs-target="#addUserModal">
                     <i class="bi bi-person-plus-fill"></i> Ajouter un utilisateur
                 </button>
@@ -129,7 +129,7 @@ if ($userRole !== 'ADMIN') {
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead class="table-light">
-                        <tr><th>#</th><th>Nom</th><th>Email</th><th>Rôle</th><th>Créé le</th><th>Dernière connexion</th><th>Statut</th><th>Actions</th></tr>
+                        <tr><th>#</th><th>Nom</th><th>Email</th><th>R�le</th><th>Cr�� le</th><th>Derni�re connexion</th><th>Statut</th><th>Actions</th></tr>
                     </thead>
                     <tbody id="usersTableBody"><tr><td colspan="8" class="text-center">Chargement...</td></tr></tbody>
                 </table>
@@ -139,13 +139,13 @@ if ($userRole !== 'ADMIN') {
 
         <!-- Graphiques -->
         <div class="row g-4 mb-4">
-            <div class="col-md-6"><div class="stat-card"><h6><i class="bi bi-pie-chart"></i> Répartition par rôle</h6><canvas id="roleChart" height="250"></canvas></div></div>
-            <div class="col-md-6"><div class="stat-card"><h6><i class="bi bi-graph-up"></i> Évolution des inscriptions</h6><canvas id="evolutionChart" height="250"></canvas></div></div>
+            <div class="col-md-6"><div class="stat-card"><h6><i class="bi bi-pie-chart"></i> R�partition par r�le</h6><canvas id="roleChart" height="250"></canvas></div></div>
+            <div class="col-md-6"><div class="stat-card"><h6><i class="bi bi-graph-up"></i> �volution des inscriptions</h6><canvas id="evolutionChart" height="250"></canvas></div></div>
         </div>
 
-        <!-- Activité récente -->
+        <!-- Activit� r�cente -->
         <div class="row g-4">
-            <div class="col-md-12"><div class="stat-card"><h6><i class="bi bi-clock-history"></i> Activité récente</h6><div id="recentActivityList"><p class="text-center text-muted">Chargement...</p></div></div></div>
+            <div class="col-md-12"><div class="stat-card"><h6><i class="bi bi-clock-history"></i> Activit� r�cente</h6><div id="recentActivityList"><p class="text-center text-muted">Chargement...</p></div></div></div>
         </div>
     </div>
 
@@ -161,7 +161,7 @@ if ($userRole !== 'ADMIN') {
                     <input type="hidden" id="userId">
                     <div class="mb-3"><label class="form-label">Nom complet *</label><input type="text" class="form-control" id="userName" required></div>
                     <div class="mb-3"><label class="form-label">Adresse email *</label><input type="email" class="form-control" id="userEmail" required></div>
-                    <div class="mb-3"><label class="form-label">Rôle *</label>
+                    <div class="mb-3"><label class="form-label">R�le *</label>
                         <select class="form-control" id="userRole">
                             <option value="ADMIN">Administrateur</option>
                             <option value="FO_ANALYSTE">Agent Analyste</option>
@@ -193,7 +193,7 @@ if ($userRole !== 'ADMIN') {
             </div>
             <div class="modal-body text-center">
                 <i class="bi bi-exclamation-triangle-fill text-danger fs-1"></i>
-                <p class="mt-2">Supprimer <strong id="deleteUserName"></strong> ?<br><small class="text-muted">Cette action est irréversible.</small></p>
+                <p class="mt-2">Supprimer <strong id="deleteUserName"></strong> ?<br><small class="text-muted">Cette action est irr�versible.</small></p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
@@ -204,16 +204,16 @@ if ($userRole !== 'ADMIN') {
 
     <div id="logoutConfirmModal" class="logout-confirm-modal">
         <div class="logout-confirm-card">
-            <i class="bi bi-box-arrow-right"></i><h3>Déconnexion</h3>
-            <p>Êtes-vous sûr de vouloir vous déconnecter ?</p>
+            <i class="bi bi-box-arrow-right"></i><h3>D�connexion</h3>
+            <p>�tes-vous s�r de vouloir vous d�connecter ?</p>
             <div class="logout-confirm-buttons">
                 <button class="btn-cancel-logout" id="cancelLogoutBtn"><i class="bi bi-x-lg"></i> Annuler</button>
-                <button class="btn-confirm-logout" id="confirmLogoutBtn"><i class="bi bi-check-lg"></i> Déconnecter</button>
+                <button class="btn-confirm-logout" id="confirmLogoutBtn"><i class="bi bi-check-lg"></i> D�connecter</button>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/bootstrap.bundle.min.js"></script>
     <script src="js/api.js"></script>
     <script src="js/logout.js?v=2"></script>
     <script src="js/app.js"></script>

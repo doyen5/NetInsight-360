@@ -23,7 +23,7 @@ if (AuthHelper::isLoggedIn()) {
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="./assets/css/bootstrap-icons.min.css">
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="assets/css/inter.css" rel="stylesheet">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -192,9 +192,10 @@ if (AuthHelper::isLoggedIn()) {
     </div>
 
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/bootstrap.bundle.min.js"></script>
     <script src="js/api.js?v=2"></script>
     <script src="js/auth.js?v=2"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
+

@@ -15,9 +15,9 @@ if ($userRole !== 'ADMIN') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>NetInsight 360 - Outils Admin</title>
     <link rel="icon" type="image/png" href="assets/img/logo.PNG">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="assets/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/bootstrap-icons.min.css">
+    <link href="assets/css/inter.css" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <style>
@@ -307,7 +307,7 @@ if ($userRole !== 'ADMIN') {
     </div>
 
     <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/bootstrap.bundle.min.js"></script>
     <!-- API Client -->
     <script src="js/api.js"></script>
     <!-- Logout / Auth utilities -->
@@ -319,3 +319,4 @@ if ($userRole !== 'ADMIN') {
     <script>document.addEventListener('DOMContentLoaded', initAdminTools);</script>
 </body>
 </html>
+
