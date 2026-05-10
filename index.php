@@ -1,3 +1,3 @@
 <?php
-header('Location: /NetInsight%20360/netinsight360-frontend/');
+header('Location: /netinsight360/netinsight360-frontend/');
 exit;
