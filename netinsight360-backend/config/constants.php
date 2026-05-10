@@ -12,7 +12,7 @@ define('APP_NAME', 'NetInsight 360');
 define('APP_VERSION', '1.0.0');
 define('APP_TAGLINE', 'Supervisez. Analysez. Optimisez.');
 define('APP_ENV', getenv('APP_ENV') ?: 'development');
-define('APP_URL', getenv('APP_URL') ?: 'http://localhost:8080/NetInsight%20360');
+define('APP_URL', getenv('APP_URL') ?: 'http://localhost:8080/netinsight360');
 define('APP_TIMEZONE', getenv('APP_TIMEZONE') ?: 'Africa/Abidjan');
 
 // ============================================

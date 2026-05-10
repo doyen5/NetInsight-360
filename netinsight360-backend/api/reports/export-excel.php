@@ -81,7 +81,7 @@ try {
     }
     fclose($fh);
 
-    $url = '/NetInsight%20360/netinsight360-backend/data/exports/' . $filename;
+    $url = '/netinsight360/netinsight360-backend/data/exports/' . $filename;
     echo json_encode(['success' => true, 'url' => $url, 'filename' => $filename]);
 
 } catch (Exception $e) {

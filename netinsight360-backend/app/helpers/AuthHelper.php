@@ -151,7 +151,7 @@ class AuthHelper
     public static function requireLogin(string $redirectTo = ''): void
     {
         if (!self::isLoggedIn()) {
-            $loginUrl = '/NetInsight%20360/index.php';
+            $loginUrl = '/netinsight360/index.php';
             if (!empty($redirectTo)) {
                 $loginUrl .= '?redirect=' . urlencode($redirectTo);
             }
@@ -172,7 +172,7 @@ class AuthHelper
         if (!self::hasRole($requiredRole)) {
             // Rediriger vers le dashboard avec un message d'erreur
             $_SESSION['error_message'] = 'Vous n\'avez pas les droits pour accéder à cette page.';
-            header('Location: /NetInsight%20360/netinsight360-frontend/dashboard.php');
+            header('Location: /netinsight360/netinsight360-frontend/dashboard.php');
             exit();
         }
     }

@@ -14,12 +14,12 @@ if ($userRole !== 'ADMIN') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>NetInsight 360 - Outils Admin</title>
-    <link rel="icon" type="image/png" href="assets/img/logo.PNG">
-    <link href="assets/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/bootstrap-icons.min.css">
-    <link href="assets/css/inter.css" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="icon" type="image/png" href="./assets/img/logo.PNG">
+    <link href="./assets/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="./assets/css/bootstrap-icons.min.css">
+    <link href="./assets/css/inter.css" rel="stylesheet">
+    <link rel="stylesheet" href="./assets/css/style.css">
+    <link rel="stylesheet" href="./assets/css/dashboard.css">
     <style>
         /* Header de page: fond clair pour garantir la lisibilité */
         .page-header {
@@ -309,14 +309,15 @@ if ($userRole !== 'ADMIN') {
     <!-- Bootstrap JS -->
     <script src="assets/js/bootstrap.bundle.min.js"></script>
     <!-- API Client -->
-    <script src="js/api.js"></script>
+    <script src="assets/js/api.js"></script>
     <!-- Logout / Auth utilities -->
-    <script src="js/logout.js"></script>
+    <script src="assets/js/logout.js"></script>
     <!-- App core -->
-    <script src="js/app.js"></script>
+    <script src="assets/js/app.js"></script>
     <!-- Admin Tools -->
-    <script src="js/admin-tools.js"></script>
+    <script src="assets/js/admin-tools.js"></script>
     <script>document.addEventListener('DOMContentLoaded', initAdminTools);</script>
 </body>
 </html>
+
 

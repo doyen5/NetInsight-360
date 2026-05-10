@@ -21,5 +21,5 @@ return [
     'password'     => EnvHelper::get('MAIL_PASSWORD',     ''),
     'from_address' => EnvHelper::get('MAIL_FROM_ADDRESS', 'no-reply@netinsight360.local'),
     'from_name'    => EnvHelper::get('MAIL_FROM_NAME',    'NetInsight 360'),
-    'app_url'      => EnvHelper::get('APP_URL',           'http://localhost:8080/NetInsight%20360'),
+    'app_url'      => EnvHelper::get('APP_URL',           'http://localhost:8080/netinsight360'),
 ];

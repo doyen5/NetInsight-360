@@ -16,16 +16,16 @@ if (AuthHelper::isLoggedIn()) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>NetInsight 360 - Connexion</title>
-    <link rel="icon" type="image/png" href="assets/img/logo.PNG">
+    <link rel="icon" type="image/png" href="./assets/img/logo.PNG">
     
     <!-- Bootstrap 5 CSS -->
     <link rel="stylesheet" href="./assets/css/bootstrap.min.css">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="./assets/css/bootstrap-icons.min.css">
     <!-- Google Fonts -->
-    <link href="assets/css/inter.css" rel="stylesheet">
+    <link href="./assets/css/inter.css" rel="stylesheet">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="./assets/css/style.css">
 </head>
 <body>
     <!-- Container principal avec effet de fond animé -->
@@ -38,7 +38,7 @@ if (AuthHelper::isLoggedIn()) {
                             <!-- Section gauche : Logo et branding -->
                             <div class="col-lg-5 logo-section">
                                 <div class="logo-icon">
-                                    <img src="assets/img/mylogo.png" alt="NetInsight 360" class="logo-img">
+                                    <img src="./assets/img/mylogo.png" alt="NetInsight 360" class="logo-img">
                                 </div>
                                 <h1>NetInsight 360</h1>
                                 <div class="tagline">SUPERVISEZ. ANALYSEZ. OPTIMISEZ.</div>
@@ -193,9 +193,10 @@ if (AuthHelper::isLoggedIn()) {
 
     <!-- Scripts -->
     <script src="assets/js/bootstrap.bundle.min.js"></script>
-    <script src="js/api.js?v=2"></script>
-    <script src="js/auth.js?v=2"></script>
-    <script src="js/app.js"></script>
+    <script src="assets/js/api.js?v=2"></script>
+    <script src="assets/js/auth.js?v=2"></script>
+    <script src="assets/js/app.js"></script>
 </body>
 </html>
+
 

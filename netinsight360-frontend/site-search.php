@@ -25,22 +25,22 @@ $siteSearchJsVersion = @filemtime(__DIR__ . '/js/site-search.js') ?: time();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>NetInsight 360 - Recherche Site</title>
-    <link rel="icon" type="image/png" href="assets/img/logo.PNG">
+    <link rel="icon" type="image/png" href="./assets/img/logo.PNG">
 
     <!-- Bootstrap 5 CSS -->
-    <link href="assets/css/bootstrap.min.css" rel="stylesheet">
+    <link href="./assets/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="assets/css/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="./assets/css/bootstrap-icons.min.css">
     <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="assets/css/leaflet.css" />
+    <link rel="stylesheet" href="./assets/css/leaflet.css" />
     <!-- Chart.js -->
-    <script src="assets/js/chart.umd.min.js"></script>
+    <script src="./assets/js/chart.umd.min.js"></script>
     <!-- Google Fonts -->
-    <link href="assets/css/inter.css" rel="stylesheet">
+    <link href="./assets/css/inter.css" rel="stylesheet">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/dashboard.css?v=<?= $dashboardCssVersion ?>">
-    <link rel="stylesheet" href="css/site-search.css?v=<?= $siteSearchCssVersion ?>">
+    <link rel="stylesheet" href="./assets/css/style.css">
+    <link rel="stylesheet" href="./assets/css/dashboard.css?v=<?= $dashboardCssVersion ?>">
+    <link rel="stylesheet" href="./assets/css/site-search.css?v=<?= $siteSearchCssVersion ?>">
 </head>
 <body>
     <button class="menu-toggle" id="menuToggle"><i class="bi bi-list"></i></button>
@@ -166,7 +166,8 @@ $siteSearchJsVersion = @filemtime(__DIR__ . '/js/site-search.js') ?: time();
     <!-- Leaflet JS -->
     <script src="assets/js/leaflet.js"></script>
     <!-- Custom JS -->
-    <script src="js/api.js?v=<?= $apiJsVersion ?>"></script>
-    <script src="js/site-search.js?v=<?= $siteSearchJsVersion ?>"></script>
+    <script src="assets/js/api.js?v=<?= $apiJsVersion ?>"></script>
+    <script src="assets/js/site-search.js?v=<?= $siteSearchJsVersion ?>"></script>
 </body>
 </html>
+

@@ -20,24 +20,24 @@ $mapViewJsVersion = @filemtime(__DIR__ . '/js/map-view.js') ?: time();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>NetInsight 360 - Cartographie</title>
-    <link rel="icon" type="image/png" href="assets/img/logo.PNG">
+    <link rel="icon" type="image/png" href="./assets/img/logo.PNG">
     
     <!-- Bootstrap 5 CSS -->
-    <link href="assets/css/bootstrap.min.css" rel="stylesheet">
+    <link href="./assets/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="assets/css/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="./assets/css/bootstrap-icons.min.css">
     <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="assets/css/leaflet.css" />
-    <link rel="stylesheet" href="assets/css/MarkerCluster.css" />
-    <link rel="stylesheet" href="assets/css/MarkerCluster.Default.css" />
+    <link rel="stylesheet" href="./assets/css/leaflet.css" />
+    <link rel="stylesheet" href="./assets/css/MarkerCluster.css" />
+    <link rel="stylesheet" href="./assets/css/MarkerCluster.Default.css" />
     <!-- Chart.js -->
-    <script src="assets/js/chart.umd.min.js"></script>
+    <script src="./assets/js/chart.umd.min.js"></script>
     <!-- Google Fonts -->
-    <<link href="assets/css/inter.css" rel="stylesheet">
+    <link href="./assets/css/inter.css" rel="stylesheet">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/dashboard.css">
-    <link rel="stylesheet" href="css/map-view.css?v=<?= $mapViewCssVersion ?>">
+    <link rel="stylesheet" href="./assets/css/style.css">
+    <link rel="stylesheet" href="./assets/css/dashboard.css">
+    <link rel="stylesheet" href="./assets/css/map-view.css?v=<?= $mapViewCssVersion ?>">
     
     <style>
         .logout-confirm-modal {
@@ -172,13 +172,14 @@ $mapViewJsVersion = @filemtime(__DIR__ . '/js/map-view.js') ?: time();
     <script src="assets/js/leaflet.markercluster.js"></script>
     <!-- Leaflet.heat — requis pour le mode heatmap -->
     <script src="assets/js/leaflet-heat.js"></script>
-    <script src="js/api.js?v=<?= $apiJsVersion ?>"></script>
-    <script src="js/logout.js?v=2"></script>
-    <script src="js/app.js"></script>
-    <script src="js/charts.js?v=2"></script>
+    <script src="assets/js/api.js?v=<?= $apiJsVersion ?>"></script>
+    <script src="assets/js/logout.js?v=2"></script>
+    <script src="assets/js/app.js"></script>
+    <script src="assets/js/charts.js?v=2"></script>
     <!-- Utilitaire partagé des 4 modes d'affichage — doit précéder map-view.js -->
-    <script src="js/map-modes.js"></script>
-    <script src="js/map-view.js?v=<?= $mapViewJsVersion ?>"></script>
+    <script src="assets/js/map-modes.js"></script>
+    <script src="assets/js/map-view.js?v=<?= $mapViewJsVersion ?>"></script>
 </body>
 </html>
+
 

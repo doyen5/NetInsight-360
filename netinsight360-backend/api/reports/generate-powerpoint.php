@@ -217,7 +217,7 @@ try {
     $writer = IOFactory::createWriter($prs, 'PowerPoint2007');
     $writer->save($filepath);
 
-    $url = '/NetInsight%20360/netinsight360-backend/data/exports/' . rawurlencode($filename);
+    $url = '/netinsight360/netinsight360-backend/data/exports/' . rawurlencode($filename);
     echo json_encode(['success' => true, 'url' => $url]);
 
 } catch (Exception $e) {

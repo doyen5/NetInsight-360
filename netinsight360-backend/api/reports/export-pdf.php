@@ -385,7 +385,7 @@ HTML;
         $html = str_replace('##WORST_KPI_BLOCK##', $worstKpiBlock,   $html);
 
         file_put_contents($filepath, $html);
-        $url = '/NetInsight%20360/netinsight360-backend/data/exports/' . rawurlencode($filename);
+        $url = '/netinsight360/netinsight360-backend/data/exports/' . rawurlencode($filename);
         echo json_encode(['success' => true, 'url' => $url, 'filename' => $filename]);
         exit;
     }
@@ -792,7 +792,7 @@ HTML;
 HTML;
 
     file_put_contents($filepath, $html);
-    $url = '/NetInsight%20360/netinsight360-backend/data/exports/' . $filename;
+    $url = '/netinsight360/netinsight360-backend/data/exports/' . $filename;
 
     // Retourner JSON avec URL
     echo json_encode(['success' => true, 'url' => $url, 'filename' => $filename]);

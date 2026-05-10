@@ -13,7 +13,7 @@ body {
     font-family: 'Inter', sans-serif;
     min-height: 100vh;
     /* Image de fond réseau + dégradé de superposition */
-    background-image: linear-gradient(135deg, rgba(10,15,28,0.66), rgba(10,26,47,0.36)), url("../assets/img/bg-network.jpg");
+    background-image: linear-gradient(135deg, rgba(10,15,28,0.66), rgba(10,26,47,0.36)), url("../img/bg-network.jpg");
     background-size: cover;
     background-position: center center;
     background-repeat: no-repeat;

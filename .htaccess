@@ -8,6 +8,10 @@
 # Bloquer l'accès aux dossiers sensibles
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    # Corriger la faute de frappe courante sur le dossier netinsight360
+    RewriteCond %{REQUEST_URI} ^/netinsigh360(/.*)?$ [NC]
+    RewriteRule ^netinsigh360(/.*)?$ /netinsight360$1 [R=301,L]
+
     RewriteRule ^netinsight360-backend/config/ - [F,L]
     RewriteRule ^netinsight360-backend/logs/ - [F,L]
     # Bloquer data/ SAUF le sous-dossier exports/ (fichiers téléchargeables générés)

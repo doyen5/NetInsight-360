@@ -6,8 +6,8 @@
  * Gère les requêtes HTTP, les erreurs et les tokens d'authentification
  */
 
-// Configuration de l'API - CORRIGÉ
-const API_BASE_URL = '/NetInsight%20360/netinsight360-backend/api';
+// Configuration de l'API
+const API_BASE_URL = '/netinsight360/netinsight360-backend/api';
 
 class API {
     static csrfToken = null;

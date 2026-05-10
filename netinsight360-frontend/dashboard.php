@@ -21,21 +21,21 @@ $kpiColClass = ($userRole === 'ADMIN') ? 'col-md-3 col-sm-6' : 'col-md-4 col-sm-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>NetInsight 360 - Dashboard</title>
-    <link rel="icon" type="image/png" href="assets/img/logo.PNG">
+    <link rel="icon" type="image/png" href="./assets/img/logo.PNG">
     
     <!-- Bootstrap 5 CSS -->
-    <link href="assets/css/bootstrap.min.css" rel="stylesheet">
+    <link href="./assets/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="assets/css/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="./assets/css/bootstrap-icons.min.css">
     <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="assets/css/leaflet.css" />
+    <link rel="stylesheet" href="./assets/css/leaflet.css" />
     <!-- Chart.js -->
-    <script src="assets/js/chart.umd.min.js"></script>
+    <script src="./assets/js/chart.umd.min.js"></script>
     <!-- Google Fonts -->
-    <link href="assets/css/inter.css" rel="stylesheet">
+    <link href="./assets/css/inter.css" rel="stylesheet">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/dashboard.css?v=<?= $dashboardCssVersion ?>">
+    <link rel="stylesheet" href="./assets/css/style.css">
+    <link rel="stylesheet" href="./assets/css/dashboard.css?v=<?= $dashboardCssVersion ?>">
 </head>
 <body>
     <button class="menu-toggle" id="menuToggle"><i class="bi bi-list"></i></button>
@@ -236,14 +236,15 @@ $kpiColClass = ($userRole === 'ADMIN') ? 'col-md-3 col-sm-6' : 'col-md-4 col-sm-
     </div>
 
     <!-- Ordre correct : utilitaires généraux d'abord, puis les pages -->
-    <script src="js/api.js?v=<?= $apiJsVersion ?>"></script>
-    <script src="js/logout.js?v=2"></script>
-    <script src="js/app.js?v=2"></script>
-    <script src="js/charts.js?v=2"></script>
+    <script src="assets/js/api.js?v=<?= $apiJsVersion ?>"></script>
+    <script src="assets/js/logout.js?v=2"></script>
+    <script src="assets/js/app.js?v=2"></script>
+    <script src="assets/js/charts.js?v=2"></script>
     <!-- Utilitaire partagé des 4 modes d'affichage — doit précéder dashboard.js -->
-    <script src="js/map-modes.js"></script>
-    <script src="js/dashboard.js?v=<?= $dashboardJsVersion ?>"></script>
+    <script src="assets/js/map-modes.js"></script>
+    <script src="assets/js/dashboard.js?v=<?= $dashboardJsVersion ?>"></script>
 
 </body>
 </html>
+
 

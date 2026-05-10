@@ -20,22 +20,22 @@ $kpisRanJsVersion = @filemtime(__DIR__ . '/js/kpis-ran.js') ?: time();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>NetInsight 360 - KPIs RAN</title>
-    <link rel="icon" type="image/png" href="assets/img/logo.PNG">
+    <link rel="icon" type="image/png" href="./assets/img/logo.PNG">
     
     <!-- Bootstrap 5 CSS -->
-    <link href="assets/css/bootstrap.min.css" rel="stylesheet">
+    <link href="./assets/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="assets/css/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="./assets/css/bootstrap-icons.min.css">
     <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="assets/css/leaflet.css" />
+    <link rel="stylesheet" href="./assets/css/leaflet.css" />
     <!-- Chart.js -->
-    <script src="assets/js/chart.umd.min.js"></script>
+    <script src="./assets/js/chart.umd.min.js"></script>
     <!-- Google Fonts -->
-    <link href="assets/css/inter.css" rel="stylesheet">
+    <link href="./assets/css/inter.css" rel="stylesheet">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/dashboard.css">
-    <link rel="stylesheet" href="css/kpis-ran.css?v=<?= $kpisRanCssVersion ?>">
+    <link rel="stylesheet" href="./assets/css/style.css">
+    <link rel="stylesheet" href="./assets/css/dashboard.css">
+    <link rel="stylesheet" href="./assets/css/kpis-ran.css?v=<?= $kpisRanCssVersion ?>">
     
     <style>
         .logout-confirm-modal {
@@ -176,13 +176,14 @@ $kpisRanJsVersion = @filemtime(__DIR__ . '/js/kpis-ran.js') ?: time();
     <!-- Plugins Leaflet requis pour les modes cluster et heatmap -->
     <script src="assets/js/leaflet.markercluster.js"></script>
     <script src="assets/js/leaflet-heat.js"></script>
-    <script src="js/api.js?v=<?= $apiJsVersion ?>"></script>
-    <script src="js/logout.js?v=2"></script>
-    <script src="js/app.js?v=2"></script>
-    <script src="js/charts.js?v=2"></script>
+    <script src="assets/js/api.js?v=<?= $apiJsVersion ?>"></script>
+    <script src="assets/js/logout.js?v=2"></script>
+    <script src="assets/js/app.js?v=2"></script>
+    <script src="assets/js/charts.js?v=2"></script>
     <!-- Utilitaire partagé des 4 modes d'affichage — doit précéder kpis-ran.js -->
-    <script src="js/map-modes.js"></script>
-    <script src="js/kpis-ran.js?v=<?= $kpisRanJsVersion ?>"></script>
+    <script src="assets/js/map-modes.js"></script>
+    <script src="assets/js/kpis-ran.js?v=<?= $kpisRanJsVersion ?>"></script>
 </body>
 </html>
+
 

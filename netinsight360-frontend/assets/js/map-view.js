@@ -927,7 +927,7 @@ function initFullReports() {
                     type: 'map_report',
                     ...(fullFilters || {})
                 }).toString();
-                const url = `/NetInsight%20360/netinsight360-backend/api/reports/export-pdf.php?${params}`;
+                const url = `../netinsight360-backend/api/reports/export-pdf.php?${params}`;
                 window.open(url, '_blank');
             } catch (error) {
                 console.error('[MapView] Erreur génération rapport:', error);
